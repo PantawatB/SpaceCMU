@@ -6,7 +6,8 @@ import Sidebar from "../../components/Sidebar";
 const inter = Inter({ subsets: ["latin"] });
 
 export default function FeedsMainPage() {
-  const [activeMenu, setActiveMenu] = useState("Feeds");
+  const [feedMode, setFeedMode] = useState("Global");
+  const [showShareBar, setShowShareBar] = useState(true);
   const menuItems = [
     {
       name: "Profile",
@@ -170,12 +171,12 @@ export default function FeedsMainPage() {
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
-      {/* Sidebar */}
+      {/* Sidebar (Left) */}
       <Sidebar menuItems={menuItems} />
-      {/* Main Content */}
-      <main className="flex-1 p-8">
+      {/* Main Content (Center) */}
+      <main className="flex-1 p-8 flex flex-col gap-4 relative">
         {/* Search bar */}
-        <div className="mb-6">
+        <div className="mb-2">
           <div className="relative w-full">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
               <svg
@@ -211,7 +212,241 @@ export default function FeedsMainPage() {
             />
           </div>
         </div>
+        {/* Feeds Header */}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-2xl font-bold">Feeds</h1>
+          <div className="flex gap-8 text-gray-400 font-semibold text-lg">
+            <button
+              className={
+                feedMode === "Global"
+                  ? "text-black border-b-2 border-black pb-1"
+                  : "hover:text-black"
+              }
+              onClick={() => setFeedMode("Global")}
+            >
+              Global
+            </button>
+            <button
+              className={
+                feedMode === "Friends"
+                  ? "text-black border-b-2 border-black pb-1"
+                  : "hover:text-black"
+              }
+              onClick={() => setFeedMode("Friends")}
+            >
+              Friends
+            </button>
+          </div>
+        </div>
+        {/* Feeds Section: scrollable only for posts */}
+        <section
+          className="flex flex-col gap-6 overflow-y-auto pr-2"
+          style={{ maxHeight: "calc(100vh - 220px)" }}
+        >
+          {/* โพสต์ตัวอย่าง 10 โพสต์ */}
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={i}
+              className={
+                i % 2 === 0
+                  ? "bg-blue-50 rounded-2xl p-6 shadow relative"
+                  : "bg-yellow-50 rounded-2xl p-6 shadow relative"
+              }
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                <div>
+                  <div className="font-bold">
+                    {i % 2 === 0 ? "George Lobko" : "Vitaliy Boyko"}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {i + 1} hours ago
+                  </div>
+                </div>
+              </div>
+              <div className="mb-2 text-base font-medium">
+                {i % 2 === 0
+                  ? "Hi everyone, today I was on the most beautiful mountain in the world 😍, I also want to say hi to 🧑‍🦱 Silena, 👩‍🦰 Olya and 👨 Davis!"
+                  : "I chose a wonderful coffee today, I wanted to tell you what product they have in stock - it's a latte with coconut 🥥 milk... delicious... it's really incredibly tasty!!! 😊"}
+              </div>
+              <div className="flex gap-3 mb-2">
+                <img
+                  src="/public/file.svg"
+                  alt="mountain"
+                  className="w-32 h-32 rounded-xl object-cover"
+                />
+                <img
+                  src="/public/globe.svg"
+                  alt="nature"
+                  className="w-32 h-32 rounded-xl object-cover"
+                />
+                <img
+                  src="/public/next.svg"
+                  alt="mountain"
+                  className="w-32 h-32 rounded-xl object-cover"
+                />
+              </div>
+
+              {/* Post actions */}
+              <div className="flex gap-6 text-gray-500 text-base mt-6">
+                <span>6355</span>
+                <span className="text-pink-500 font-semibold">Like</span>
+                <span>Comment</span>
+              </div>
+              <button className="absolute top-6 right-6 text-gray-400 text-2xl">
+                ⋮
+              </button>
+            </div>
+          ))}
+        </section>
+        {/* Share something bar - fixed bottom, larger size, toggle show/hide with arrow icon */}
+        <div
+          className={`fixed left-80 right-80 bottom-6 z-10 flex flex-col items-center ${showShareBar ? '' : 'bg-transparent p-0 shadow-none'}`}
+        >
+          <button
+            className="mb-2 text-2xl text-gray-500 bg-gray-200 rounded-full p-1 hover:bg-gray-300 flex items-center justify-center"
+            onClick={() => setShowShareBar((prev) => !prev)}
+            style={{ width: "40px", height: "40px" }}
+            aria-label={showShareBar ? "Hide Share Bar" : "Show Share Bar"}
+          >
+            {showShareBar ? (
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                className="w-6 h-6"
+              >
+                <path d="M6 15l6-6 6 6" />
+              </svg>
+            ) : (
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                className="w-6 h-6"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            )}
+          </button>
+          {showShareBar && (
+            <div className="bg-gray-50 rounded-xl shadow-lg px-8 py-5 flex flex-col gap-3 w-full max-w-3xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                <input
+                  type="text"
+                  placeholder="Share something"
+                  className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg"
+                />
+                <span className="text-2xl text-gray-400">😊</span>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex gap-6">
+                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-6 h-6"
+                    >
+                      <rect
+                        x="4"
+                        y="7"
+                        width="16"
+                        height="13"
+                        rx="2"
+                      />
+                      <path d="M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2" />
+                    </svg>
+                    File
+                  </button>
+                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-6 h-6"
+                    >
+                      <circle cx="12" cy="12" r="4" />
+                      <rect x="4" y="4" width="16" height="16" rx="4" />
+                    </svg>
+                    Image
+                  </button>
+                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-6 h-6"
+                    >
+                      <circle cx="12" cy="10" r="3" />
+                      <path d="M12 13v7" />
+                      <path d="M5 20h14" />
+                    </svg>
+                    Location
+                  </button>
+                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
+                    <svg
+                      width="24"
+                      height="24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-6 h-6"
+                    >
+                      <circle cx="12" cy="12" r="8" />
+                      <path d="M12 2v20M2 12h20" />
+                    </svg>
+                    Public <span className="ml-1">▼</span>
+                  </button>
+                </div>
+                <button className="bg-black text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-800 transition">
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
+      {/* Right Section: Recent Active Friends (no border) */}
+      <aside className="w-80 p-8 bg-white flex flex-col gap-6">
+        <div>
+          <h2 className="text-lg font-bold mb-4">Recent Active Friends</h2>
+          <ul className="space-y-4">
+            <li className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full" />
+              <div>
+                <div className="font-medium">Nick Shelburne</div>
+                <div className="text-xs text-gray-400">Active now</div>
+              </div>
+            </li>
+            <li className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full" />
+              <div>
+                <div className="font-medium">Brittni Lando</div>
+                <div className="text-xs text-gray-400">Active 2m ago</div>
+              </div>
+            </li>
+            <li className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full" />
+              <div>
+                <div className="font-medium">Ivan Shevchenko</div>
+                <div className="text-xs text-gray-400">Active 5m ago</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </aside>
     </div>
   );
 }
