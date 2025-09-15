@@ -2,6 +2,7 @@
 import { Inter } from "next/font/google";
 import { useState } from "react";
 import Sidebar from "../../components/Sidebar";
+import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -245,47 +246,44 @@ export default function FeedsMainPage() {
           {[...Array(10)].map((_, i) => (
             <div
               key={i}
-              className={
-                i % 2 === 0
-                  ? "bg-blue-50 rounded-2xl p-6 shadow relative"
-                  : "bg-yellow-50 rounded-2xl p-6 shadow relative"
+              className={"bg-gray-50 rounded-2xl p-6 shadow  relative"
               }
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                <Image
+  src={i % 2 === 0 ? "/tanjiro.jpg" : "/noobcat.png"}
+  alt="avatar"
+  width={40}
+  height={40}
+  className="rounded-full object-cover"
+/>
+            
                 <div>
                   <div className="font-bold">
-                    {i % 2 === 0 ? "Pantawat Boonchaloey" : "IHERE ISUS"}
+                    {i % 2 === 0 ? "Kamado Tanjiro" : "Noobcat"}
                   </div>
                   <div className="text-xs text-gray-400">
-                    {i % 2 === 0 ? "65,Engineering" : "Graduate"}
+                    {i % 2 === 0 ? "65,Engineering" : "Anonymous"}
                   </div>
                   <div className="text-xs text-gray-400">
                     {i + 1} hours ago
                   </div>
                 </div>
               </div>
-              <div className="mb-2 text-base font-medium">
+              <div className="mb-2 text-base font-semibold">
                 {i % 2 === 0
-                  ? "โคตรกระโปก"
-                  : "โพสตัวอย่างโง่ๆ"}
+                  ? "I love my family so much!"
+                  : "Just chilling and enjoying life."}
               </div>
               <div className="flex gap-3 mb-2">
-                <img
-                  src="/public/file.svg"
-                  alt="mountain"
-                  className="w-32 h-32 rounded-xl object-cover"
-                />
-                <img
-                  src="/public/globe.svg"
-                  alt="nature"
-                  className="w-32 h-32 rounded-xl object-cover"
-                />
-                <img
-                  src="/public/next.svg"
-                  alt="mountain"
-                  className="w-32 h-32 rounded-xl object-cover"
-                />
+                <Image
+  src={i % 2 === 0 ? "/tanjiro_with_family.webp" : "/cat-post.jpg"}
+  alt="avatar"
+  width={480}
+  height={40}
+  className="object-cover"
+/>
+                
               </div>
 
               {/* Post actions */}
@@ -337,7 +335,16 @@ export default function FeedsMainPage() {
           {showShareBar && (
             <div className="bg-gray-50 rounded-xl shadow-lg px-8 py-5 flex flex-col gap-3 w-full max-w-3xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-200 rounded-full" />
+
+<Image
+  src="/tanjiro.jpg"
+  alt="avatar"
+  width={40}
+  height={40}
+  className="rounded-full object-cover"
+/>
+
+
                 <input
                   type="text"
                   placeholder="Share something"
@@ -427,21 +434,21 @@ export default function FeedsMainPage() {
             <li className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
               <div>
-                <div className="font-medium">Nick Shelburne</div>
+                <div className="font-medium">People 1</div>
                 <div className="text-xs text-gray-400">Active now</div>
               </div>
             </li>
             <li className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
               <div>
-                <div className="font-medium">Brittni Lando</div>
+                <div className="font-medium">People 2</div>
                 <div className="text-xs text-gray-400">Active 2m ago</div>
               </div>
             </li>
             <li className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
               <div>
-                <div className="font-medium">Ivan Shevchenko</div>
+                <div className="font-medium">People 3</div>
                 <div className="text-xs text-gray-400">Active 5m ago</div>
               </div>
             </li>
