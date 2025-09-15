@@ -170,11 +170,12 @@ export default function FeedsMainPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-white text-gray-800">
+    <div className="flex h-screen bg-white text-gray-800">
       {/* Sidebar (Left) */}
       <Sidebar menuItems={menuItems} />
       {/* Main Content (Center) */}
-      <main className="flex-1 p-8 flex flex-col gap-4 relative">
+      <main className="flex-1 pt-8 px-8 pb-0 flex flex-col gap-4 relative">
+      
         {/* Search bar */}
         <div className="mb-2">
           <div className="relative w-full">
@@ -239,10 +240,7 @@ export default function FeedsMainPage() {
           </div>
         </div>
         {/* Feeds Section: scrollable only for posts */}
-        <section
-          className="flex flex-col gap-6 overflow-y-auto pr-2"
-          style={{ maxHeight: "calc(100vh - 220px)" }}
-        >
+        <section className="flex-1 overflow-y-auto p-8 flex flex-col gap-6">
           {/* โพสต์ตัวอย่าง 10 โพสต์ */}
           {[...Array(10)].map((_, i) => (
             <div
@@ -257,7 +255,10 @@ export default function FeedsMainPage() {
                 <div className="w-10 h-10 bg-gray-200 rounded-full" />
                 <div>
                   <div className="font-bold">
-                    {i % 2 === 0 ? "George Lobko" : "Vitaliy Boyko"}
+                    {i % 2 === 0 ? "Pantawat Boonchaloey" : "IHERE ISUS"}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {i % 2 === 0 ? "65,Engineering" : "Graduate"}
                   </div>
                   <div className="text-xs text-gray-400">
                     {i + 1} hours ago
@@ -266,8 +267,8 @@ export default function FeedsMainPage() {
               </div>
               <div className="mb-2 text-base font-medium">
                 {i % 2 === 0
-                  ? "Hi everyone, today I was on the most beautiful mountain in the world 😍, I also want to say hi to 🧑‍🦱 Silena, 👩‍🦰 Olya and 👨 Davis!"
-                  : "I chose a wonderful coffee today, I wanted to tell you what product they have in stock - it's a latte with coconut 🥥 milk... delicious... it's really incredibly tasty!!! 😊"}
+                  ? "โคตรกระโปก"
+                  : "โพสตัวอย่างโง่ๆ"}
               </div>
               <div className="flex gap-3 mb-2">
                 <img
@@ -289,9 +290,9 @@ export default function FeedsMainPage() {
 
               {/* Post actions */}
               <div className="flex gap-6 text-gray-500 text-base mt-6">
-                <span>6355</span>
                 <span className="text-pink-500 font-semibold">Like</span>
                 <span>Comment</span>
+                <span>Share</span>
               </div>
               <button className="absolute top-6 right-6 text-gray-400 text-2xl">
                 ⋮
