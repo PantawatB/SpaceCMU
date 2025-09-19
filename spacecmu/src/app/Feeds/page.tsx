@@ -176,7 +176,6 @@ export default function FeedsMainPage() {
       <Sidebar menuItems={menuItems} />
       {/* Main Content (Center) */}
       <main className="flex-1 pt-8 px-8 pb-0 flex flex-col gap-4 relative">
-      
         {/* Search bar */}
         <div className="mb-2">
           <div className="relative w-full">
@@ -246,18 +245,16 @@ export default function FeedsMainPage() {
           {[...Array(10)].map((_, i) => (
             <div
               key={i}
-              className={"bg-gray-50 rounded-2xl p-6 shadow  relative"
-              }
+              className={"bg-gray-50 rounded-2xl p-6 shadow  relative"}
             >
               <div className="flex items-center gap-3 mb-2">
                 <Image
-  src={i % 2 === 0 ? "/tanjiro.jpg" : "/noobcat.png"}
-  alt="avatar"
-  width={40}
-  height={40}
-  className="rounded-full object-cover"
-/>
-            
+                  src={i % 2 === 0 ? "/tanjiro.jpg" : "/noobcat.png"}
+                  alt="avatar"
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover"
+                />
                 <div>
                   <div className="font-bold">
                     {i % 2 === 0 ? "Kamado Tanjiro" : "Noobcat"}
@@ -265,9 +262,7 @@ export default function FeedsMainPage() {
                   <div className="text-xs text-gray-400">
                     {i % 2 === 0 ? "65,Engineering" : "Anonymous"}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {i + 1} hours ago
-                  </div>
+                  <div className="text-xs text-gray-400">{i + 1} hours ago</div>
                 </div>
               </div>
               <div className="mb-2 text-base font-semibold">
@@ -277,13 +272,14 @@ export default function FeedsMainPage() {
               </div>
               <div className="flex gap-3 mb-2">
                 <Image
-  src={i % 2 === 0 ? "/tanjiro_with_family.webp" : "/cat-post.jpg"}
-  alt="avatar"
-  width={480}
-  height={40}
-  className="object-cover"
-/>
-                
+                  src={
+                    i % 2 === 0 ? "/tanjiro_with_family.webp" : "/cat-post.jpg"
+                  }
+                  alt="avatar"
+                  width={480}
+                  height={40}
+                  className="object-cover"
+                />
               </div>
 
               {/* Post actions */}
@@ -300,7 +296,9 @@ export default function FeedsMainPage() {
         </section>
         {/* Share something bar - fixed bottom, larger size, toggle show/hide with arrow icon */}
         <div
-          className={`fixed left-80 right-80 bottom-6 z-10 flex flex-col items-center ${showShareBar ? '' : 'bg-transparent p-0 shadow-none'}`}
+          className={`fixed left-80 right-80 bottom-6 z-10 flex flex-col items-center ${
+            showShareBar ? "" : "bg-transparent p-0 shadow-none"
+          }`}
         >
           <button
             className="mb-2 text-2xl text-gray-500 bg-gray-200 rounded-full p-1 hover:bg-gray-300 flex items-center justify-center"
@@ -335,15 +333,13 @@ export default function FeedsMainPage() {
           {showShareBar && (
             <div className="bg-gray-50 rounded-xl shadow-lg px-8 py-5 flex flex-col gap-3 w-full max-w-3xl">
               <div className="flex items-center gap-3">
-
-<Image
-  src="/tanjiro.jpg"
-  alt="avatar"
-  width={40}
-  height={40}
-  className="rounded-full object-cover"
-/>
-
+                <Image
+                  src="/tanjiro.jpg"
+                  alt="avatar"
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover"
+                />
 
                 <input
                   type="text"
@@ -363,13 +359,7 @@ export default function FeedsMainPage() {
                       strokeWidth="2"
                       className="w-6 h-6"
                     >
-                      <rect
-                        x="4"
-                        y="7"
-                        width="16"
-                        height="13"
-                        rx="2"
-                      />
+                      <rect x="4" y="7" width="16" height="13" rx="2" />
                       <path d="M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2" />
                     </svg>
                     File
