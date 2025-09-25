@@ -28,7 +28,10 @@ function listReports(req, res) {
         const status = req.query.status;
         const reportRepo = ormconfig_1.AppDataSource.getRepository(Report_1.Report);
         const where = status ? { status } : {};
-        const reports = yield reportRepo.find({ where, relations: ['reportingUser', 'post', 'persona'] });
+        const reports = yield reportRepo.find({
+            where,
+            relations: ["reportingUser", "post", "persona"],
+        });
         return res.json(reports);
     });
 }
@@ -44,10 +47,10 @@ function banPersona(req, res) {
         const personaRepo = ormconfig_1.AppDataSource.getRepository(Persona_1.Persona);
         const persona = yield personaRepo.findOne({ where: { id: personaId } });
         if (!persona) {
-            return res.status(404).json({ message: 'Persona not found' });
+            return res.status(404).json({ message: "Persona not found" });
         }
         if (persona.isBanned) {
-            return res.status(400).json({ message: 'Persona is already banned' });
+            return res.status(400).json({ message: "Persona is already banned" });
         }
         persona.isBanned = true;
         yield personaRepo.save(persona);
@@ -55,11 +58,11 @@ function banPersona(req, res) {
             const reportRepo = ormconfig_1.AppDataSource.getRepository(Report_1.Report);
             const report = yield reportRepo.findOne({ where: { id: reportId } });
             if (report) {
-                report.status = 'actioned';
+                report.status = "actioned";
                 yield reportRepo.save(report);
             }
         }
-        return res.json({ message: 'Persona banned' });
+        return res.json({ message: "Persona banned" });
     });
 }
 /**
@@ -73,10 +76,10 @@ function banUser(req, res) {
         const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
         const user = yield userRepo.findOne({ where: { id: userId } });
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: "User not found" });
         }
         if (user.isBanned) {
-            return res.status(400).json({ message: 'User is already banned' });
+            return res.status(400).json({ message: "User is already banned" });
         }
         user.isBanned = true;
         yield userRepo.save(user);
@@ -84,11 +87,11 @@ function banUser(req, res) {
             const reportRepo = ormconfig_1.AppDataSource.getRepository(Report_1.Report);
             const report = yield reportRepo.findOne({ where: { id: reportId } });
             if (report) {
-                report.status = 'actioned';
+                report.status = "actioned";
                 yield reportRepo.save(report);
             }
         }
-        return res.json({ message: 'User banned' });
+        return res.json({ message: "User banned" });
     });
 }
 /**
@@ -102,18 +105,18 @@ function takedownPost(req, res) {
         const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
         const post = yield postRepo.findOne({ where: { id: postId } });
         if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
+            return res.status(404).json({ message: "Post not found" });
         }
         yield postRepo.remove(post);
         if (reportId) {
             const reportRepo = ormconfig_1.AppDataSource.getRepository(Report_1.Report);
             const report = yield reportRepo.findOne({ where: { id: reportId } });
             if (report) {
-                report.status = 'actioned';
+                report.status = "actioned";
                 yield reportRepo.save(report);
             }
         }
-        return res.json({ message: 'Post removed' });
+        return res.json({ message: "Post removed" });
     });
 }
 /**
@@ -125,10 +128,10 @@ function reviewReport(req, res) {
         const reportRepo = ormconfig_1.AppDataSource.getRepository(Report_1.Report);
         const report = yield reportRepo.findOne({ where: { id: reportId } });
         if (!report) {
-            return res.status(404).json({ message: 'Report not found' });
+            return res.status(404).json({ message: "Report not found" });
         }
-        report.status = 'reviewed';
+        report.status = "reviewed";
         yield reportRepo.save(report);
-        return res.json({ message: 'Report marked as reviewed' });
+        return res.json({ message: "Report marked as reviewed" });
     });
 }

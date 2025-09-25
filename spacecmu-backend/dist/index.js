@@ -32,11 +32,11 @@ function bootstrap() {
         const app = (0, express_1.default)();
         app.use(express_1.default.json());
         // Mount API routes under /api
-        app.use('/api/users', userRoutes_1.default);
-        app.use('/api/personas', personaRoutes_1.default);
-        app.use('/api/posts', postRoutes_1.default);
-        app.use('/api/friends', friendRoutes_1.default);
-        app.use('/api/admin', adminRoutes_1.default);
+        app.use("/api/users", userRoutes_1.default);
+        app.use("/api/personas", personaRoutes_1.default);
+        app.use("/api/posts", postRoutes_1.default);
+        app.use("/api/friends", friendRoutes_1.default);
+        app.use("/api/admin", adminRoutes_1.default);
         const port = process.env.PORT || 3000;
         app.listen(port, () => {
             console.log(`Server listening on port ${port}`);
@@ -44,5 +44,5 @@ function bootstrap() {
     });
 }
 bootstrap().catch((err) => {
-    console.error('Failed to start application:', err);
+    console.error("Failed to start application:", err);
 });

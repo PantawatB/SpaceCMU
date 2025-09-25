@@ -23,25 +23,28 @@ const User_1 = require("../entities/User");
  */
 function authenticateToken(req, res, next) {
     return __awaiter(this, void 0, void 0, function* () {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1];
         if (!token) {
-            return res.status(401).json({ message: 'Missing authorization token' });
+            return res.status(401).json({ message: "Missing authorization token" });
         }
         try {
-            const secret = process.env.JWT_SECRET || 'changeme';
+            const secret = process.env.JWT_SECRET || "changeme";
             const payload = jsonwebtoken_1.default.verify(token, secret);
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
-            const user = yield userRepo.findOne({ where: { id: payload.userId }, relations: ['persona', 'friends'] });
+            const user = yield userRepo.findOne({
+                where: { id: payload.userId },
+                relations: ["persona", "friends"],
+            });
             if (!user) {
-                return res.status(401).json({ message: 'Invalid token' });
+                return res.status(401).json({ message: "Invalid token" });
             }
             // @ts-ignore attach user property to request
             req.user = user;
             next();
         }
         catch (err) {
-            return res.status(401).json({ message: 'Invalid token' });
+            return res.status(401).json({ message: "Invalid token" });
         }
     });
 }
@@ -53,7 +56,9 @@ function requireAdmin(req, res, next) {
     // @ts-ignore
     const user = req.user;
     if (!user || !user.isAdmin) {
-        return res.status(403).json({ message: 'Forbidden: admin privileges required' });
+        return res
+            .status(403)
+            .json({ message: "Forbidden: admin privileges required" });
     }
     next();
 }

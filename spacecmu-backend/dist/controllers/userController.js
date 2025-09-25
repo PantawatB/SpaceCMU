@@ -28,21 +28,26 @@ function register(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { studentId, email, password, name } = req.body;
         if (!studentId || !email || !password || !name) {
-            return res.status(400).json({ message: 'Missing required fields' });
+            return res.status(400).json({ message: "Missing required fields" });
         }
         const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
         const existingById = yield userRepo.findOne({ where: { studentId } });
         if (existingById) {
-            return res.status(409).json({ message: 'Student ID already registered' });
+            return res.status(409).json({ message: "Student ID already registered" });
         }
         const existingByEmail = yield userRepo.findOne({ where: { email } });
         if (existingByEmail) {
-            return res.status(409).json({ message: 'Email already registered' });
+            return res.status(409).json({ message: "Email already registered" });
         }
         const hashed = yield (0, hash_1.hashPassword)(password);
-        const user = userRepo.create({ studentId, email, passwordHash: hashed, name });
+        const user = userRepo.create({
+            studentId,
+            email,
+            passwordHash: hashed,
+            name,
+        });
         yield userRepo.save(user);
-        return res.status(201).json({ message: 'Registration successful' });
+        return res.status(201).json({ message: "Registration successful" });
     });
 }
 /**
@@ -52,19 +57,19 @@ function login(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { email, password } = req.body;
         if (!email || !password) {
-            return res.status(400).json({ message: 'Missing credentials' });
+            return res.status(400).json({ message: "Missing credentials" });
         }
         const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
         const user = yield userRepo.findOne({ where: { email } });
         if (!user) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return res.status(401).json({ message: "Invalid email or password" });
         }
         const isMatch = yield (0, hash_1.comparePassword)(password, user.passwordHash);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return res.status(401).json({ message: "Invalid email or password" });
         }
-        const secret = process.env.JWT_SECRET || 'changeme';
-        const token = jsonwebtoken_1.default.sign({ userId: user.id }, secret, { expiresIn: '7d' });
+        const secret = process.env.JWT_SECRET || "changeme";
+        const token = jsonwebtoken_1.default.sign({ userId: user.id }, secret, { expiresIn: "7d" });
         return res.json({ token });
     });
 }
@@ -77,8 +82,18 @@ function getMe(req, res) {
         // @ts-ignore
         const user = req.user;
         // Only include non‑sensitive fields in response
-        const { id, studentId, email, name, persona, isAdmin, friends, createdAt, updatedAt } = user;
+        const { id, studentId, email, name, persona, isAdmin, friends, createdAt, updatedAt, } = user;
         const friendCount = friends ? friends.length : 0;
-        return res.json({ id, studentId, email, name, isAdmin, friendCount, persona, createdAt, updatedAt });
+        return res.json({
+            id,
+            studentId,
+            email,
+            name,
+            isAdmin,
+            friendCount,
+            persona,
+            createdAt,
+            updatedAt,
+        });
     });
 }

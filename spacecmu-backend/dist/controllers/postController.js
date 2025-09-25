@@ -26,27 +26,42 @@ function createPost(req, res) {
         // @ts-ignore
         const user = req.user;
         const { content, imageUrl, isAnonymous, visibility } = req.body;
-        if (!content || typeof content !== 'string' || content.trim().length === 0) {
-            return res.status(400).json({ message: 'Post content is required' });
+        if (!content || typeof content !== "string" || content.trim().length === 0) {
+            return res.status(400).json({ message: "Post content is required" });
         }
-        const vis = visibility === 'friends' ? 'friends' : 'public';
+        const vis = visibility === "friends" ? "friends" : "public";
         const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
         let persona = null;
         if (isAnonymous) {
             // Must have a persona and at least 10 friends
             if (!user.persona) {
-                return res.status(400).json({ message: 'You must create a persona before posting anonymously' });
+                return res
+                    .status(400)
+                    .json({
+                    message: "You must create a persona before posting anonymously",
+                });
             }
             const friendCount = user.friends ? user.friends.length : 0;
             const MIN_FRIENDS_TO_POST_ANON = 10;
             if (friendCount < MIN_FRIENDS_TO_POST_ANON) {
-                return res.status(403).json({ message: `You need at least ${MIN_FRIENDS_TO_POST_ANON} friends to post anonymously` });
+                return res
+                    .status(403)
+                    .json({
+                    message: `You need at least ${MIN_FRIENDS_TO_POST_ANON} friends to post anonymously`,
+                });
             }
             persona = user.persona;
         }
-        const post = postRepo.create({ user, persona, content, imageUrl, isAnonymous: !!isAnonymous, visibility: vis });
+        const post = postRepo.create({
+            user,
+            persona,
+            content,
+            imageUrl,
+            isAnonymous: !!isAnonymous,
+            visibility: vis,
+        });
         yield postRepo.save(post);
-        return res.status(201).json({ message: 'Post created', post });
+        return res.status(201).json({ message: "Post created", post });
     });
 }
 /**
@@ -56,11 +71,19 @@ function createPost(req, res) {
 function getPublicFeed(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
-        const posts = yield postRepo.find({ where: { visibility: 'public' }, relations: ['user', 'persona'], order: { createdAt: 'DESC' }, take: 50 });
+        const posts = yield postRepo.find({
+            where: { visibility: "public" },
+            relations: ["user", "persona"],
+            order: { createdAt: "DESC" },
+            take: 50,
+        });
         const result = posts.map((post) => {
             let author;
             if (post.isAnonymous && post.persona) {
-                author = { name: post.persona.displayName, avatarUrl: post.persona.avatarUrl };
+                author = {
+                    name: post.persona.displayName,
+                    avatarUrl: post.persona.avatarUrl,
+                };
             }
             else {
                 author = { name: post.user.name };
@@ -90,11 +113,19 @@ function getFriendFeed(req, res) {
         const friendIds = user.friends ? user.friends.map((f) => f.id) : [];
         const ids = [...friendIds, user.id];
         const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
-        const posts = yield postRepo.find({ where: { user: { id: (0, typeorm_1.In)(ids) }, visibility: (0, typeorm_1.In)(['public', 'friends']) }, relations: ['user', 'persona'], order: { createdAt: 'DESC' }, take: 50 });
+        const posts = yield postRepo.find({
+            where: { user: { id: (0, typeorm_1.In)(ids) }, visibility: (0, typeorm_1.In)(["public", "friends"]) },
+            relations: ["user", "persona"],
+            order: { createdAt: "DESC" },
+            take: 50,
+        });
         const result = posts.map((post) => {
             let author;
             if (post.isAnonymous && post.persona) {
-                author = { name: post.persona.displayName, avatarUrl: post.persona.avatarUrl };
+                author = {
+                    name: post.persona.displayName,
+                    avatarUrl: post.persona.avatarUrl,
+                };
             }
             else {
                 author = { name: post.user.name };
@@ -119,13 +150,19 @@ function getPostById(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { id } = req.params;
         const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
-        const post = yield postRepo.findOne({ where: { id }, relations: ['user', 'persona'] });
+        const post = yield postRepo.findOne({
+            where: { id },
+            relations: ["user", "persona"],
+        });
         if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
+            return res.status(404).json({ message: "Post not found" });
         }
         let author;
         if (post.isAnonymous && post.persona) {
-            author = { name: post.persona.displayName, avatarUrl: post.persona.avatarUrl };
+            author = {
+                name: post.persona.displayName,
+                avatarUrl: post.persona.avatarUrl,
+            };
         }
         else {
             author = { name: post.user.name };
