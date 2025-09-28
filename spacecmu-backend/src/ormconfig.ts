@@ -1,4 +1,5 @@
 import { DataSource } from "typeorm";
+import dotenv from "dotenv";
 import { User } from "./entities/User";
 import { Persona } from "./entities/Persona";
 import { Post } from "./entities/Post";
@@ -6,10 +7,8 @@ import { FriendRequest } from "./entities/FriendRequest";
 import { Friend } from "./entities/Friend";
 import { Report } from "./entities/Report";
 
-// In a real project these configuration values would be loaded from a
-// .env file or similar. Here we provide defaults suitable for local
-// development. To connect to a production database supply the appropriate
-// environment variables.
+// Load environment variables from .env file
+dotenv.config();
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -18,7 +17,12 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER || "postgres",
   password: process.env.DB_PASS || "postgres",
   database: process.env.DB_NAME || "spacecmu",
-  synchronize: true, // Should be false in production
-  logging: false,
+  synchronize: process.env.NODE_ENV === "production" ? false : true, // Set to false for production
+  logging: process.env.NODE_ENV !== "production", // Only log in development
   entities: [User, Persona, Post, FriendRequest, Friend, Report],
+  ssl: process.env.DB_SSL === "true",
+  extra: {
+    ssl:
+      process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+  },
 });

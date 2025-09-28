@@ -1,62 +1,75 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, ManyToOne } from 'typeorm';
-import { User } from './User';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToOne,
+  OneToMany,
+} from "typeorm";
+import { User } from "./User";
+import { Report } from "./Report";
 
 /**
- * The Persona entity represents an anonymous identity belonging to a user. Each
- * user may have at most one persona, which they can use to post anonymously.
- * Although persona details are visible to other users, the underlying user ID
- * remains hidden from the client. Admins can trace a persona back to its
- * corresponding user for accountability.
+ * Persona = ตัวตนเสมือน/นามแฝงของ user
+ * ใช้สำหรับโพสต์ anonymous
  */
 @Entity()
 export class Persona {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   /**
-   * User owning this persona. A one‑to‑one relation ensures only one persona per user.
+   * User เจ้าของ persona (1:1)
    */
-  @OneToOne(() => User, (user) => user.persona)
+  @OneToOne(() => User, (user) => user.persona, { onDelete: "CASCADE" })
   user!: User;
 
   /**
-   * The pseudonymous display name chosen by the user. Visible to other users when
-   * the persona posts anonymous content.
+   * Display name ของ persona (นามแฝง)
    */
   @Column()
   displayName!: string;
 
   /**
-   * Optional avatar URL for the persona. Should be stored in a trusted file
-   * storage and validated against allowed formats.
+   * Avatar ของ persona (optional)
    */
   @Column({ nullable: true })
   avatarUrl?: string;
 
   /**
-   * Tracks how many times the persona name or avatar has been changed within a
-   * given period. Use this information to enforce the monthly change limit.
+   * จำนวนครั้งที่เปลี่ยน persona ในเดือนนี้
    */
   @Column({ default: 0 })
   changeCount!: number;
 
   /**
-   * Timestamp when the persona was last modified. Combined with changeCount to
-   * reset limits monthly.
+   * เวลาที่เปลี่ยน persona ครั้งล่าสุด
    */
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: "timestamp",
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP",
+  })
   lastChangedAt!: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   createdAt!: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: "timestamp",
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP",
+  })
   updatedAt!: Date;
 
   /**
-   * Flag indicating whether this persona has been banned by an administrator.
-   * Banned personas cannot post or be used until restored.
+   * Flag ว่า persona ถูกแบนหรือไม่
    */
   @Column({ default: false })
   isBanned!: boolean;
+
+  /**
+   * Posts ที่โพสต์โดยใช้ persona (anonymous posts)
+   */
+  @OneToMany(() => Report, (report) => report.persona)
+  reports!: Report[];
 }

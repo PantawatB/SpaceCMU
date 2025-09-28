@@ -1,7 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { User } from './User';
-import { Post } from './Post';
-import { Persona } from './Persona';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
+import { User } from "./User";
+import { Post } from "./Post";
+import { Persona } from "./Persona";
 
 /**
  * Report represents a complaint lodged by a user against a post or a persona.
@@ -9,36 +9,55 @@ import { Persona } from './Persona';
  */
 @Entity()
 export class Report {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @ManyToOne(() => User, (user) => user.reports)
+  /**
+   * ผู้ใช้ที่ทำการ report
+   */
+  @ManyToOne(() => User, (user) => user.reports, {
+    onDelete: "CASCADE",
+  })
   reportingUser!: User;
 
   /**
-   * Optionally the post being reported. Null when the report targets a persona.
+   * โพสต์ที่ถูกรายงาน (optional)
    */
-  @ManyToOne(() => Post, { nullable: true })
+  @ManyToOne(() => Post, (post) => post.reports, {
+    nullable: true,
+    onDelete: "SET NULL",
+  })
   post?: Post | null;
 
   /**
-   * Optionally the persona being reported. Null when reporting a post directly.
+   * persona ที่ถูกรายงาน (optional)
    */
-  @ManyToOne(() => Persona, { nullable: true })
+  @ManyToOne(() => Persona, (persona) => persona.reports, {
+    nullable: true,
+    onDelete: "SET NULL",
+  })
   persona?: Persona | null;
 
   /**
-   * Explanation or reason provided by the reporting user.
+   * เหตุผลที่ report
    */
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   reason!: string;
 
-  @Column({ type: 'enum', enum: ['pending', 'reviewed', 'actioned'], default: 'pending' })
-  status!: 'pending' | 'reviewed' | 'actioned';
+  @Column({
+    type: "enum",
+    enum: ["pending", "reviewed", "actioned"],
+    default: "pending",
+  })
+  status!: "pending" | "reviewed" | "actioned";
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   createdAt!: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: "timestamp",
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP",
+  })
   updatedAt!: Date;
 }

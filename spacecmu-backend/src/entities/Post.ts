@@ -1,15 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { User } from './User';
-import { Persona } from './Persona';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  ManyToMany,
+  OneToMany,
+  JoinTable,
+} from "typeorm";
+import { User } from "./User";
+import { Persona } from "./Persona";
+import { Report } from "./Report";
 
-/**
- * Posts represent messages authored by users. A post may be linked either to
- * the real user or to a persona when published anonymously. Posts can be
- * restricted to friends or made public and may include an optional image.
- */
 @Entity()
 export class Post {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   /**
@@ -26,11 +30,7 @@ export class Post {
   @ManyToOne(() => Persona, { nullable: true })
   persona?: Persona | null;
 
-  /**
-   * The textual content of the post. Sanitisation (e.g. XSS prevention) must
-   * occur at either the controller layer or the database layer.
-   */
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   content!: string;
 
   /**
@@ -47,16 +47,27 @@ export class Post {
   @Column({ default: false })
   isAnonymous!: boolean;
 
-  /**
-   * The visibility of the post. Public posts show up in the global feed and
-   * friend feed, while friend‑only posts are visible only to mutual friends.
-   */
-  @Column({ type: 'enum', enum: ['public', 'friends'], default: 'public' })
-  visibility!: 'public' | 'friends';
+  @Column({
+    type: "enum",
+    enum: ["public", "friends"],
+    default: "public",
+  })
+  visibility!: "public" | "friends";
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @ManyToMany(() => User, { eager: true })
+  @JoinTable()
+  likedBy!: User[];
+
+  @OneToMany(() => Report, (report) => report.post)
+  reports!: Report[];
+
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   createdAt!: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: "timestamp",
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP",
+  })
   updatedAt!: Date;
 }

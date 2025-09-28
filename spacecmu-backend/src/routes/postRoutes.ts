@@ -1,19 +1,46 @@
-import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth';
-import { createPost, getPublicFeed, getFriendFeed, getPostById } from '../controllers/postController';
+import { Router } from "express";
+import { authenticateToken } from "../middleware/auth";
+import {
+  createPost,
+  updatePost,
+  deletePost,
+  getPost,
+  listPosts,
+  likePost,
+  unlikePost,
+} from "../controllers/postController";
 
 const router = Router();
 
-// Public endpoint to fetch global feed
-router.get('/feed/public', getPublicFeed);
+// ต้อง login ก่อนถึงจะโพสต์/กดไลก์ได้
+router.use(authenticateToken);
 
-// Protected endpoint to fetch friend feed
-router.get('/feed/friends', authenticateToken, getFriendFeed);
+// 📌 สร้างโพสต์
+// POST /api/posts
+router.post("/", createPost);
 
-// Protected endpoint to create a post
-router.post('/', authenticateToken, createPost);
+// 📌 อัพเดทโพสต์
+// PUT /api/posts/:id
+router.put("/:id", updatePost);
 
-// Public endpoint to fetch a specific post by id
-router.get('/:id', getPostById);
+// 📌 ลบโพสต์
+// DELETE /api/posts/:id
+router.delete("/:id", deletePost);
+
+// 📌 ดูโพสต์ทั้งหมด
+// GET /api/posts
+router.get("/", listPosts);
+
+// 📌 ดูโพสต์เดียว
+// GET /api/posts/:id
+router.get("/:id", getPost);
+
+// 📌 กด like
+// POST /api/posts/:id/like
+router.post("/:id/like", likePost);
+
+// 📌 ยกเลิก like
+// POST /api/posts/:id/unlike
+router.post("/:id/unlike", unlikePost);
 
 export default router;

@@ -1,29 +1,38 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, Column } from 'typeorm';
-import { User } from './User';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  Column,
+  Unique,
+} from "typeorm";
+import { User } from "./User";
 
 /**
- * The Friend entity models accepted friendships between two users. It stores
- * pairs of user IDs. We do not enforce a strict order of user1 and user2,
- * allowing a friend query to be made independent of direction.
+ * The Friend entity models accepted friendships between two users.
+ * It stores pairs of user IDs. We enforce uniqueness on (user1, user2)
+ * to avoid duplicate friendship records.
  */
 @Entity()
+@Unique(["user1", "user2"])
 export class Friend {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   /**
-   * First participant in the friendship. In our API we ensure that user1.id <
-   * user2.id to avoid duplicate pairs.
+   * First participant in the friendship.
    */
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, (user) => user.friendships1, { eager: true })
   user1!: User;
 
   /**
    * Second participant in the friendship.
    */
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, (user) => user.friendships2, { eager: true })
   user2!: User;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: "timestamp",
+    default: () => "CURRENT_TIMESTAMP",
+  })
   createdAt!: Date;
 }
