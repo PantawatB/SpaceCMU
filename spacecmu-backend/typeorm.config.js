@@ -11,6 +11,6 @@ module.exports = new DataSource({
   synchronize: false,
   logging: true,
   entities: ["dist/entities/*.js"],
-  migrations: ["src/migrations/*.ts"],
+  migrations: ["dist/migrations/*.js"],
   migrationsTableName: "migrations",
 });

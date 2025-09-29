@@ -18,7 +18,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER || "postgres",
   password: process.env.DB_PASS || "postgres",
   database: process.env.DB_NAME || "spacecmu",
-  synchronize: true, // Should be false in production
+  synchronize: false, // Should be false in production
   logging: false,
   entities: [User, Persona, Post, FriendRequest, Friend, Report],
   migrations: ["src/migrations/*.ts"],
