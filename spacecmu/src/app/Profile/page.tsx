@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Sidebar from "../../components/Sidebar";
+import Image from "next/image";
 
 export default function ProfileMainPage() {
   const pathname = usePathname();
@@ -207,10 +208,65 @@ export default function ProfileMainPage() {
           </div>
         </div>
         <section className="flex-1 overflow-y-auto flex flex-col gap-6">
-        <div>
-          {/* <h1 className="text-2xl font-bold">Profile</h1> */}
-          <div className={"bg-gray-300 rounded-2xl p-14 shadow  relative"}></div>
-        </div>
+          <div className="bg-white rounded-2xl shadow relative overflow-hidden">
+            {/* Cover Image */}
+            <div className="h-40 w-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 flex items-center justify-center relative">
+              {/* Rainbow background can be replaced with SVG or image for more accuracy */}
+            </div>
+            {/* Profile Avatar - left aligned */}
+            <div className="absolute left-10 top-28 flex items-center">
+              <div className="rounded-full border-4 border-white p-1 bg-white">
+                <Image
+                  src="/tanjiro.jpg"
+                  alt="Profile Avatar"
+                  width={90}
+                  height={90}
+                  className="rounded-full"
+                />
+              </div>
+              {/* Stats - right of avatar, vertically centered, adjust only stats position */}
+              <div className="flex flex-col justify-center ml-6 relative" style={{ top: '25px' }}>
+                <div className="flex gap-8">
+                  <div className="text-center">
+                    <span className="text-xl font-semibold">1.25k</span>
+                    <span className="text-gray-500 ml-1">Friends</span>
+                    <span className="text-gray-500 ml-4">|</span>
+                    <span className="text-black-500 ml-4 font-semibold">65</span>
+                    <span className="text-gray-500 ml-1">Engineers</span>
+                  </div>
+                  
+                </div>
+              </div>
+            </div>
+            {/* Name & Verified */}
+            <div className="flex items-center mt-19 ml-8">
+              <span className="text-2xl font-bold">Kamado Tanjiro</span>
+              <svg
+                className="w-6 h-6 text-blue-500 ml-2"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.93 6.36l-4.24 4.24a1 1 0 01-1.41 0l-2.12-2.12a1 1 0 111.41-1.41l1.41 1.41 3.54-3.54a1 1 0 111.41 1.41z" />
+              </svg>
+            </div>
+            {/* Bio */}
+            <div className="text-left text-gray-600 mt-2 px-8">
+              A kind-hearted Demon Slayer who fights to protect humanity while seeking a cure for his sister Nezuko.
+            </div>
+            {/* Tabs */}
+            <div className="flex justify-center mt-6 border-b border-gray-200">
+              <button className="px-6 py-3 font-medium text-gray-700 bg-gray-100 rounded-t-xl">
+                Reposts
+              </button>
+              <button className="px-6 py-3 font-medium text-gray-700">Friends</button>
+              <button className="px-6 py-3 font-medium text-gray-700">
+                Likes
+              </button>
+              <button className="px-6 py-3 font-medium text-gray-700">
+                Saved
+              </button>
+            </div>
+          </div>
         </section>
       </main>
     </div>
