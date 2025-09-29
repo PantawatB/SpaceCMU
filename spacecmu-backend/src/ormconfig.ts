@@ -21,4 +21,6 @@ export const AppDataSource = new DataSource({
   synchronize: true, // Should be false in production
   logging: false,
   entities: [User, Persona, Post, FriendRequest, Friend, Report],
+  migrations: ["src/migrations/*.ts"],
+  migrationsTableName: "migrations",
 });

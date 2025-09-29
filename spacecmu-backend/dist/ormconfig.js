@@ -22,4 +22,6 @@ exports.AppDataSource = new typeorm_1.DataSource({
     synchronize: true, // Should be false in production
     logging: false,
     entities: [User_1.User, Persona_1.Persona, Post_1.Post, FriendRequest_1.FriendRequest, Friend_1.Friend, Report_1.Report],
+    migrations: ["src/migrations/*.ts"],
+    migrationsTableName: "migrations",
 });

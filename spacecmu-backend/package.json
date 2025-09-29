@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "typeorm": "typeorm-ts-node-commonjs -d typeorm.config.ts",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",
@@ -25,6 +29,7 @@
     "@types/node": "^20.5.0",
     "@types/pg": "^8.10.2",
     "ts-node": "^10.9.1",
+    "typeorm-ts-node-commonjs": "^0.3.20",
     "typescript": "^5.2.2"
   }
 }
