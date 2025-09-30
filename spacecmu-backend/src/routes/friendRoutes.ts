@@ -14,12 +14,12 @@ const router = Router();
 router.use(authenticateToken);
 
 // 📌 ส่งคำขอเป็นเพื่อน
-// POST /api/friends/request/:friendId
-router.post("/request/:friendId", sendFriendRequest);
+// POST /api/friends/request
+router.post("/request", sendFriendRequest);
 
 // 📌 ยอมรับคำขอเป็นเพื่อน
 // POST /api/friends/accept/:friendId
-router.post("/accept/:friendId", acceptFriendRequest);
+router.post("/accept/:requestId", acceptFriendRequest);
 
 // 📌 ปฏิเสธคำขอเป็นเพื่อน
 // POST /api/friends/reject/:friendId

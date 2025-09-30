@@ -21,7 +21,7 @@ import { FriendRequest } from "./FriendRequest";
  * accept friend requests and report content. An admin is simply a user
  * flagged with the `isAdmin` field.
  */
-@Entity("users")
+@Entity()
 export class User {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
