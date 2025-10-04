@@ -9,6 +9,7 @@ import personaRoutes from "./routes/personaRoutes";
 import postRoutes from "./routes/postRoutes";
 import friendRoutes from "./routes/friendRoutes";
 import adminRoutes from "./routes/adminRoutes";
+import commentRoutes from "./routes/commentRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -28,6 +29,7 @@ async function bootstrap() {
     app.use("/api/posts", postRoutes);
     app.use("/api/friends", friendRoutes);
     app.use("/api/admin", adminRoutes);
+    app.use("/api/posts", commentRoutes);
 
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
@@ -35,7 +37,7 @@ async function bootstrap() {
     });
   } catch (err) {
     console.error("Failed to start application:", err);
-    process.exit(1); // Exit with failure code if DB initialization fails
+    process.exit(1);
   }
 }
 

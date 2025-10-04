@@ -10,6 +10,7 @@ import {
 import { User } from "./User";
 import { Persona } from "./Persona";
 import { Report } from "./Report";
+import { Comment } from "./Comment";
 
 @Entity()
 export class Post {
@@ -54,9 +55,29 @@ export class Post {
   })
   visibility!: "public" | "friends";
 
-  @ManyToMany(() => User, { eager: true })
-  @JoinTable()
+  @ManyToMany(() => User, (user) => user.likedPosts, { eager: true })
+  @JoinTable({ name: "post_likes" })
   likedBy!: User[];
+
+  /**
+   * Comments on this post.
+   */
+  @OneToMany(() => Comment, (comment) => comment.post)
+  comments!: Comment[];
+
+  /**
+   * Users who have reposted this post.
+   */
+  @ManyToMany(() => User, (user) => user.repostedPosts)
+  @JoinTable({ name: "post_reposts" })
+  repostedBy!: User[];
+
+  /**
+   * Users who have saved this post.
+   */
+  @ManyToMany(() => User, (user) => user.savedPosts)
+  @JoinTable({ name: "post_saves" })
+  savedBy!: User[];
 
   @OneToMany(() => Report, (report) => report.post)
   reports!: Report[];

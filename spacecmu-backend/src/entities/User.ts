@@ -12,6 +12,7 @@ import { Persona } from "./Persona";
 import { Post } from "./Post";
 import { Friend } from "./Friend";
 import { Report } from "./Report";
+import { Comment } from "./Comment";
 import { FriendRequest } from "./FriendRequest";
 
 /**
@@ -49,6 +50,9 @@ export class User {
    */
   @Column()
   name!: string;
+
+  @Column({ type: "text", nullable: true }) // ใช้ type: "text" สำหรับข้อความยาวๆ
+  bio?: string;
 
   /**
    * Optional flag used to elevate a user to administrator privileges.
@@ -134,4 +138,22 @@ export class User {
    */
   @ManyToMany(() => Post, (post) => post.likedBy)
   likedPosts!: Post[];
+
+  /**
+   * Comments made by this user.
+   */
+  @OneToMany(() => Comment, (comment) => comment.user)
+  comments!: Comment[];
+
+  /**
+   * Posts reposted by this user.
+   */
+  @ManyToMany(() => Post, (post) => post.repostedBy)
+  repostedPosts!: Post[];
+
+  /**
+   * Posts saved by this user.
+   */
+  @ManyToMany(() => Post, (post) => post.savedBy)
+  savedPosts!: Post[];
 }

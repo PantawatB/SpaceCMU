@@ -76,6 +76,7 @@ export async function login(req: Request, res: Response) {
         studentId: user.studentId,
         email: user.email,
         name: user.name,
+        bio: user.bio,
         isAdmin: user.isAdmin,
       },
     });
@@ -102,6 +103,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       studentId: user.studentId,
       email: user.email,
       name: user.name,
+      bio: user.bio,
       isAdmin: user.isAdmin,
       friendCount,
       persona: user.persona || null,
@@ -127,7 +129,7 @@ export async function updateUser(
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, password } = req.body;
+    const { name, password, bio } = req.body;
     const userRepo = AppDataSource.getRepository(User);
 
     if (name) {
@@ -136,6 +138,10 @@ export async function updateUser(
 
     if (password) {
       user.passwordHash = await hashPassword(password);
+    }
+
+    if (typeof bio === "string") {
+      user.bio = bio;
     }
 
     await userRepo.save(user);
@@ -147,10 +153,99 @@ export async function updateUser(
         name: user.name,
         email: user.email,
         studentId: user.studentId,
+        bio: user.bio,
       },
     });
   } catch (err) {
     console.error("UpdateUser error:", err);
     return res.status(500).json({ message: "Failed to update user" });
+  }
+}
+
+/**
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost
+ */
+export async function getMyReposts(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const userRepo = AppDataSource.getRepository(User);
+    const userWithReposts = await userRepo.findOne({
+      where: { id: user.id },
+      relations: [
+        "repostedPosts",
+        "repostedPosts.user",
+        "repostedPosts.persona",
+      ],
+    });
+
+    if (!userWithReposts) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json(userWithReposts.repostedPosts || []);
+  } catch (err) {
+    console.error("getMyReposts error:", err);
+    return res.status(500).json({ message: "Failed to fetch reposts" });
+  }
+}
+
+/**
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like
+ */
+export async function getMyLikedPosts(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const userRepo = AppDataSource.getRepository(User);
+    const userWithLikes = await userRepo.findOne({
+      where: { id: user.id },
+      relations: ["likedPosts", "likedPosts.user", "likedPosts.persona"],
+    });
+
+    if (!userWithLikes) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json(userWithLikes.likedPosts || []);
+  } catch (err) {
+    console.error("getMyLikedPosts error:", err);
+    return res.status(500).json({ message: "Failed to fetch liked posts" });
+  }
+}
+
+/**
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save
+ */
+export async function getMySavedPosts(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const userRepo = AppDataSource.getRepository(User);
+    const userWithSaves = await userRepo.findOne({
+      where: { id: user.id },
+      relations: ["savedPosts", "savedPosts.user", "savedPosts.persona"],
+    });
+
+    if (!userWithSaves) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json(userWithSaves.savedPosts || []);
+  } catch (err) {
+    console.error("getMySavedPosts error:", err);
+    return res.status(500).json({ message: "Failed to fetch saved posts" });
   }
 }

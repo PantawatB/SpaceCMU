@@ -327,3 +327,133 @@ export async function unlikePost(
     return res.status(500).json({ message: "Failed to unlike post" });
   }
 }
+
+/**
+ * 📌 Repost โพสต์
+ */
+export async function repostPost(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { postId } = req.params;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: ["repostedBy"],
+    });
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    if (!post.repostedBy) post.repostedBy = [];
+    // เช็คว่าเคย Repost ไปแล้วหรือยัง
+    if (post.repostedBy.some((u) => u.id === user.id)) {
+      return res
+        .status(400)
+        .json({ message: "You already reposted this post" });
+    }
+
+    post.repostedBy.push(user);
+    await postRepo.save(post);
+
+    return res.json({ message: "Post reposted" });
+  } catch (err) {
+    console.error("repostPost error:", err);
+    return res.status(500).json({ message: "Failed to repost post" });
+  }
+}
+
+/**
+ * 📌 ยกเลิก Repost
+ */
+export async function undoRepost(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { postId } = req.params;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: ["repostedBy"],
+    });
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    post.repostedBy = post.repostedBy.filter((u) => u.id !== user.id);
+    await postRepo.save(post);
+
+    return res.json({ message: "Repost undone" });
+  } catch (err) {
+    console.error("undoRepost error:", err);
+    return res.status(500).json({ message: "Failed to undo repost" });
+  }
+}
+
+/**
+ * 📌 Save โพสต์
+ */
+export async function savePost(req: Request & { user?: User }, res: Response) {
+  try {
+    const { postId } = req.params;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: ["savedBy"],
+    });
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    if (!post.savedBy) post.savedBy = [];
+    if (post.savedBy.some((u) => u.id === user.id)) {
+      return res.status(400).json({ message: "You already saved this post" });
+    }
+
+    post.savedBy.push(user);
+    await postRepo.save(post);
+
+    return res.json({ message: "Post saved" });
+  } catch (err) {
+    console.error("savePost error:", err);
+    return res.status(500).json({ message: "Failed to save post" });
+  }
+}
+
+/**
+ * 📌 ยกเลิก Save โพสต์
+ */
+export async function unsavePost(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { postId } = req.params;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: ["savedBy"],
+    });
+
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    post.savedBy = post.savedBy.filter((u) => u.id !== user.id);
+    await postRepo.save(post);
+
+    return res.json({ message: "Post unsaved" });
+  } catch (err) {
+    console.error("unsavePost error:", err);
+    return res.status(500).json({ message: "Failed to unsave post" });
+  }
+}
