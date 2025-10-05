@@ -6,6 +6,7 @@ import {
   rejectFriendRequest,
   removeFriend,
   listFriends,
+  listFriendRequests,
 } from "../controllers/friendController";
 
 const router = Router();
@@ -21,9 +22,12 @@ router.post("/request", sendFriendRequest);
 // POST /api/friends/accept/:friendId
 router.post("/accept/:requestId", acceptFriendRequest);
 
+// 📌 ดูคำขอเป็นเพื่อนทั้งหมด
+router.get("/requests", listFriendRequests);
+
 // 📌 ปฏิเสธคำขอเป็นเพื่อน
-// POST /api/friends/reject/:friendId
-router.post("/reject/:friendId", rejectFriendRequest);
+// POST /api/friends/reject/:requestId
+router.post("/reject/:requestId", rejectFriendRequest);
 
 // 📌 ลบเพื่อน
 // DELETE /api/friends/:friendId

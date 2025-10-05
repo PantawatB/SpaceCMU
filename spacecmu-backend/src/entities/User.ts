@@ -14,6 +14,8 @@ import { Friend } from "./Friend";
 import { Report } from "./Report";
 import { Comment } from "./Comment";
 import { FriendRequest } from "./FriendRequest";
+import { Conversation } from "./Conversation";
+import { Message } from "./Message";
 
 /**
  * The User entity represents a single CMU student in the system. A user has
@@ -156,4 +158,16 @@ export class User {
    */
   @ManyToMany(() => Post, (post) => post.savedBy)
   savedPosts!: Post[];
+
+  /**
+   * Conversations this user is a part of.
+   */
+  @ManyToMany(() => Conversation, (conversation) => conversation.participants)
+  conversations!: Conversation[];
+
+  /**
+   * Messages sent by this user.
+   */
+  @OneToMany(() => Message, (message) => message.sender)
+  sentMessages!: Message[];
 }

@@ -77,7 +77,10 @@ export async function listFriendRequests(
     const frRepo = AppDataSource.getRepository(FriendRequest);
 
     const requests = await frRepo.find({
-      where: [{ toUser: user }, { fromUser: user }],
+      where: [
+        { toUser: { id: user.id }, status: "pending" },
+        { fromUser: { id: user.id }, status: "pending" },
+      ],
       relations: ["fromUser", "toUser"],
     });
 
