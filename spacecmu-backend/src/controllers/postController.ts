@@ -16,7 +16,7 @@ export async function createPost(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const { content, imageUrl, isAnonymous, visibility } = req.body;
+    const { content, imageUrl, isAnonymous, visibility, location } = req.body;
     if (
       !content ||
       typeof content !== "string" ||
@@ -56,6 +56,7 @@ export async function createPost(
       imageUrl,
       isAnonymous: !!isAnonymous,
       visibility: vis,
+      location,
     });
 
     await postRepo.save(post);
@@ -76,7 +77,7 @@ export async function updatePost(
 ) {
   try {
     const { postId } = req.params;
-    const { content, imageUrl } = req.body;
+    const { content, imageUrl, location } = req.body;
     const user = req.user;
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -92,6 +93,10 @@ export async function updatePost(
 
     if (content) post.content = content;
     if (imageUrl) post.imageUrl = imageUrl;
+
+    if (typeof location !== "undefined") {
+      post.location = location;
+    }
 
     await postRepo.save(post);
     return res.json({ message: "Post updated", post });

@@ -59,6 +59,14 @@ npm install socket.io
 npm install -D @types/socket.io
 ```
 
+6. Insatall for Upload Flie
+
+```bash
+npm install multer
+
+npm install -D @types/multer
+```
+
 Alternatively, during development you can run `npm run dev` which uses
 `ts-node` to execute the TypeScript sources directly. The server listens on
 `PORT` (defaults to `3000`) and exposes API routes under `/api`.

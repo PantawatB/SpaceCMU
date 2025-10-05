@@ -14,6 +14,7 @@ import friendRoutes from "./routes/friendRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
+import uploadRoutes from "./routes/uploadRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -26,6 +27,8 @@ async function bootstrap() {
 
     const app = express();
     app.use(express.json());
+
+    app.use(express.static("public"));
 
     // --- Create HTTP and Socket.IO servers ---
     const httpServer = createServer(app);
@@ -46,6 +49,7 @@ async function bootstrap() {
     app.use("/api/admin", adminRoutes);
     app.use("/api/posts", commentRoutes);
     app.use("/api/chats", chatRoutes);
+    app.use("/api/uploads", uploadRoutes);
 
     const port = process.env.PORT || 3000;
 

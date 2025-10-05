@@ -42,6 +42,13 @@ export class Post {
   imageUrl?: string;
 
   /**
+   * 👇👇 เพิ่ม field นี้
+   * Optional location string for the post.
+   */
+  @Column({ nullable: true })
+  location?: string;
+
+  /**
    * Whether the post is anonymous. This flag helps quickly identify if a post
    * should display persona details on the client side.
    */
