@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { User } from "../entities/User";
 import { FriendRequest } from "../entities/FriendRequest";
+import { isUserOnline } from "../../src/socket";
 
 /**
  * 📌 ส่งคำขอเป็นเพื่อน
@@ -227,5 +228,30 @@ export async function removeFriend(
   } catch (err) {
     console.error("removeFriend error:", err);
     return res.status(500).json({ message: "Failed to remove friend" });
+  }
+}
+
+/**
+ * 📌 ดึงสถานะออนไลน์ของเพื่อนทั้งหมด
+ */
+export async function getFriendStatuses(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user || !user.friends) return res.json([]);
+
+    const statuses = user.friends.map((friend) => ({
+      userId: friend.id,
+      name: friend.name,
+      isOnline: isUserOnline(friend.id), // เช็คจาก Map ของ Socket.IO
+      lastActiveAt: friend.lastActiveAt, // ดึงจาก database
+    }));
+
+    return res.json(statuses);
+  } catch (err) {
+    console.error("getFriendStatuses error:", err);
+    return res.status(500).json({ message: "Failed to fetch friend statuses" });
   }
 }

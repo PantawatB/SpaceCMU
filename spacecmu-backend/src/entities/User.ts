@@ -170,4 +170,10 @@ export class User {
    */
   @OneToMany(() => Message, (message) => message.sender)
   sentMessages!: Message[];
+
+  /**
+   * Timestamp of the last user activity.
+   */
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  lastActiveAt!: Date;
 }

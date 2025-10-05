@@ -7,12 +7,14 @@ import {
   removeFriend,
   listFriends,
   listFriendRequests,
+  getFriendStatuses,
 } from "../controllers/friendController";
+import { updateLastActive } from "../middleware/updateLastActive";
 
 const router = Router();
 
 // ทุก route เกี่ยวกับ friend ต้อง login ก่อน
-router.use(authenticateToken);
+router.use(authenticateToken, updateLastActive);
 
 // 📌 ส่งคำขอเป็นเพื่อน
 // POST /api/friends/request
@@ -36,5 +38,9 @@ router.delete("/:friendId", removeFriend);
 // 📌 ดูเพื่อนทั้งหมด
 // GET /api/friends
 router.get("/", listFriends);
+
+// 📌 ดูสถานะของเพื่อน
+// GET /api/friends/statuses
+router.get("/statuses", getFriendStatuses);
 
 export default router;
