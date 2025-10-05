@@ -172,19 +172,24 @@ export async function getPost(req: Request, res: Response) {
 }
 
 /**
- * 📌 Feed สาธารณะ
+ * 📌 Feed สาธารณะ (แบบมี Pagination)
  */
 export async function getPublicFeed(req: Request, res: Response) {
   try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
     const postRepo = AppDataSource.getRepository(Post);
-    const posts = await postRepo.find({
+    const [posts, totalItems] = await postRepo.findAndCount({
       where: { visibility: "public" },
       relations: ["user", "persona"],
       order: { createdAt: "DESC" },
-      take: 50,
+      take: limit,
+      skip: skip,
     });
 
-    const result = posts.map((post) => {
+    const items = posts.map((post) => {
       const author =
         post.isAnonymous && post.persona
           ? {
@@ -192,11 +197,22 @@ export async function getPublicFeed(req: Request, res: Response) {
               avatarUrl: post.persona.avatarUrl,
             }
           : { name: post.user.name };
-
-      return { ...post, author };
+      const { user, persona, ...restOfPost } = post;
+      return { ...restOfPost, author };
     });
 
-    return res.json(result);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return res.json({
+      items: items,
+      meta: {
+        totalItems,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages,
+        currentPage: page,
+      },
+    });
   } catch (err) {
     console.error("getPublicFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch public feed" });
@@ -204,7 +220,7 @@ export async function getPublicFeed(req: Request, res: Response) {
 }
 
 /**
- * 📌 Feed เพื่อน
+ * 📌 Feed เพื่อน (แบบมี Pagination)
  */
 export async function getFriendFeed(
   req: Request & { user?: User },
@@ -214,18 +230,23 @@ export async function getFriendFeed(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
     const friendIds = user.friends ? user.friends.map((f) => f.id) : [];
     const ids = [...friendIds, user.id];
 
     const postRepo = AppDataSource.getRepository(Post);
-    const posts = await postRepo.find({
+    const [posts, totalItems] = await postRepo.findAndCount({
       where: { user: { id: In(ids) }, visibility: In(["public", "friends"]) },
       relations: ["user", "persona"],
       order: { createdAt: "DESC" },
-      take: 50,
+      take: limit,
+      skip: skip,
     });
 
-    const result = posts.map((post) => {
+    const items = posts.map((post) => {
       const author =
         post.isAnonymous && post.persona
           ? {
@@ -233,11 +254,22 @@ export async function getFriendFeed(
               avatarUrl: post.persona.avatarUrl,
             }
           : { name: post.user.name };
-
-      return { ...post, author };
+      const { user, persona, ...restOfPost } = post;
+      return { ...restOfPost, author };
     });
 
-    return res.json(result);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return res.json({
+      items: items,
+      meta: {
+        totalItems,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages,
+        currentPage: page,
+      },
+    });
   } catch (err) {
     console.error("getFriendFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch friend feed" });
