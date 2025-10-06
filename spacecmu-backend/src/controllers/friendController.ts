@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { User } from "../entities/User";
 import { FriendRequest } from "../entities/FriendRequest";
-import { isUserOnline } from "../../src/socket";
+import { isUserOnline } from "../socket";
 
 /**
  * 📌 ส่งคำขอเป็นเพื่อน
