@@ -181,7 +181,7 @@ export async function rejectFriendRequest(
 }
 
 /**
- * 📌 ดึงเพื่อนทั้งหมด
+ * 📌 ดึงเพื่อนทั้งหมด (พร้อมฟังก์ชันค้นหาจากชื่อ)
  */
 export async function listFriends(
   req: Request & { user?: User },
@@ -189,8 +189,23 @@ export async function listFriends(
 ) {
   try {
     const user = req.user!;
-    const friends = user.friends || [];
-    const result = friends.map((f) => ({ id: f.id, name: f.name }));
+    const { name } = req.query;
+
+    let friends = user.friends || [];
+
+    if (name && typeof name === "string") {
+      const searchTerm = name.toLowerCase();
+      friends = friends.filter((friend) =>
+        friend.name.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    const result = friends.map((f) => ({
+      id: f.id,
+      name: f.name,
+      bio: f.bio,
+    }));
+
     return res.json(result);
   } catch (err) {
     console.error("listFriends error:", err);
