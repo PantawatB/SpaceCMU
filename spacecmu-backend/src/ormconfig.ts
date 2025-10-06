@@ -7,14 +7,9 @@ import { FriendRequest } from "./entities/FriendRequest";
 import { Friend } from "./entities/Friend";
 import { Report } from "./entities/Report";
 import { Comment } from "./entities/Comment";
-<<<<<<< HEAD
 import { Chat } from "./entities/Chat";
 import { Message } from "./entities/Message";
 import { ChatParticipant } from "./entities/ChatParticipant";
-=======
-import { Conversation } from "./entities/Conversation";
-import { Message } from "./entities/Message";
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 
 // Load environment variables from .env file
 dotenv.config();
@@ -36,14 +31,9 @@ export const AppDataSource = new DataSource({
     Friend,
     Report,
     Comment,
-<<<<<<< HEAD
     Chat,
     Message,
     ChatParticipant,
-=======
-    Conversation,
-    Message,
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
   ],
   ssl: process.env.DB_SSL === "true",
   extra: {

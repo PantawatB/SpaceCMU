@@ -49,7 +49,6 @@ export async function register(req: Request, res: Response) {
  */
 export async function login(req: Request, res: Response) {
   try {
-<<<<<<< HEAD
     console.log("Request body:", req.body); // Debug log
     const { email, studentId, password } = req.body;
 
@@ -63,35 +62,21 @@ export async function login(req: Request, res: Response) {
         "password:",
         password ? "***" : "undefined"
       );
-=======
-    const { email, password } = req.body;
-    if (!email || !password) {
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
       return res.status(400).json({ message: "Missing credentials" });
     }
 
     const userRepo = AppDataSource.getRepository(User);
-<<<<<<< HEAD
 
     // Find user by email or studentId
     const whereCondition = email ? { email } : { studentId };
     const user = await userRepo.findOne({ where: whereCondition });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
-=======
-    const user = await userRepo.findOne({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     }
 
     const isMatch = await comparePassword(password, user.passwordHash);
     if (!isMatch) {
-<<<<<<< HEAD
       return res.status(401).json({ message: "Invalid credentials" });
-=======
-      return res.status(401).json({ message: "Invalid email or password" });
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     }
 
     const secret = process.env.JWT_SECRET || "changeme";
