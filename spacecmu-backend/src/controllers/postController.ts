@@ -494,3 +494,45 @@ export async function unsavePost(
     return res.status(500).json({ message: "Failed to unsave post" });
   }
 }
+
+/**
+ * 📌 ค้นหาโพสต์จากชื่อผู้เขียน (Author)
+ */
+export async function searchPostsByAuthor(req: Request, res: Response) {
+  try {
+    const { authorName } = req.query;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    if (!authorName || typeof authorName !== "string") {
+      return res.status(400).json({ message: "authorName query is required" });
+    }
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const [posts, totalItems] = await postRepo
+      .createQueryBuilder("post")
+      .innerJoinAndSelect("post.user", "author") // 1. เชื่อมตาราง post กับ user
+      .where("author.name ILIKE :name", { name: `%${authorName}%` }) // 2. ค้นหาแบบไม่สนตัวพิมพ์เล็ก/ใหญ่
+      .orderBy("post.createdAt", "DESC")
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount(); // 3. ดึงข้อมูลพร้อมนับจำนวนทั้งหมด
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return res.json({
+      items: posts,
+      meta: {
+        totalItems,
+        itemCount: posts.length,
+        itemsPerPage: limit,
+        totalPages,
+        currentPage: page,
+      },
+    });
+  } catch (err) {
+    console.error("searchPostsByAuthor error:", err);
+    return res.status(500).json({ message: "Failed to search posts" });
+  }
+}

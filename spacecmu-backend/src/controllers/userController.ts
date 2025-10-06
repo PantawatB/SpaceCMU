@@ -163,7 +163,7 @@ export async function updateUser(
 }
 
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost (พร้อมค้นหาจากชื่อคนโพส)
  */
 export async function getMyReposts(
   req: Request & { user?: User },
@@ -172,6 +172,8 @@ export async function getMyReposts(
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { authorName } = req.query;
 
     const userRepo = AppDataSource.getRepository(User);
     const userWithReposts = await userRepo.findOne({
@@ -187,7 +189,16 @@ export async function getMyReposts(
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.json(userWithReposts.repostedPosts || []);
+    let repostedPosts = userWithReposts.repostedPosts || [];
+
+    if (authorName && typeof authorName === "string") {
+      const searchTerm = authorName.toLowerCase();
+      repostedPosts = repostedPosts.filter(
+        (post) => post.user && post.user.name.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    return res.json(repostedPosts);
   } catch (err) {
     console.error("getMyReposts error:", err);
     return res.status(500).json({ message: "Failed to fetch reposts" });
@@ -195,7 +206,7 @@ export async function getMyReposts(
 }
 
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like (พร้อมค้นหาจากชื่อคนโพส)
  */
 export async function getMyLikedPosts(
   req: Request & { user?: User },
@@ -204,6 +215,8 @@ export async function getMyLikedPosts(
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { authorName } = req.query;
 
     const userRepo = AppDataSource.getRepository(User);
     const userWithLikes = await userRepo.findOne({
@@ -215,7 +228,16 @@ export async function getMyLikedPosts(
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.json(userWithLikes.likedPosts || []);
+    let likedPosts = userWithLikes.likedPosts || [];
+
+    if (authorName && typeof authorName === "string") {
+      const searchTerm = authorName.toLowerCase();
+      likedPosts = likedPosts.filter(
+        (post) => post.user && post.user.name.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    return res.json(likedPosts);
   } catch (err) {
     console.error("getMyLikedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch liked posts" });
@@ -223,7 +245,7 @@ export async function getMyLikedPosts(
 }
 
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save (พร้อมค้นหาจากชื่อคนโพส)
  */
 export async function getMySavedPosts(
   req: Request & { user?: User },
@@ -232,6 +254,8 @@ export async function getMySavedPosts(
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { authorName } = req.query;
 
     const userRepo = AppDataSource.getRepository(User);
     const userWithSaves = await userRepo.findOne({
@@ -243,7 +267,16 @@ export async function getMySavedPosts(
       return res.status(404).json({ message: "User not found" });
     }
 
-    return res.json(userWithSaves.savedPosts || []);
+    let savedPosts = userWithSaves.savedPosts || [];
+
+    if (authorName && typeof authorName === "string") {
+      const searchTerm = authorName.toLowerCase();
+      savedPosts = savedPosts.filter(
+        (post) => post.user && post.user.name.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    return res.json(savedPosts);
   } catch (err) {
     console.error("getMySavedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch saved posts" });

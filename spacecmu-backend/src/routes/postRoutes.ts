@@ -14,12 +14,15 @@ import {
   unsavePost,
   getPublicFeed,
   getFriendFeed,
+  searchPostsByAuthor,
 } from "../controllers/postController";
 
 const router = Router();
 
 // ต้อง login ก่อนถึงจะโพสต์/กดไลก์ได้
 router.use(authenticateToken);
+
+router.get("/search", searchPostsByAuthor);
 
 // 📌 Feed สาธารณะ (Global)
 // GET /api/posts/feed/public
