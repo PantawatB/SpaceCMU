@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   CreateDateColumn,
+<<<<<<< HEAD
   UpdateDateColumn,
   JoinColumn,
 } from "typeorm";
@@ -25,12 +26,19 @@ export enum MessageStatus {
 /**
  * Message entity represents individual messages in chats
  */
+=======
+} from "typeorm";
+import { User } from "./User";
+import { Conversation } from "./Conversation";
+
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 @Entity()
 export class Message {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   /**
+<<<<<<< HEAD
    * The chat this message belongs to
    */
   @ManyToOne("Chat", "messages", { onDelete: "CASCADE" })
@@ -112,4 +120,27 @@ export class Message {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+=======
+   * The user who sent this message.
+   */
+  @ManyToOne(() => User, (user) => user.sentMessages, { onDelete: "CASCADE" })
+  sender!: User;
+
+  /**
+   * The conversation this message belongs to.
+   */
+  @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
+    onDelete: "CASCADE",
+  })
+  conversation!: Conversation;
+
+  /**
+   * The text content of the message.
+   */
+  @Column("text")
+  content!: string;
+
+  @CreateDateColumn()
+  createdAt!: Date;
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 }

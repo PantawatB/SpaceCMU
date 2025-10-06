@@ -13,13 +13,20 @@ exports.FriendRequest = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 /**
+<<<<<<< HEAD
  * FriendRequest represents a pending request between two users.
  * When accepted the Friend entity is created; otherwise it is removed.
+=======
+ * FriendRequest represents a pending request between two users. When accepted
+ * the Friend entity is created; otherwise it is removed. Requests expire
+ * automatically after a period (not implemented here).
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
  */
 let FriendRequest = class FriendRequest {
 };
 exports.FriendRequest = FriendRequest;
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.PrimaryGeneratedColumn)("uuid"),
     __metadata("design:type", String)
 ], FriendRequest.prototype, "id", void 0);
@@ -63,4 +70,31 @@ __decorate([
 exports.FriendRequest = FriendRequest = __decorate([
     (0, typeorm_1.Entity)(),
     (0, typeorm_1.Unique)(["fromUser", "toUser"]) // ป้องกันการส่ง request ซ้ำ
+=======
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    __metadata("design:type", String)
+], FriendRequest.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true }),
+    __metadata("design:type", User_1.User)
+], FriendRequest.prototype, "fromUser", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true }),
+    __metadata("design:type", User_1.User)
+], FriendRequest.prototype, "toUser", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'enum', enum: ['pending', 'accepted', 'declined'], default: 'pending' }),
+    __metadata("design:type", String)
+], FriendRequest.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }),
+    __metadata("design:type", Date)
+], FriendRequest.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' }),
+    __metadata("design:type", Date)
+], FriendRequest.prototype, "updatedAt", void 0);
+exports.FriendRequest = FriendRequest = __decorate([
+    (0, typeorm_1.Entity)()
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 ], FriendRequest);

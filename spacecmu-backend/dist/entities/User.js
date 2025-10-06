@@ -13,10 +13,14 @@ exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const Persona_1 = require("./Persona");
 const Post_1 = require("./Post");
+<<<<<<< HEAD
 const Friend_1 = require("./Friend");
 const Report_1 = require("./Report");
 const Comment_1 = require("./Comment");
 const FriendRequest_1 = require("./FriendRequest");
+=======
+const Report_1 = require("./Report");
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 /**
  * The User entity represents a single CMU student in the system. A user has
  * exactly one account bound to a student ID and CMU email. Each user may
@@ -28,7 +32,11 @@ let User = class User {
 };
 exports.User = User;
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.PrimaryGeneratedColumn)("uuid"),
+=======
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     __metadata("design:type", String)
 ], User.prototype, "id", void 0);
 __decorate([
@@ -48,11 +56,14 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "name", void 0);
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.Column)({ type: "text", nullable: true }) // ใช้ type: "text" สำหรับข้อความยาวๆ
     ,
     __metadata("design:type", String)
 ], User.prototype, "bio", void 0);
 __decorate([
+=======
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], User.prototype, "isAdmin", void 0);
@@ -61,6 +72,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], User.prototype, "isBanned", void 0);
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.Column)({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" }),
     __metadata("design:type", Date)
 ], User.prototype, "createdAt", void 0);
@@ -77,6 +89,17 @@ __decorate([
         cascade: true,
         nullable: true,
     }),
+=======
+    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }),
+    __metadata("design:type", Date)
+], User.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' }),
+    __metadata("design:type", Date)
+], User.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => Persona_1.Persona, (persona) => persona.user, { cascade: true, nullable: true }),
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     (0, typeorm_1.JoinColumn)(),
     __metadata("design:type", Persona_1.Persona)
 ], User.prototype, "persona", void 0);
@@ -85,6 +108,7 @@ __decorate([
     __metadata("design:type", Array)
 ], User.prototype, "posts", void 0);
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.OneToMany)(() => Friend_1.Friend, (friend) => friend.user1),
     __metadata("design:type", Array)
 ], User.prototype, "friendships1", void 0);
@@ -103,12 +127,17 @@ __decorate([
 __decorate([
     (0, typeorm_1.ManyToMany)(() => User, (user) => user.friends),
     (0, typeorm_1.JoinTable)({ name: "user_friends" }),
+=======
+    (0, typeorm_1.ManyToMany)(() => User, (user) => user.friends),
+    (0, typeorm_1.JoinTable)({ name: 'user_friends' }),
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     __metadata("design:type", Array)
 ], User.prototype, "friends", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Report_1.Report, (report) => report.reportingUser),
     __metadata("design:type", Array)
 ], User.prototype, "reports", void 0);
+<<<<<<< HEAD
 __decorate([
     (0, typeorm_1.ManyToMany)(() => Post_1.Post, (post) => post.likedBy),
     __metadata("design:type", Array)
@@ -125,6 +154,8 @@ __decorate([
     (0, typeorm_1.ManyToMany)(() => Post_1.Post, (post) => post.savedBy),
     __metadata("design:type", Array)
 ], User.prototype, "savedPosts", void 0);
+=======
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)()
 ], User);

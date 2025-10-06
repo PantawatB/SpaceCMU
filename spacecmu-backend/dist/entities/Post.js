@@ -13,13 +13,25 @@ exports.Post = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Persona_1 = require("./Persona");
+<<<<<<< HEAD
 const Report_1 = require("./Report");
 const Comment_1 = require("./Comment");
+=======
+/**
+ * Posts represent messages authored by users. A post may be linked either to
+ * the real user or to a persona when published anonymously. Posts can be
+ * restricted to friends or made public and may include an optional image.
+ */
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 let Post = class Post {
 };
 exports.Post = Post;
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.PrimaryGeneratedColumn)("uuid"),
+=======
+    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     __metadata("design:type", String)
 ], Post.prototype, "id", void 0);
 __decorate([
@@ -31,7 +43,11 @@ __decorate([
     __metadata("design:type", Object)
 ], Post.prototype, "persona", void 0);
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.Column)({ type: "text" }),
+=======
+    (0, typeorm_1.Column)({ type: 'text' }),
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     __metadata("design:type", String)
 ], Post.prototype, "content", void 0);
 __decorate([
@@ -43,6 +59,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Post.prototype, "isAnonymous", void 0);
 __decorate([
+<<<<<<< HEAD
     (0, typeorm_1.Column)({
         type: "enum",
         enum: ["public", "friends"],
@@ -83,6 +100,17 @@ __decorate([
         default: () => "CURRENT_TIMESTAMP",
         onUpdate: "CURRENT_TIMESTAMP",
     }),
+=======
+    (0, typeorm_1.Column)({ type: 'enum', enum: ['public', 'friends'], default: 'public' }),
+    __metadata("design:type", String)
+], Post.prototype, "visibility", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }),
+    __metadata("design:type", Date)
+], Post.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' }),
+>>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     __metadata("design:type", Date)
 ], Post.prototype, "updatedAt", void 0);
 exports.Post = Post = __decorate([
