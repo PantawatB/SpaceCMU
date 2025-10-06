@@ -43,7 +43,7 @@ async function bootstrap() {
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
 
-    const port = process.env.PORT || 3000;
+    const port = process.env.PORT;
     app.listen(port, () => {
       console.log(`Server listening on port ${port}`);
     });
