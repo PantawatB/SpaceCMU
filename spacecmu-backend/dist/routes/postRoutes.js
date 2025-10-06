@@ -4,7 +4,6 @@ const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const postController_1 = require("../controllers/postController");
 const router = (0, express_1.Router)();
-<<<<<<< HEAD
 // ต้อง login ก่อนถึงจะโพสต์/กดไลก์ได้
 router.use(auth_1.authenticateToken);
 // 📌 Feed สาธารณะ (Global)
@@ -46,14 +45,4 @@ router.post("/:id/save", postController_1.savePost);
 // 📌 Unsave Post
 // DELETE /api/posts/:id/save
 router.delete("/:id/save", postController_1.unsavePost);
-=======
-// Public endpoint to fetch global feed
-router.get('/feed/public', postController_1.getPublicFeed);
-// Protected endpoint to fetch friend feed
-router.get('/feed/friends', auth_1.authenticateToken, postController_1.getFriendFeed);
-// Protected endpoint to create a post
-router.post('/', auth_1.authenticateToken, postController_1.createPost);
-// Public endpoint to fetch a specific post by id
-router.get('/:id', postController_1.getPostById);
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 exports.default = router;

@@ -14,7 +14,6 @@ import { Friend } from "./Friend";
 import { Report } from "./Report";
 import { Comment } from "./Comment";
 import { FriendRequest } from "./FriendRequest";
-import { Conversation } from "./Conversation";
 import { Message } from "./Message";
 
 /**
@@ -159,11 +158,9 @@ export class User {
   @ManyToMany(() => Post, (post) => post.savedBy)
   savedPosts!: Post[];
 
-  /**
-   * Conversations this user is a part of.
-   */
-  @ManyToMany(() => Conversation, (conversation) => conversation.participants)
-  conversations!: Conversation[];
+  // Note: Conversations are handled through ChatParticipant entity
+  // @ManyToMany(() => Conversation, (conversation) => conversation.participants)
+  // conversations!: Conversation[];
 
   /**
    * Messages sent by this user.

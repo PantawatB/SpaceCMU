@@ -10,20 +10,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMyPersona = getMyPersona;
-<<<<<<< HEAD
 exports.getPersona = getPersona;
 exports.listPersonas = listPersonas;
 exports.createPersona = createPersona;
 exports.updatePersona = updatePersona;
 exports.deletePersona = deletePersona;
-=======
-exports.upsertPersona = upsertPersona;
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 const ormconfig_1 = require("../ormconfig");
 const Persona_1 = require("../entities/Persona");
 const User_1 = require("../entities/User");
 /**
-<<<<<<< HEAD
  * 📌 ดึง persona ของ user ที่ล็อกอิน
  */
 function getMyPersona(req, res) {
@@ -166,62 +161,5 @@ function deletePersona(req, res) {
             console.error("deletePersona error:", err);
             return res.status(500).json({ message: "Failed to delete persona" });
         }
-=======
- * Retrieves the persona of the currently authenticated user. Returns null if
- * none exists.
- */
-function getMyPersona(req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // @ts-ignore
-        const user = req.user;
-        return res.json({ persona: user.persona || null });
-    });
-}
-/**
- * Creates or updates the authenticated user's persona. Enforces a monthly
- * change limit (default 2 changes per month). If the user does not yet
- * have a persona, one is created. Otherwise the display name and avatar
- * can be modified within the allowed limits.
- */
-function upsertPersona(req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // @ts-ignore
-        const user = req.user;
-        const { displayName, avatarUrl } = req.body;
-        if (!displayName) {
-            return res.status(400).json({ message: 'displayName is required' });
-        }
-        const personaRepo = ormconfig_1.AppDataSource.getRepository(Persona_1.Persona);
-        let persona = user.persona;
-        const now = new Date();
-        if (!persona) {
-            // Create new persona
-            persona = personaRepo.create({ displayName, avatarUrl, changeCount: 1, lastChangedAt: now, user });
-            yield personaRepo.save(persona);
-            // Attach persona to user
-            const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
-            user.persona = persona;
-            yield userRepo.save(user);
-            return res.status(201).json({ message: 'Persona created', persona });
-        }
-        // Existing persona – enforce monthly change limit
-        const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
-        const diff = now.getTime() - persona.lastChangedAt.getTime();
-        if (diff > ONE_MONTH_MS) {
-            // Reset change count when more than a month has passed
-            persona.changeCount = 0;
-            persona.lastChangedAt = now;
-        }
-        const MAX_CHANGES_PER_MONTH = 2;
-        if (persona.changeCount >= MAX_CHANGES_PER_MONTH) {
-            return res.status(429).json({ message: 'Persona change limit reached for this month' });
-        }
-        persona.displayName = displayName;
-        persona.avatarUrl = avatarUrl;
-        persona.changeCount += 1;
-        persona.lastChangedAt = now;
-        yield personaRepo.save(persona);
-        return res.json({ message: 'Persona updated', persona });
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     });
 }

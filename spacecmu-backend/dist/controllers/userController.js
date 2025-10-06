@@ -15,13 +15,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.register = register;
 exports.login = login;
 exports.getMe = getMe;
-<<<<<<< HEAD
 exports.updateUser = updateUser;
 exports.getMyReposts = getMyReposts;
 exports.getMyLikedPosts = getMyLikedPosts;
 exports.getMySavedPosts = getMySavedPosts;
-=======
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 const ormconfig_1 = require("../ormconfig");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../entities/User");
@@ -33,7 +30,6 @@ const hash_1 = require("../utils/hash");
  */
 function register(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-<<<<<<< HEAD
         try {
             const { studentId, email, password, name } = req.body;
             if (!studentId || !email || !password || !name) {
@@ -62,30 +58,6 @@ function register(req, res) {
             console.error("Register error:", err);
             return res.status(500).json({ message: "Registration failed" });
         }
-=======
-        const { studentId, email, password, name } = req.body;
-        if (!studentId || !email || !password || !name) {
-            return res.status(400).json({ message: "Missing required fields" });
-        }
-        const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
-        const existingById = yield userRepo.findOne({ where: { studentId } });
-        if (existingById) {
-            return res.status(409).json({ message: "Student ID already registered" });
-        }
-        const existingByEmail = yield userRepo.findOne({ where: { email } });
-        if (existingByEmail) {
-            return res.status(409).json({ message: "Email already registered" });
-        }
-        const hashed = yield (0, hash_1.hashPassword)(password);
-        const user = userRepo.create({
-            studentId,
-            email,
-            passwordHash: hashed,
-            name,
-        });
-        yield userRepo.save(user);
-        return res.status(201).json({ message: "Registration successful" });
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     });
 }
 /**
@@ -93,9 +65,10 @@ function register(req, res) {
  */
 function login(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-<<<<<<< HEAD
         try {
-            console.log("Request body:", req.body); // Debug log
+            console.log("=== LOGIN REQUEST ===");
+            console.log("Request body:", JSON.stringify(req.body));
+            console.log("Request headers:", JSON.stringify(req.headers));
             const { email, studentId, password } = req.body;
             // Support both email and studentId login
             if ((!email && !studentId) || !password) {
@@ -280,47 +253,5 @@ function getMySavedPosts(req, res) {
             console.error("getMySavedPosts error:", err);
             return res.status(500).json({ message: "Failed to fetch saved posts" });
         }
-=======
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ message: "Missing credentials" });
-        }
-        const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
-        const user = yield userRepo.findOne({ where: { email } });
-        if (!user) {
-            return res.status(401).json({ message: "Invalid email or password" });
-        }
-        const isMatch = yield (0, hash_1.comparePassword)(password, user.passwordHash);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Invalid email or password" });
-        }
-        const secret = process.env.JWT_SECRET || "changeme";
-        const token = jsonwebtoken_1.default.sign({ userId: user.id }, secret, { expiresIn: "7d" });
-        return res.json({ token });
-    });
-}
-/**
- * Returns the currently authenticated user's profile along with their persona
- * and friend count. Does not reveal private persona details for others.
- */
-function getMe(req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // @ts-ignore
-        const user = req.user;
-        // Only include non‑sensitive fields in response
-        const { id, studentId, email, name, persona, isAdmin, friends, createdAt, updatedAt, } = user;
-        const friendCount = friends ? friends.length : 0;
-        return res.json({
-            id,
-            studentId,
-            email,
-            name,
-            isAdmin,
-            friendCount,
-            persona,
-            createdAt,
-            updatedAt,
-        });
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     });
 }

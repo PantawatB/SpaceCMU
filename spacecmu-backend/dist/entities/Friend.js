@@ -13,21 +13,14 @@ exports.Friend = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 /**
-<<<<<<< HEAD
  * The Friend entity models accepted friendships between two users.
  * It stores pairs of user IDs. We enforce uniqueness on (user1, user2)
  * to avoid duplicate friendship records.
-=======
- * The Friend entity models accepted friendships between two users. It stores
- * pairs of user IDs. We do not enforce a strict order of user1 and user2,
- * allowing a friend query to be made independent of direction.
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
  */
 let Friend = class Friend {
 };
 exports.Friend = Friend;
 __decorate([
-<<<<<<< HEAD
     (0, typeorm_1.PrimaryGeneratedColumn)("uuid"),
     __metadata("design:type", String)
 ], Friend.prototype, "id", void 0);
@@ -49,23 +42,4 @@ __decorate([
 exports.Friend = Friend = __decorate([
     (0, typeorm_1.Entity)(),
     (0, typeorm_1.Unique)(["user1", "user2"])
-=======
-    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
-    __metadata("design:type", String)
-], Friend.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true }),
-    __metadata("design:type", User_1.User)
-], Friend.prototype, "user1", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, { eager: true }),
-    __metadata("design:type", User_1.User)
-], Friend.prototype, "user2", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }),
-    __metadata("design:type", Date)
-], Friend.prototype, "createdAt", void 0);
-exports.Friend = Friend = __decorate([
-    (0, typeorm_1.Entity)()
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 ], Friend);

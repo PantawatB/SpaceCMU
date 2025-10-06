@@ -22,7 +22,6 @@ const personaRoutes_1 = __importDefault(require("./routes/personaRoutes"));
 const postRoutes_1 = __importDefault(require("./routes/postRoutes"));
 const friendRoutes_1 = __importDefault(require("./routes/friendRoutes"));
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
-<<<<<<< HEAD
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const chatRoutes_1 = __importDefault(require("./routes/chatRoutes"));
 // Load environment variables from .env
@@ -36,7 +35,8 @@ function bootstrap() {
             const app = (0, express_1.default)();
             // Add logging middleware
             app.use((req, res, next) => {
-                console.log(`${req.method} ${req.path}`, req.body);
+                console.log(`🚀 ${req.method} ${req.path}`, JSON.stringify(req.body));
+                console.log(`🔗 Headers:`, JSON.stringify(req.headers));
                 next();
             });
             app.use(express_1.default.json());
@@ -60,29 +60,3 @@ function bootstrap() {
     });
 }
 bootstrap();
-=======
-dotenv_1.default.config();
-function bootstrap() {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Establish database connection. In a real environment you would pass
-        // configuration values via a .env file. For this example the connection
-        // details are omitted and should be filled in according to your setup.
-        yield ormconfig_1.AppDataSource.initialize();
-        const app = (0, express_1.default)();
-        app.use(express_1.default.json());
-        // Mount API routes under /api
-        app.use("/api/users", userRoutes_1.default);
-        app.use("/api/personas", personaRoutes_1.default);
-        app.use("/api/posts", postRoutes_1.default);
-        app.use("/api/friends", friendRoutes_1.default);
-        app.use("/api/admin", adminRoutes_1.default);
-        const port = process.env.PORT || 3000;
-        app.listen(port, () => {
-            console.log(`Server listening on port ${port}`);
-        });
-    });
-}
-bootstrap().catch((err) => {
-    console.error("Failed to start application:", err);
-});
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805

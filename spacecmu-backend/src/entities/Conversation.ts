@@ -26,7 +26,7 @@ export class Conversation {
   /**
    * All messages within this conversation.
    */
-  @OneToMany(() => Message, (message) => message.conversation)
+  @OneToMany(() => Message, (message) => message.chat)
   messages!: Message[];
 
   @CreateDateColumn()

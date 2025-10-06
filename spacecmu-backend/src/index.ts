@@ -11,6 +11,7 @@ import friendRoutes from "./routes/friendRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
+import uploadRoutes from "./routes/uploadRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -25,7 +26,8 @@ async function bootstrap() {
 
     // Add logging middleware
     app.use((req, res, next) => {
-      console.log(`${req.method} ${req.path}`, req.body);
+      console.log(`🚀 ${req.method} ${req.path}`, JSON.stringify(req.body));
+      console.log(`🔗 Headers:`, JSON.stringify(req.headers));
       next();
     });
 
@@ -39,6 +41,7 @@ async function bootstrap() {
     app.use("/api/admin", adminRoutes);
     app.use("/api/posts", commentRoutes);
     app.use("/api/chats", chatRoutes);
+    app.use("/api/uploads", uploadRoutes);
 
     const port = process.env.PORT || 3000;
     app.listen(port, () => {

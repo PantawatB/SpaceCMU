@@ -3,7 +3,6 @@ services:
     build: .
     ports:
       - "3000:3000"
-<<<<<<< HEAD
     environment:
       - PORT=3000
       - DB_HOST=db
@@ -12,10 +11,6 @@ services:
       - DB_PASS=postgres
       - DB_NAME=spacecmu
       - JWT_SECRET=super_secret_key_change_this
-=======
-    env_file:
-      - ./.env
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     depends_on:
       db:
         condition: service_healthy
@@ -28,11 +23,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: spacecmu
     ports:
-<<<<<<< HEAD
       - "5433:5432"
-=======
-      - "5432:5432"
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:

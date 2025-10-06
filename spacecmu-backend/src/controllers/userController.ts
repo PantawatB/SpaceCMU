@@ -49,7 +49,9 @@ export async function register(req: Request, res: Response) {
  */
 export async function login(req: Request, res: Response) {
   try {
-    console.log("Request body:", req.body); // Debug log
+    console.log("=== LOGIN REQUEST ===");
+    console.log("Request body:", JSON.stringify(req.body));
+    console.log("Request headers:", JSON.stringify(req.headers));
     const { email, studentId, password } = req.body;
 
     // Support both email and studentId login

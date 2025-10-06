@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { AppDataSource } from "./ormconfig";
 import { Message } from "./entities/Message";
-import { Conversation } from "./entities/Conversation";
+import { Chat } from "./entities/Chat";
 import { User } from "./entities/User";
 
 const onlineUsers = new Map<string, string>();
@@ -34,20 +34,20 @@ export function initializeSocket(io: Server) {
           const { conversationId, senderId, content } = data;
 
           const messageRepo = AppDataSource.getRepository(Message);
-          const convoRepo = AppDataSource.getRepository(Conversation);
+          const chatRepo = AppDataSource.getRepository(Chat);
           const userRepo = AppDataSource.getRepository(User);
-          const conversation = await convoRepo.findOneBy({
+          const chat = await chatRepo.findOneBy({
             id: conversationId,
           });
           const sender = await userRepo.findOneBy({ id: senderId });
 
-          if (!conversation || !sender) {
-            socket.emit("message_error", "Conversation or sender not found");
+          if (!chat || !sender) {
+            socket.emit("message_error", "Chat or sender not found");
             return;
           }
 
           const newMessage = messageRepo.create({
-            conversation,
+            chat: chat,
             sender,
             content,
           });

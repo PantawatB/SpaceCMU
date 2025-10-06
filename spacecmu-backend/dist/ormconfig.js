@@ -1,5 +1,4 @@
 "use strict";
-<<<<<<< HEAD
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,30 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppDataSource = void 0;
 const typeorm_1 = require("typeorm");
 const dotenv_1 = __importDefault(require("dotenv"));
-=======
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppDataSource = void 0;
-const typeorm_1 = require("typeorm");
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 const User_1 = require("./entities/User");
 const Persona_1 = require("./entities/Persona");
 const Post_1 = require("./entities/Post");
 const FriendRequest_1 = require("./entities/FriendRequest");
 const Friend_1 = require("./entities/Friend");
 const Report_1 = require("./entities/Report");
-<<<<<<< HEAD
 const Comment_1 = require("./entities/Comment");
 const Chat_1 = require("./entities/Chat");
 const Message_1 = require("./entities/Message");
 const ChatParticipant_1 = require("./entities/ChatParticipant");
 // Load environment variables from .env file
 dotenv_1.default.config();
-=======
-// In a real project these configuration values would be loaded from a
-// .env file or similar. Here we provide defaults suitable for local
-// development. To connect to a production database supply the appropriate
-// environment variables.
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 exports.AppDataSource = new typeorm_1.DataSource({
     type: "postgres",
     host: process.env.DB_HOST || "localhost",
@@ -38,7 +25,6 @@ exports.AppDataSource = new typeorm_1.DataSource({
     username: process.env.DB_USER || "postgres",
     password: process.env.DB_PASS || "postgres",
     database: process.env.DB_NAME || "spacecmu",
-<<<<<<< HEAD
     synchronize: process.env.NODE_ENV === "production" ? false : true, // Set to false for production
     logging: process.env.NODE_ENV !== "production", // Only log in development
     entities: [
@@ -57,9 +43,4 @@ exports.AppDataSource = new typeorm_1.DataSource({
     extra: {
         ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
     },
-=======
-    synchronize: true, // Should be false in production
-    logging: false,
-    entities: [User_1.User, Persona_1.Persona, Post_1.Post, FriendRequest_1.FriendRequest, Friend_1.Friend, Report_1.Report],
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
 });

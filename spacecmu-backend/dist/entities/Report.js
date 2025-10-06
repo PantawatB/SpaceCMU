@@ -22,7 +22,6 @@ let Report = class Report {
 };
 exports.Report = Report;
 __decorate([
-<<<<<<< HEAD
     (0, typeorm_1.PrimaryGeneratedColumn)("uuid"),
     __metadata("design:type", String)
 ], Report.prototype, "id", void 0);
@@ -68,37 +67,6 @@ __decorate([
         default: () => "CURRENT_TIMESTAMP",
         onUpdate: "CURRENT_TIMESTAMP",
     }),
-=======
-    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
-    __metadata("design:type", String)
-], Report.prototype, "id", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.reports),
-    __metadata("design:type", User_1.User)
-], Report.prototype, "reportingUser", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => Post_1.Post, { nullable: true }),
-    __metadata("design:type", Object)
-], Report.prototype, "post", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => Persona_1.Persona, { nullable: true }),
-    __metadata("design:type", Object)
-], Report.prototype, "persona", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text' }),
-    __metadata("design:type", String)
-], Report.prototype, "reason", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['pending', 'reviewed', 'actioned'], default: 'pending' }),
-    __metadata("design:type", String)
-], Report.prototype, "status", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }),
-    __metadata("design:type", Date)
-], Report.prototype, "createdAt", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' }),
->>>>>>> 712e08e47b3b671c3607c286d1d1ad01f8b90805
     __metadata("design:type", Date)
 ], Report.prototype, "updatedAt", void 0);
 exports.Report = Report = __decorate([
