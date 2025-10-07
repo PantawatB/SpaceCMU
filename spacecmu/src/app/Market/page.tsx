@@ -1,12 +1,12 @@
 "use client";
-import { Inter } from "next/font/google";
-import { useState } from "react";
+
+
 import Sidebar from "../../components/Sidebar";
 
-const inter = Inter({ subsets: ["latin"] });
+
 
 export default function MarketMainPage() {
-  const [activeMenu, setActiveMenu] = useState("Market");
+  
   const menuItems = [
     {
       name: "Profile",
