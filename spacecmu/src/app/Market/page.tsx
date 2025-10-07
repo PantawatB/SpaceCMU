@@ -18,8 +18,8 @@ function MarketCard({ price, title, jobTitle, image, sellerName, sellerImage }: 
   return (
     <article className="bg-white rounded-xl shadow-md w-full max-w-[300px] mx-auto mb-8 border border-gray-100 flex flex-col" style={{ minHeight: 350 }}>
       {/* Product Image */}
-      <div className="bg-orange-50 rounded-t-xl flex items-center justify-center h-[160px] overflow-hidden">
-        <Image src={image} alt={title} width={220} height={150} className="object-cover rounded-lg" />
+      <div className="w-full h-[160px]">
+        <Image src={image} alt={title} width={300} height={160} className="w-full h-full object-cover rounded-t-xl" />
       </div>
       {/* Card Content */}
       <div className="flex-1 flex flex-col justify-between p-4 pb-3">
@@ -29,7 +29,9 @@ function MarketCard({ price, title, jobTitle, image, sellerName, sellerImage }: 
           <span className="text-sm font-semibold text-orange-600 block mb-3">{price}</span>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Image src={sellerImage} alt={sellerName} width={32} height={32} className="rounded-full object-cover border border-gray-200" />
+              <div className="w-8 h-8">
+                <Image src={sellerImage} alt={sellerName} width={32} height={32} className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full" />
+              </div>
               <span className="text-sm font-medium text-gray-700">{sellerName}</span>
             </div>
             <button className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium">view</button>
