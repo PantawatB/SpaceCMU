@@ -68,10 +68,13 @@ export default function Sidebar({ menuItems }: SidebarProps) {
               <div
                 className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}
               >
-                <img
+                <Image
                   src={profile.avatar}
                   alt={profile.name}
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                  priority
                 />
                 {activeProfile === idx && (
                   <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>

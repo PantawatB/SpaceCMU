@@ -1,13 +1,10 @@
 "use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 
 export default function ProfileMainPage() {
-  const pathname = usePathname();
-  const [activeMenu, setActiveMenu] = useState("Profile");
+
   const menuItems = [
     {
       name: "Profile",

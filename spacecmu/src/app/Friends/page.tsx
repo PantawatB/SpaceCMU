@@ -1,11 +1,11 @@
 "use client";
-import { Inter } from "next/font/google";
-import { usePathname } from "next/navigation";
+
+
 import Sidebar from "../../components/Sidebar";
-import React, { useRef } from "react";
+import React from "react";
 import Image from "next/image";
 
-const inter = Inter({ subsets: ["latin"] });
+
 
 // Friend card component
 interface FriendCardProps {
@@ -184,7 +184,7 @@ const peopleYouMayKnow: FriendCardProps[] = [
 ];
 
 export default function FriendsMainPage() {
-  const pathname = usePathname();
+  
   const menuItems = [
     {
       name: "Profile",
