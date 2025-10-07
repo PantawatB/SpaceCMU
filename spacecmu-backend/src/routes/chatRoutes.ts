@@ -6,6 +6,8 @@ import {
   getChatMessages,
   sendMessage,
   deleteMessage,
+  clearChatMessages,
+  getChatParticipants,
 } from "../controllers/chatController";
 
 const router = Router();
@@ -21,5 +23,9 @@ router.post("/direct", createDirectChat); // POST /api/chats/direct - Create dir
 router.get("/:chatId/messages", getChatMessages); // GET /api/chats/:chatId/messages - Get chat messages
 router.post("/:chatId/messages", sendMessage); // POST /api/chats/:chatId/messages - Send message
 router.delete("/messages/:messageId", deleteMessage); // DELETE /api/chats/messages/:messageId - Delete message
+router.delete("/:chatId/messages", clearChatMessages); // DELETE /api/chats/:chatId/messages - Clear all messages
+
+// Chat info routes
+router.get("/:chatId/participants", getChatParticipants); // GET /api/chats/:chatId/participants - Get chat participants
 
 export default router;
