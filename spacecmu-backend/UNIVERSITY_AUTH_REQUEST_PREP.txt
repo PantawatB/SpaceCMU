@@ -1,0 +1,209 @@
+============================
+SpaceCMU – University Authentication Integration Request Prep
+วันที่จัดทำ: 7 Oct 2025
+Branch / Code Base Ref: Pongporn (spacecmu-backend)
+============================
+
+1) SUMMARY / USE CASE
+--------------------------------
+SpaceCMU เป็นแพลตฟอร์ม Social + Academic Utility สำหรับนักศึกษา CMU ใช้ในการ:
+- สร้างโพสต์ / แสดงความคิดเห็นในชุมชน (Posts + Comments)
+- แชทแบบ 1-1 (Direct Chat System) เพื่อการติดต่อเรียน / โปรเจกต์
+- ระบบ Friend / Persona (โหมดกึ่งนิรนาม) เพื่อแยกตัวตนจริงกับตัวตนสาธารณะ
+- อัพโหลดไฟล์ที่เกี่ยวกับงาน / โปรเจกต์
+
+ความต้องการเชื่อมต่อ Auth ของมหาวิทยาลัย:
+- ใช้ Single Sign-On (SSO) / OpenID Connect (OIDC) เพื่อยืนยันว่าผู้ใช้เป็นนักศึกษาจริง
+- ลดการเก็บรหัสผ่านภายใน (จะเปลี่ยนจาก local password ไปใช้ external IdP)
+- ดึงข้อมูลขั้นต่ำ (Least Privilege) สำหรับสร้างบัญชีครั้งแรกและ mapping ผู้ใช้
+
+2) SCOPES / CLAIMS ที่ต้องการ (MINIMAL)
+-----------------------------------------
+จำเป็นต้องขอ (ถ้ารองรับ OIDC):
+- openid           → เพื่อรับ id_token (มาตรฐาน)
+- profile          → เพื่อรับ name (หรือ given_name / family_name ถ้ามี)
+- email            → เพื่อรับ email กลาง (สำหรับติดต่อ / แจ้งเตือนระบบ)
+- studentId (custom scope/claim ถ้า ม. มี) → สำหรับ binding กับระเบียนนักศึกษา (PRIMARY KEY ด้าน identity ภายในระบบเรา)
+
+หาก University ไม่อนุญาต custom scope: จะใช้ claim ที่มี (เช่น eduPersonPrincipalName / username) แล้ว map เป็น studentId ผ่านภายในหรือผ่าน mapping service (ถ้ามี)
+
+3) DATA FIELDS & JUSTIFICATION
+--------------------------------
+ตารางความสัมพันธ์ข้อมูลที่ระบบจะ “เก็บ” ภายในฐานข้อมูลหลังยืนยันตัวตนสำเร็จ:
+
+Field          | แหล่ง | เก็บ? | เหตุผลใช้งาน / Justification
+-------------- | ----- | ----- | -----------------------------------------------
+studentId      | IdP   | Yes   | ใช้เป็น unique key ผูกกับตาราง User (login federation)
+email          | IdP   | Yes   | ช่องทางกู้คืนบัญชี / แจ้งระบบ / Notification
+name           | IdP   | Yes   | แสดงชื่อจริง (non-anonymous mode) / UX
+avatarUrl(*)   | User  | Opt   | ผู้ใช้ตั้งเองภายหลัง (ไม่ดึงจาก IdP หากไม่ให้)
+persona fields | Local | Yes   | แยกตัวตน (ไม่เกี่ยวกับ IdP)
+lastActiveAt   | Local | Yes   | ใช้สำหรับ online status / ยกระดับ UX
+isAdmin/isBanned| Local| Yes   | Internal moderation flags (ไม่เกี่ยวกับ IdP)
+
+(*) ไม่ร้องขอจากมหาวิทยาลัยเพื่อลด exposure ของ PII เกินจำเป็น
+
+ไม่เก็บ: เบอร์โทร, ที่อยู่, วันเกิด, เพศ, หมู่เลือด, ประวัติการเรียน ฯลฯ
+
+Retention & Deletion (แนวทางเบื้องต้น):
+- ลบ/ทำให้นิรนาม (anonymize) เมื่อผู้ใช้ร้องขอปิดบัญชี (soft-delete -> scramble fields)
+- Logs authentication (success/fail) เก็บไม่เกิน 90 วัน
+
+4) AUTH FLOW (PLANNED)
+--------------------------------
+(Authorization Code Flow + PKCE หากรองรับ)
+
+1. Client (Frontend) → /auth/login  (Backend redirect ไป University IdP /authorize)
+2. ผู้ใช้ยืนยันตัวตนที่ IdP
+3. IdP redirect กลับ: /auth/callback?code=...&state=...  (HTTPS เท่านั้น)
+4. Backend แลก code → token endpoint ได้ access_token + id_token (และ refresh_token หากอนุญาต)
+5. Backend ตรวจสอบ:
+   - state match
+   - id_token signature & issuer & audience
+   - nonce (ถ้าใช้) ป้องกัน replay
+6. Extract claims (sub / studentId / email / name)
+7. Upsert User (พบ → อัปเดต timestamp, ไม่พบ → สร้างใหม่)
+8. ออก internal JWT (short-lived) + อาจมี httpOnly secure cookie (session)
+9. ส่ง response ให้ frontend (เฉพาะ token ภายใน ไม่ส่ง id_token ต่อ)
+
+5) ARCHITECTURE SNAPSHOT (TEXT DIAGRAM)
+----------------------------------------
+[Browser/Client]
+   → GET /auth/login
+[Backend API]
+   → 302 → University IdP /authorize
+[University IdP]
+   → Auth UI → success → redirect /auth/callback?code
+[Backend]
+   → POST /token (IdP)
+   → Validate id_token
+   → Create / update User row
+   → Issue internal JWT
+[Browser]
+   → ใช้ internal JWT เรียก API อื่น: /api/posts /api/chats ...
+
+6) REDIRECT URIs (เสนอ)
+--------------------------------
+Development:
+- https://localhost:3000/auth/callback   (หรือ 5173/Next.js dev ถ้า frontend จัดการ callback ก่อนส่ง code ไป backend)
+Production:
+- https://spacecmu.app/auth/callback
+
+Logout (ถ้ามี Single Logout):
+- https://spacecmu.app/auth/logout-complete
+
+7) SECURITY CONTROLS
+--------------------------------
+Transport:
+- บังคับ HTTPS ทุก environment ที่ public
+Secrets Handling:
+- CLIENT_SECRET เก็บที่ backend .env ไม่ commit
+- ใช้ Docker secret / environment variable ใน production
+Token Safety:
+- ใช้ Authorization Code + PKCE (ลดความเสี่ยง code interception)
+- Internal JWT อายุสั้น (เช่น 15m) + Refresh token (rotation) หรือ Re-Auth ผ่าน IdP
+- ใช้ httpOnly + Secure cookie (ถ้าเปลี่ยนจาก pure bearer)
+Replay & CSRF:
+- ตรวจ state, nonce
+- SameSite=strict (ถ้าใช้ cookie)
+Logging:
+- Log เฉพาะ event (login success/fail, token error) ไม่ log token เต็ม ๆ
+Least Privilege:
+- ขอเฉพาะ scopes: openid profile email studentId
+
+8) OPEN QUESTIONS FOR UNIVERSITY (เตรียมถาม)
+---------------------------------------------
+1. Protocol supported: OIDC (preferred) / SAML / CAS ?
+2. Discovery URL (.well-known/openid-configuration) มีหรือไม่
+3. Grant types ที่อนุญาต (Authorization Code + PKCE?)
+4. Supported claims (มี studentId หรือ code/username ใด map ได้)
+5. ใช้ claim ใด best practice สำหรับ unique stable identifier (sub vs eduPersonUniqueId)
+6. Refresh token นโยบาย ใช้ได้หรือไม่ อายุเท่าใด Rotation?
+7. มีอัตราจำกัด (rate limit) ต่อ client_id? เช่น requests/minute
+8. จำเป็นต้องทำ penetration test report / DPIA / PDPA form ก่อนอนุมัติ?
+9. Sandbox / Test IdP แยกจาก Production หรือไม่
+10. Redirect URI ต้อง whitelist ทั้งหมดก่อนหรือแก้ไขภายหลังได้
+11. มี Single Logout (front-channel/back-channel) หรือไม่
+12. นโยบายการเพิกถอน (revocation endpoint) มีให้ใช้งานหรือไม่
+13. ต้องต่อ VPN ภายในมหาวิทยาลัยเพื่อเรียก endpoint หรือไม่
+
+9) IMPLEMENTATION STEPS (INTERNAL PLAN)
+----------------------------------------
+Phase 1 (Integration Skeleton)
+- เพิ่ม env variables: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI
+- สร้าง route: GET /auth/login, GET /auth/callback
+- เพิ่ม service: oidcClient (ใช้ openid-client npm)
+
+Phase 2 (User Linking)
+- Map claims → user table fields (studentId/email/name)
+- ปรับ logic register → ถ้า login ผ่าน IdP แล้วไม่ต้อง manual register
+
+Phase 3 (Security Hardening)
+- เพิ่ม PKCE verifier
+- เพิ่ม nonce + state storage (in-memory หรือ Redis)
+- ตั้งค่า token expiry + refresh strategy
+
+Phase 4 (Monitoring & Logs)
+- เพิ่ม structured logs (login success/failure)
+- Health endpoint ตรวจ external IdP latency
+
+Phase 5 (Documentation & Rollout)
+- อัปเดต README + MIGRATION_SUMMARY
+- แจ้งผู้ใช้ / QA test
+
+10) CURRENT USER ENTITY SNAPSHOT (จากโค้ดจริง)
+-----------------------------------------------
+Relevant fields:
+- id (uuid) – internal
+- studentId (unique) – จะ map จาก IdP
+- email (unique)
+- passwordHash (จะเลิกใช้เมื่อ SSO fully enabled – อาจคงไว้ transitional)
+- name
+- bio (optional)
+- isAdmin / isBanned (internal flags)
+- createdAt / updatedAt / lastActiveAt
+
+Persona (แยก): displayName, avatarUrl (local only)
+
+11) RISK & MITIGATION
+--------------------------------
+Risk: ไม่ได้รับ scope studentId → ใช้ claim อื่น map → ต้องตาราง mapping เพิ่ม
+Risk: IdP downtime → ผู้ใช้ใหม่สมัครไม่ได้ → แสดง maintenance + อนุญาต session ที่ยังไม่หมดอายุ
+Risk: Token leakage → ใช้ short-lived access + httpOnly cookie + ไม่ log token
+Risk: Time skew ระหว่าง server → ใช้ NTP sync
+
+12) WHAT WE WILL NOT DO (OUT OF SCOPE ตอนแรก)
+----------------------------------------------
+- Group Chat Authentication Federation (ไม่มีผล)
+- SCIM / Auto Provision (ไม่จำเป็นตอนแรก)
+- Pull ข้อมูลส่วนตัวเชิงลึก (advisor, major details)
+
+13) PRIVACY & PDPA CONSIDERATIONS
+----------------------------------
+- Data Minimization: ขอเฉพาะ studentId, name, email
+- Purpose Limitation: ใช้เพื่อยืนยันตัวตนและ UX เท่านั้น
+- Retention: ลบ/นิรนามเมื่อผู้ใช้ถอนการใช้งาน
+- Transparency: จะแสดง Privacy Notice (จะจัดทำไฟล์ privacy.md)
+
+14) PLACEHOLDER .ENV (หลังได้ค่า)
+-----------------------------------
+OIDC_ISSUER=<<<FROM_UNIVERSITY>>>
+OIDC_CLIENT_ID=<<<ASSIGNED>>>
+OIDC_CLIENT_SECRET=<<<ASSIGNED>>>
+OIDC_REDIRECT_URI=https://spacecmu.app/auth/callback
+OIDC_SCOPES=openid profile email studentId
+INTERNAL_JWT_SECRET=<<<GENERATE_SECURE_64BYTE>>>
+TOKEN_EXP_MINUTES=15
+REFRESH_EXP_DAYS=7
+
+15) NEXT ACTIONS BEFORE MEETING
+--------------------------------
+[ ] วาด Diagram (หากต้อง PDF แนบ)
+[ ] เตรียมคำอธิบาย Flow 1 หน้า
+[ ] ตรวจสอบว่า domain HTTPS พร้อม (prod)
+[ ] สร้าง draft privacy notice
+[ ] ตอบคำถาม “หากผู้ใช้ถอน consent” → ปิดการใช้งาน account + scramble PII
+
+============================
+END OF DOCUMENT – READY FOR SUBMISSION / DISCUSSION
+============================

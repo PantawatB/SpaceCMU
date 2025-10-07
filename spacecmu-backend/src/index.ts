@@ -24,13 +24,6 @@ async function bootstrap() {
 
     const app = express();
 
-    // Add logging middleware
-    app.use((req, res, next) => {
-      console.log(`🚀 ${req.method} ${req.path}`, JSON.stringify(req.body));
-      console.log(`🔗 Headers:`, JSON.stringify(req.headers));
-      next();
-    });
-
     app.use(express.json());
 
     // Mount API routes under /api

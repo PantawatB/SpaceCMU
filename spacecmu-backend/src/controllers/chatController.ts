@@ -172,13 +172,13 @@ export async function getChatMessages(
     const [messages, total] = await messageRepo.findAndCount({
       where: { chat: { id: chatId } },
       relations: ["sender", "replyTo", "replyTo.sender"],
-      order: { createdAt: "DESC" },
+      order: { createdAt: "ASC" },
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
     });
 
     return res.json({
-      messages: messages.reverse(), // Reverse to show oldest first
+      messages: messages, // Show oldest first without reverse
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -281,6 +281,7 @@ export async function deleteMessage(
     const { messageId } = req.params;
 
     const messageRepo = AppDataSource.getRepository(Message);
+    const chatRepo = AppDataSource.getRepository(Chat);
 
     const message = await messageRepo.findOne({
       where: { id: messageId },
@@ -298,10 +299,108 @@ export async function deleteMessage(
         .json({ message: "You can only delete your own messages" });
     }
 
+    // Check if this message is the lastMessage of its chat
+    const chat = await chatRepo.findOne({
+      where: { id: message.chat.id },
+      relations: ["lastMessage"],
+    });
+
+    if (chat && chat.lastMessage && chat.lastMessage.id === messageId) {
+      // Find the previous message to set as new lastMessage
+      const previousMessage = await messageRepo
+        .createQueryBuilder("message")
+        .where("message.chatId = :chatId", { chatId: chat.id })
+        .andWhere("message.id != :messageId", { messageId })
+        .orderBy("message.createdAt", "DESC")
+        .leftJoinAndSelect("message.sender", "sender")
+        .getOne();
+
+      // Update chat's lastMessage before deleting
+      chat.lastMessage = previousMessage || null;
+      await chatRepo.save(chat);
+    }
+
     await messageRepo.remove(message);
     return res.json({ message: "Message deleted successfully" });
   } catch (error) {
     console.error("Error deleting message:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/**
+ * Clear all messages in a chat (for testing purposes)
+ */
+export async function clearChatMessages(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user!;
+    const { chatId } = req.params;
+
+    const chatRepo = AppDataSource.getRepository(Chat);
+    const messageRepo = AppDataSource.getRepository(Message);
+    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
+
+    // Verify user is a participant in this chat
+    const participation = await chatParticipantRepo.findOne({
+      where: {
+        chat: { id: chatId },
+        user: { id: user.id },
+      },
+    });
+
+    if (!participation) {
+      return res
+        .status(403)
+        .json({ message: "You are not a participant in this chat" });
+    }
+
+    // Delete all messages in the chat
+    await messageRepo.delete({ chat: { id: chatId } });
+
+    // Update chat's lastMessage to null
+    const chat = await chatRepo.findOne({ where: { id: chatId } });
+    if (chat) {
+      chat.lastMessage = null;
+      await chatRepo.save(chat);
+    }
+
+    return res.json({ message: "All messages cleared successfully" });
+  } catch (error) {
+    console.error("Error clearing chat messages:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/**
+ * Get chat participants (for debugging)
+ */
+export async function getChatParticipants(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { chatId } = req.params;
+    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
+
+    const participants = await chatParticipantRepo.find({
+      where: { chat: { id: chatId } },
+      relations: ["user", "chat"],
+    });
+
+    return res.json({
+      chatId,
+      participants: participants.map((p) => ({
+        userId: p.user.id,
+        userName: p.user.name,
+        email: p.user.email,
+        joinedAt: p.joinedAt,
+      })),
+    });
+  } catch (error) {
+    console.error("Error getting chat participants:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
