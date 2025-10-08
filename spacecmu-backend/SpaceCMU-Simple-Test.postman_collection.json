@@ -36,7 +36,7 @@
   ],
   "item": [
     {
-      "name": "1️⃣ Create Test Users",
+      "name": "1️Create Test Users",
       "event": [
         {
           "listen": "test",
@@ -71,7 +71,7 @@
       }
     },
     {
-      "name": "2️⃣ Create User 2",
+      "name": "2️ Create User 2",
       "event": [
         {
           "listen": "test",
@@ -106,7 +106,7 @@
       }
     },
     {
-      "name": "3️⃣ Login User 1",
+      "name": "3️ Login User 1",
       "event": [
         {
           "listen": "test",
@@ -145,7 +145,7 @@
       }
     },
     {
-      "name": "4️⃣ Login User 2",
+      "name": " Login User 2",
       "event": [
         {
           "listen": "test",
@@ -184,7 +184,7 @@
       }
     },
     {
-      "name": "5️⃣ Create Direct Chat",
+      "name": " Create Direct Chat",
       "event": [
         {
           "listen": "test",
@@ -226,7 +226,7 @@
       }
     },
     {
-      "name": "6️⃣ Send Message (User 1)",
+      "name": " Send Message (User 1)",
       "event": [
         {
           "listen": "test",
@@ -268,7 +268,7 @@
       }
     },
     {
-      "name": "7️⃣ Send Message (User 2)",
+      "name": " Send Message (User 2)",
       "event": [
         {
           "listen": "test",
@@ -307,7 +307,7 @@
       }
     },
     {
-      "name": "8️⃣ Get Chat Messages",
+      "name": " Get Chat Messages",
       "event": [
         {
           "listen": "test",
@@ -342,7 +342,7 @@
       }
     },
     {
-      "name": "9️⃣ Get My Chats",
+      "name": " Get My Chats",
       "event": [
         {
           "listen": "test",
@@ -379,7 +379,7 @@
       }
     },
     {
-      "name": "🔟 Get Chat Participants",
+      "name": " Get Chat Participants",
       "event": [
         {
           "listen": "test",
@@ -414,7 +414,7 @@
       }
     },
     {
-      "name": "1️⃣1️⃣ Delete Message",
+      "name": " Delete Message",
       "event": [
         {
           "listen": "test",
@@ -445,7 +445,7 @@
       }
     },
     {
-      "name": "1️⃣2️⃣ Verify Message Deletion",
+      "name": "Verify Message Deletion",
       "event": [
         {
           "listen": "test",
