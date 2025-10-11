@@ -34,7 +34,7 @@ function MarketCard({ price, title, jobTitle, image, sellerName, sellerImage }: 
               </div>
               <span className="text-sm font-medium text-gray-700">{sellerName}</span>
             </div>
-            <button className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium">view</button>
+            <button className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium">Chat</button>
           </div>
         </div>
       </div>
