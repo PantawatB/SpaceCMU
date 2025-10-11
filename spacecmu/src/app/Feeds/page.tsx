@@ -3,12 +3,17 @@
 import { useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
+import { API_BASE_URL } from '@/utils/apiConfig';
 
 
 
 export default function FeedsMainPage() {
   const [feedMode, setFeedMode] = useState("Global");
   const [showShareBar, setShowShareBar] = useState(true);
+  const [postText, setPostText] = useState("");
+  const [postMode, setPostMode] = useState<'public'|'anonymous'>('public');
+  const [posting, setPosting] = useState(false);
+
   const menuItems = [
     {
       name: "Profile",
@@ -169,6 +174,28 @@ export default function FeedsMainPage() {
       link: "/Setting",
     },
   ];
+
+  const handleSend = async () => {
+    if (!postText.trim()) return;
+    setPosting(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE_URL}/api/posts`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ content: postText, visibility: postMode, location: "" })
+      });
+      if (!res.ok) throw new Error('Post failed');
+      setPostText('');
+      // TODO: refresh posts
+    } catch (err: unknown) {
+      console.error(err);
+    }
+    setPosting(false);
+  };
 
   return (
     <div className="flex h-screen bg-white text-gray-800">
@@ -344,71 +371,24 @@ export default function FeedsMainPage() {
                 <input
                   type="text"
                   placeholder="Share something"
+                  value={postText}
+                  onChange={(e) => setPostText(e.target.value)}
                   className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg"
                 />
               </div>
               <div className="flex items-center justify-between pt-2">
-                <div className="flex gap-6">
-                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="w-6 h-6"
-                    >
-                      <rect x="4" y="7" width="16" height="13" rx="2" />
-                      <path d="M4 7V5a2 2 0 012-2h12a2 2 0 012 2v2" />
-                    </svg>
-                    File
-                  </button>
-                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="w-6 h-6"
-                    >
-                      <circle cx="12" cy="12" r="4" />
-                      <rect x="4" y="4" width="16" height="16" rx="4" />
-                    </svg>
-                    Image
-                  </button>
-                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="w-6 h-6"
-                    >
-                      <circle cx="12" cy="10" r="3" />
-                      <path d="M12 13v7" />
-                      <path d="M5 20h14" />
-                    </svg>
-                    Location
-                  </button>
-                  <button className="flex items-center gap-2 text-gray-700 font-medium hover:text-black text-base">
-                    <svg
-                      width="24"
-                      height="24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="w-6 h-6"
-                    >
-                      <circle cx="12" cy="12" r="8" />
-                      <path d="M12 2v20M2 12h20" />
-                    </svg>
-                    Public <span className="ml-1">▼</span>
-                  </button>
+                <div className="flex gap-6 items-center">
+                  <div className="relative">
+                    <select value={postMode} onChange={(e) => setPostMode(e.target.value as 'public'|'anonymous')}
+                      className="px-3 py-2 border rounded-md bg-white text-sm">
+                      <option value="public">Public</option>
+                      <option value="anonymous">Anonymous</option>
+                    </select>
+                  </div>
                 </div>
-                <button className="bg-black text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-800 transition">
-                  Send
+                <button onClick={handleSend} disabled={posting}
+                  className="bg-black text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-800 transition">
+                  {posting ? 'Sending...' : 'Send'}
                 </button>
               </div>
             </div>
