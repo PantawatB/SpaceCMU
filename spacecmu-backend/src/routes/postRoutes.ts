@@ -7,7 +7,7 @@ import {
   getPost,
   listPosts,
   likePost,
-  unlikePost,
+  undoLikePost,
   repostPost,
   undoRepost,
   savePost,
@@ -57,8 +57,8 @@ router.get("/:id", getPost);
 router.post("/:id/like", likePost);
 
 // 📌 ยกเลิก like
-// POST /api/posts/:id/unlike
-router.post("/:id/unlike", unlikePost);
+// POST /api/posts/:id/like
+router.delete("/:id/like", undoLikePost);
 
 // 📌 กด Repost
 // POST /api/posts/:id/repost

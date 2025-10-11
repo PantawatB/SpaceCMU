@@ -336,9 +336,9 @@ export async function likePost(req: Request & { user?: User }, res: Response) {
 }
 
 /**
- * 📌 ถอน like โพสต์
+ * 📌 ยกเลิก Like โพสต์
  */
-export async function unlikePost(
+export async function undoLikePost(
   req: Request & { user?: User },
   res: Response
 ) {
@@ -358,10 +358,10 @@ export async function unlikePost(
     post.likedBy = post.likedBy.filter((u) => u.id !== user.id);
     await postRepo.save(post);
 
-    return res.json({ message: "Post unliked" });
+    return res.json({ message: "Like undone" });
   } catch (err) {
-    console.error("unlikePost error:", err);
-    return res.status(500).json({ message: "Failed to unlike post" });
+    console.error("undoLikePost error:", err);
+    return res.status(500).json({ message: "Failed to undo like" });
   }
 }
 
