@@ -24,6 +24,8 @@ const friendRoutes_1 = __importDefault(require("./routes/friendRoutes"));
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const commentRoutes_1 = __importDefault(require("./routes/commentRoutes"));
 const chatRoutes_1 = __importDefault(require("./routes/chatRoutes"));
+const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes"));
+const productRoutes_1 = __importDefault(require("./routes/productRoutes"));
 // Load environment variables from .env
 dotenv_1.default.config();
 function bootstrap() {
@@ -33,12 +35,6 @@ function bootstrap() {
             yield ormconfig_1.AppDataSource.initialize();
             console.log("Data Source has been initialized!");
             const app = (0, express_1.default)();
-            // Add logging middleware
-            app.use((req, res, next) => {
-                console.log(`🚀 ${req.method} ${req.path}`, JSON.stringify(req.body));
-                console.log(`🔗 Headers:`, JSON.stringify(req.headers));
-                next();
-            });
             app.use(express_1.default.json());
             // Mount API routes under /api
             app.use("/api/users", userRoutes_1.default);
@@ -48,7 +44,9 @@ function bootstrap() {
             app.use("/api/admin", adminRoutes_1.default);
             app.use("/api/posts", commentRoutes_1.default);
             app.use("/api/chats", chatRoutes_1.default);
-            const port = process.env.PORT || 3000;
+            app.use("/api/uploads", uploadRoutes_1.default);
+            app.use("/api/products", productRoutes_1.default);
+            const port = process.env.PORT;
             app.listen(port, () => {
                 console.log(`Server listening on port ${port}`);
             });

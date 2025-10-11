@@ -10,6 +10,7 @@ import { Comment } from "./entities/Comment";
 import { Chat } from "./entities/Chat";
 import { Message } from "./entities/Message";
 import { ChatParticipant } from "./entities/ChatParticipant";
+import { Product } from "./entities/Product";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -34,6 +35,7 @@ export const AppDataSource = new DataSource({
     Chat,
     Message,
     ChatParticipant,
+    Product,
   ],
   ssl: process.env.DB_SSL === "true",
   extra: {

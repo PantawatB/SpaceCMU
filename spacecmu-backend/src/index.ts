@@ -12,6 +12,7 @@ import adminRoutes from "./routes/adminRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
+import productRoutes from "./routes/productRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -35,6 +36,7 @@ async function bootstrap() {
     app.use("/api/posts", commentRoutes);
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
+    app.use("/api/products", productRoutes);
 
     const port = process.env.PORT;
     app.listen(port, () => {
