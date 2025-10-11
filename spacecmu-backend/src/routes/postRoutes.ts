@@ -7,19 +7,22 @@ import {
   getPost,
   listPosts,
   likePost,
-  unlikePost,
+  undoLikePost,
   repostPost,
   undoRepost,
   savePost,
   unsavePost,
   getPublicFeed,
   getFriendFeed,
+  searchPostsByAuthor,
 } from "../controllers/postController";
 
 const router = Router();
 
 // ต้อง login ก่อนถึงจะโพสต์/กดไลก์ได้
 router.use(authenticateToken);
+
+router.get("/search", searchPostsByAuthor);
 
 // 📌 Feed สาธารณะ (Global)
 // GET /api/posts/feed/public
@@ -54,8 +57,8 @@ router.get("/:id", getPost);
 router.post("/:id/like", likePost);
 
 // 📌 ยกเลิก like
-// POST /api/posts/:id/unlike
-router.post("/:id/unlike", unlikePost);
+// POST /api/posts/:id/like
+router.delete("/:id/like", undoLikePost);
 
 // 📌 กด Repost
 // POST /api/posts/:id/repost
