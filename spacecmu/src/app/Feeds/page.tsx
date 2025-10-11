@@ -346,7 +346,6 @@ export default function FeedsMainPage() {
                   placeholder="Share something"
                   className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg"
                 />
-                <span className="text-2xl text-gray-400">😊</span>
               </div>
               <div className="flex items-center justify-between pt-2">
                 <div className="flex gap-6">

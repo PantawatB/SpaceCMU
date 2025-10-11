@@ -2,6 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import { AppDataSource } from "./ormconfig";
 import dotenv from "dotenv";
+import cors from "cors";
 
 // Import routes
 import userRoutes from "./routes/userRoutes";
@@ -24,6 +25,10 @@ async function bootstrap() {
 
     const app = express();
 
+    app.use(cors({
+      origin: "http://localhost:3001", // Frontend รันที่ port 3001
+      credentials: true
+    }));
     app.use(express.json());
 
     // Mount API routes under /api
