@@ -112,7 +112,7 @@
 					"response": []
 				},
 				{
-					"name": "1.3 Login User A",
+					"name": "1.3 Login User A & Verify Persona",
 					"event": [
 						{
 							"listen": "test",
@@ -124,6 +124,22 @@
 									"    pm.collectionVariables.set(\"user1Token\", response.token);",
 									"    pm.collectionVariables.set(\"user1Id\", response.user.id);",
 									"    console.log('User A Token & ID stored.');",
+									"});",
+									"",
+									"// NEW TEST: Verify that an automatic persona was created",
+									"pm.test(\"User should have an automatic persona\", function () {",
+									"    const getMeResponse = pm.sendRequest({",
+									"        url: pm.collectionVariables.get('baseUrl') + '/api/users/me',",
+									"        method: 'GET',",
+									"        header: {",
+									"            'Authorization': 'Bearer ' + pm.collectionVariables.get('user1Token')",
+									"        }",
+									"    }, function (err, res) {",
+									"        const meData = res.json();",
+									"        pm.expect(meData.persona).to.not.be.null;",
+									"        pm.expect(meData.persona.displayName).to.not.be.empty;",
+									"        console.log('✅ Verified: User A has persona -> ' + meData.persona.displayName);",
+									"    });",
 									"});"
 								],
 								"type": "text/javascript"
@@ -157,7 +173,7 @@
 					"response": []
 				},
 				{
-					"name": "1.4 Login User B",
+					"name": "1.4 Login User B & Verify Persona",
 					"event": [
 						{
 							"listen": "test",
@@ -169,6 +185,21 @@
 									"    pm.collectionVariables.set(\"user2Token\", response.token);",
 									"    pm.collectionVariables.set(\"user2Id\", response.user.id);",
 									"    console.log('User B Token & ID stored.');",
+									"});",
+									"",
+									"pm.test(\"User should have an automatic persona\", function () {",
+									"    const getMeResponse = pm.sendRequest({",
+									"        url: pm.collectionVariables.get('baseUrl') + '/api/users/me',",
+									"        method: 'GET',",
+									"        header: {",
+									"            'Authorization': 'Bearer ' + pm.collectionVariables.get('user2Token')",
+									"        }",
+									"    }, function (err, res) {",
+									"        const meData = res.json();",
+									"        pm.expect(meData.persona).to.not.be.null;",
+									"        pm.expect(meData.persona.displayName).to.not.be.empty;",
+									"        console.log('✅ Verified: User B has persona -> ' + meData.persona.displayName);",
+									"    });",
 									"});"
 								],
 								"type": "text/javascript"
@@ -196,6 +227,196 @@
 								"api",
 								"users",
 								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.5 [A] Get My Profile",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.6 [B] Get My Profile",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.7 [A] Update My Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Profile updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.message).to.eql(\"User updated successfully\");",
+									"    console.log('✅ Verified: User profile was updated.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"User A (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"title\": \"Software Engineer\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.8 [B] Update My Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Profile updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.message).to.eql(\"User updated successfully\");",
+									"    console.log('✅ Verified: User profile was updated.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"User B (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"title\": \"Computer Engineer\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
 							]
 						}
 					},
@@ -554,6 +775,36 @@
 							"response": []
 						},
 						{
+							"name": "List Liked Posts",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/users/me/likes",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"likes"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Undo Like",
 							"request": {
 								"auth": {
@@ -614,6 +865,36 @@
 							"response": []
 						},
 						{
+							"name": "List Reposted Posts",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/users/me/reposts",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"reposts"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Undo Repost",
 							"request": {
 								"auth": {
@@ -668,6 +949,36 @@
 										"posts",
 										"{{post1Id}}",
 										"save"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Saved Posts",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/users/me/saved",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"saved"
 									]
 								}
 							},
@@ -1280,6 +1591,49 @@
 							]
 						}
 					}
+				}
+			]
+		},
+		{
+			"name": "6. Persona Management",
+			"item": [
+				{
+					"name": "6.1 [A] Update Persona",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"displayName\": \"UserA-NewPersonaName\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/personas/{{user1Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"personas",
+								"{{user1Id}}"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
