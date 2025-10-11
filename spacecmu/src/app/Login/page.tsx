@@ -29,6 +29,14 @@ export default function LoginPage() {
         return;
       }
 
+      // store token and user for future requests
+      if (typeof window !== 'undefined' && data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      if (typeof window !== 'undefined' && data.user) {
+        try { localStorage.setItem('user', JSON.stringify(data.user)); } catch {}
+      }
+
       // สำเร็จ -> ไปหน้า Feeds
       router.push('/Feeds');
     } catch (err: unknown) {
