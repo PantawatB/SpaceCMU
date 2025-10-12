@@ -99,6 +99,7 @@ export async function login(req: Request, res: Response) {
         name: user.name,
         bio: user.bio,
         isAdmin: user.isAdmin,
+        profileImg: user.profileImg,
         persona: user.persona || null,
       },
     });
@@ -127,6 +128,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       name: user.name,
       bio: user.bio,
       isAdmin: user.isAdmin,
+      profileImg: user.profileImg,
       friendCount,
       persona: user.persona || null,
       createdAt: user.createdAt,
@@ -151,7 +153,7 @@ export async function updateUser(
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, password, bio } = req.body;
+    const { name, password, bio, profileImg } = req.body;
     const userRepo = AppDataSource.getRepository(User);
 
     if (name) {
@@ -160,6 +162,10 @@ export async function updateUser(
 
     if (password) {
       user.passwordHash = await hashPassword(password);
+    }
+
+    if (typeof profileImg !== "undefined") {
+      user.profileImg = profileImg;
     }
 
     if (typeof bio === "string") {
