@@ -139,7 +139,7 @@ export default function Sidebar({ menuItems }: SidebarProps) {
   };
 
   return (
-    <aside className="w-64 p-6 flex flex-col justify-between h-screen bg-white">
+    <aside className="flex-none w-64 min-w-[16rem] p-6 flex flex-col justify-between h-screen bg-white">
       <div>
         {/* Logo */}
         <div className="flex items-center gap-2 mb-7">
