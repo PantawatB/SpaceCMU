@@ -26,17 +26,25 @@ async function bootstrap() {
 
     const app = express();
 
-    app.use(cors({
-      origin: "http://localhost:3001", // Frontend รันที่ port 3001
-      credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      exposedHeaders: ["Authorization"]
-    }));
+    app.use(
+      cors({
+        origin: "http://localhost:3001", // Frontend รันที่ port 3001
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"],
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        exposedHeaders: ["Authorization"],
+      })
+    );
 
     // Debug: log incoming Authorization header
     app.use((req, res, next) => {
-      console.log('Incoming request', req.method, req.url, 'Authorization:', req.headers['authorization']);
+      console.log(
+        "Incoming request",
+        req.method,
+        req.url,
+        "Authorization:",
+        req.headers["authorization"]
+      );
       next();
     });
 
@@ -54,9 +62,12 @@ async function bootstrap() {
     app.use("/api/products", productRoutes);
 
     const port = parseInt(process.env.PORT || "3001");
-    const server = app.listen(port, "127.0.0.1", () => {
+    // Use 0.0.0.0 for Docker compatibility - allows external connections
+    const host =
+      process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
+    const server = app.listen(port, host, () => {
       const addr = server.address();
-      console.log(`Server listening on 127.0.0.1:${port}`);
+      console.log(`Server listening on ${host}:${port}`);
       try {
         console.log("server.address():", addr);
       } catch (e) {
