@@ -38,9 +38,27 @@ async function bootstrap() {
     app.use("/api/uploads", uploadRoutes);
     app.use("/api/products", productRoutes);
 
-    const port = process.env.PORT;
-    app.listen(port, () => {
-      console.log(`Server listening on port ${port}`);
+    const port = parseInt(process.env.PORT || "3001");
+    const server = app.listen(port, "127.0.0.1", () => {
+      const addr = server.address();
+      console.log(`Server listening on 127.0.0.1:${port}`);
+      try {
+        console.log("server.address():", addr);
+      } catch (e) {
+        console.error("failed to read server.address():", e);
+      }
+    });
+
+    server.on("error", (err) => {
+      console.error("HTTP server error:", err);
+    });
+
+    process.on("uncaughtException", (err) => {
+      console.error("uncaughtException:", err);
+    });
+
+    process.on("unhandledRejection", (reason) => {
+      console.error("unhandledRejection:", reason);
     });
   } catch (err) {
     console.error("Failed to start application:", err);

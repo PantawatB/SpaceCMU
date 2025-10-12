@@ -2,266 +2,62 @@
   {
     "name": "register A",
     "status": "fail",
-    "code": 409,
-    "body": {
-      "message": "Student ID already registered"
-    }
+    "code": null,
+    "body": "Error"
   },
   {
     "name": "login A",
-    "status": "ok",
-    "code": 200,
-    "data": {
-      "message": "Login successful",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkYjdkNDYzZi0wNDMwLTRiNmItYWQ4ZC0xYmYwYmE1Y2EyYTgiLCJpYXQiOjE3NjAxOTk1MzQsImV4cCI6MTc2MDgwNDMzNH0.pv97koo1h-5aZl--dE22__CnjovUCI3cHJbi9_3Skgg",
-      "user": {
-        "id": "db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8",
-        "studentId": "uA",
-        "email": "uA@example.com",
-        "name": "User A",
-        "bio": null,
-        "isAdmin": false
-      }
-    }
+    "status": "fail",
+    "code": null,
+    "body": "Error"
   },
   {
     "name": "me A",
-    "status": "ok",
-    "code": 200,
-    "data": {
-      "id": "db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8",
-      "studentId": "uA",
-      "email": "uA@example.com",
-      "name": "User A",
-      "bio": null,
-      "isAdmin": false,
-      "friendCount": 0,
-      "persona": null,
-      "createdAt": "2025-10-11T09:15:00.633Z",
-      "updatedAt": "2025-10-11T09:15:00.633Z"
-    }
+    "status": "skipped",
+    "reason": "no token"
   },
   {
     "name": "create post A",
-    "status": "ok",
-    "code": 201,
-    "data": {
-      "message": "Post created",
-      "post": {
-        "content": "Integration test post",
-        "isAnonymous": false,
-        "visibility": "public",
-        "user": {
-          "id": "db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8",
-          "studentId": "uA",
-          "email": "uA@example.com",
-          "passwordHash": "$2b$10$Yjr5Y3ArOz9uA6MbbsVW9ell2jdhHcAyQOq9TZQUS9MqkW4BIoT5m",
-          "name": "User A",
-          "bio": null,
-          "isAdmin": false,
-          "isBanned": false,
-          "createdAt": "2025-10-11T09:15:00.633Z",
-          "updatedAt": "2025-10-11T09:15:00.633Z",
-          "lastActiveAt": "2025-10-11T09:15:00.633Z",
-          "persona": null,
-          "friends": []
-        },
-        "persona": null,
-        "imageUrl": null,
-        "location": null,
-        "id": "627f7f6e-d9bf-493a-b118-6aea24989861",
-        "createdAt": "2025-10-11T09:18:54.816Z",
-        "updatedAt": "2025-10-11T09:18:54.816Z"
-      }
-    }
+    "status": "skipped",
+    "reason": "no token"
   },
   {
     "name": "list posts",
     "status": "fail",
-    "code": 401,
-    "body": {
-      "message": "Missing authorization token"
-    }
+    "code": null,
+    "body": "Error"
   },
   {
     "name": "create persona",
-    "status": "fail",
-    "code": 400,
-    "body": {
-      "message": "displayName is required"
-    }
+    "status": "skipped",
+    "reason": "no token"
   },
   {
-    "name": "create product",
-    "status": "ok",
-    "code": 201,
-    "data": {
-      "success": true,
-      "message": "Product created successfully",
-      "data": {
-        "name": "Test Item",
-        "price": 9.99,
-        "description": "runner",
-        "seller": {
-          "id": "db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8",
-          "studentId": "uA",
-          "email": "uA@example.com",
-          "passwordHash": "$2b$10$Yjr5Y3ArOz9uA6MbbsVW9ell2jdhHcAyQOq9TZQUS9MqkW4BIoT5m",
-          "name": "User A",
-          "bio": null,
-          "isAdmin": false,
-          "isBanned": false,
-          "createdAt": "2025-10-11T09:15:00.633Z",
-          "updatedAt": "2025-10-11T09:15:00.633Z",
-          "lastActiveAt": "2025-10-11T09:15:00.633Z",
-          "persona": null,
-          "friends": []
-        },
-        "id": 6,
-        "status": "active",
-        "createdAt": "2025-10-11T09:18:54.871Z",
-        "updatedAt": "2025-10-11T09:18:54.871Z"
-      }
-    }
-  },
-  {
-    "name": "list products",
-    "status": "ok",
-    "code": 200,
-    "data": {
-      "success": true,
-      "data": [
-        {
-          "id": 6,
-          "name": "Test Item",
-          "price": "9.99",
-          "description": "runner",
-          "status": "active",
-          "createdAt": "2025-10-11T09:18:54.871Z",
-          "updatedAt": "2025-10-11T09:18:54.871Z",
-          "seller": {
-            "id": "db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8",
-            "studentId": "uA",
-            "email": "uA@example.com",
-            "passwordHash": "$2b$10$Yjr5Y3ArOz9uA6MbbsVW9ell2jdhHcAyQOq9TZQUS9MqkW4BIoT5m",
-            "name": "User A",
-            "bio": null,
-            "isAdmin": false,
-            "isBanned": false,
-            "createdAt": "2025-10-11T09:15:00.633Z",
-            "updatedAt": "2025-10-11T09:15:00.633Z",
-            "lastActiveAt": "2025-10-11T09:15:00.633Z"
-          }
-        },
-        {
-          "id": 5,
-          "name": "ChatItem",
-          "price": "123.45",
-          "description": "Item for chat test",
-          "status": "active",
-          "createdAt": "2025-10-11T08:36:16.311Z",
-          "updatedAt": "2025-10-11T08:36:16.311Z",
-          "seller": {
-            "id": "b739e9db-9f5c-422d-b8f7-40056918db55",
-            "studentId": "chatA",
-            "email": "chatA@example.com",
-            "passwordHash": "$2b$10$vLbboGq1PKrwCy/Xc4A91uUp5Qyl8YVjDqxNxbyV6yxSx.mWrp4L6",
-            "name": "Chat A",
-            "bio": null,
-            "isAdmin": false,
-            "isBanned": false,
-            "createdAt": "2025-10-11T08:34:56.271Z",
-            "updatedAt": "2025-10-11T08:34:56.271Z",
-            "lastActiveAt": "2025-10-11T08:34:56.271Z"
-          }
-        },
-        {
-          "id": 4,
-          "name": "ChatItem",
-          "price": "123.45",
-          "description": "Item for chat test",
-          "status": "active",
-          "createdAt": "2025-10-11T08:34:56.543Z",
-          "updatedAt": "2025-10-11T08:34:56.543Z",
-          "seller": {
-            "id": "b739e9db-9f5c-422d-b8f7-40056918db55",
-            "studentId": "chatA",
-            "email": "chatA@example.com",
-            "passwordHash": "$2b$10$vLbboGq1PKrwCy/Xc4A91uUp5Qyl8YVjDqxNxbyV6yxSx.mWrp4L6",
-            "name": "Chat A",
-            "bio": null,
-            "isAdmin": false,
-            "isBanned": false,
-            "createdAt": "2025-10-11T08:34:56.271Z",
-            "updatedAt": "2025-10-11T08:34:56.271Z",
-            "lastActiveAt": "2025-10-11T08:34:56.271Z"
-          }
-        },
-        {
-          "id": 2,
-          "name": "PS Item A",
-          "price": "49.99",
-          "description": "From test A",
-          "status": "active",
-          "createdAt": "2025-10-11T05:43:18.977Z",
-          "updatedAt": "2025-10-11T05:43:18.977Z",
-          "seller": {
-            "id": "53e7850d-446b-414f-8e94-567eec8a4667",
-            "studentId": "testA",
-            "email": "testA@example.com",
-            "passwordHash": "$2b$10$7lE.wuxiVBJUA.NCK/BjO.78y05D8gn7AR4WrjaIkN3NQt4nwWRW.",
-            "name": "Test A",
-            "bio": null,
-            "isAdmin": false,
-            "isBanned": false,
-            "createdAt": "2025-10-11T05:43:18.708Z",
-            "updatedAt": "2025-10-11T05:43:18.708Z",
-            "lastActiveAt": "2025-10-11T05:43:18.708Z"
-          }
-        }
-      ]
-    }
+    "name": "product flows",
+    "status": "skipped",
+    "reason": "no token"
   },
   {
     "name": "register B",
-    "status": "ok",
-    "code": 201,
-    "data": {
-      "message": "Registration successful"
-    }
+    "status": "fail",
+    "code": null,
+    "body": "Error"
   },
   {
     "name": "login B",
-    "status": "ok",
-    "code": 200,
-    "data": {
-      "message": "Login successful",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3ZjgwNjE4MC01ZDQ2LTQ2ZTEtOGEyMy0wYzUxODkzM2M2Y2IiLCJpYXQiOjE3NjAxOTk1MzUsImV4cCI6MTc2MDgwNDMzNX0.6Uf_WnwP0fAVBPGa3xRQ-i3mgXDY1h8si0gpB0KsI4o",
-      "user": {
-        "id": "7f806180-5d46-46e1-8a23-0c518933c6cb",
-        "studentId": "uB",
-        "email": "uB@example.com",
-        "name": "User B",
-        "bio": null,
-        "isAdmin": false
-      }
-    }
+    "status": "fail",
+    "code": null,
+    "body": "Error"
   },
   {
     "name": "friend request A->B",
-    "status": "fail",
-    "code": 400,
-    "body": {
-      "message": "toUserId is required"
-    }
+    "status": "skipped",
+    "reason": "no token"
   },
   {
     "name": "create direct chat",
-    "status": "fail",
-    "code": 400,
-    "body": {
-      "message": "Other user ID is required"
-    }
+    "status": "skipped",
+    "reason": "missing token or userBId"
   },
   {
     "name": "send message",
@@ -270,39 +66,7 @@
   },
   {
     "name": "create comment",
-    "status": "ok",
-    "code": 201,
-    "data": {
-      "content": "Nice",
-      "user": {
-        "id": "db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8",
-        "studentId": "uA",
-        "email": "uA@example.com",
-        "passwordHash": "$2b$10$Yjr5Y3ArOz9uA6MbbsVW9ell2jdhHcAyQOq9TZQUS9MqkW4BIoT5m",
-        "name": "User A",
-        "bio": null,
-        "isAdmin": false,
-        "isBanned": false,
-        "createdAt": "2025-10-11T09:15:00.633Z",
-        "updatedAt": "2025-10-11T09:15:00.633Z",
-        "lastActiveAt": "2025-10-11T16:18:55.031Z",
-        "persona": null,
-        "friends": []
-      },
-      "post": {
-        "id": "627f7f6e-d9bf-493a-b118-6aea24989861",
-        "content": "Integration test post",
-        "imageUrl": null,
-        "location": null,
-        "isAnonymous": false,
-        "visibility": "public",
-        "createdAt": "2025-10-11T09:18:54.816Z",
-        "updatedAt": "2025-10-11T09:18:54.816Z",
-        "likedBy": []
-      },
-      "id": "bec03f5a-8062-4992-a1e8-0e7b4ebaefcb",
-      "createdAt": "2025-10-11T09:18:55.083Z",
-      "updatedAt": "2025-10-11T09:18:55.083Z"
-    }
+    "status": "skipped",
+    "reason": "missing token or postId"
   }
 ]
