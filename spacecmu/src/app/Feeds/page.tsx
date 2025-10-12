@@ -18,8 +18,30 @@ export default function FeedsMainPage() {
   // Chat is handled by the shared ChatWindow component (imported below)
 
   // Current logged-in user (fetched from API)
-  type Persona = { id?: string; displayName?: string; avatarUrl?: string };
-  type CurrentUser = { id?: string; name?: string; persona?: Persona } | null;
+  type Persona = {
+    id?: string;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+    bio?: string | null;
+    changeCount?: number;
+    lastChangedAt?: string | null;
+    isBanned?: boolean;
+    actorId?: string | null;
+  };
+  type CurrentUser = {
+    id?: string;
+    studentId?: string | null;
+    email?: string | null;
+    name?: string | null;
+    bio?: string | null;
+    isAdmin?: boolean;
+    profileImg?: string | null;
+    friendCount?: number;
+    actorId?: string | null;
+    persona?: Persona | null;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  } | null;
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
 
   useEffect(() => {
@@ -306,8 +328,12 @@ export default function FeedsMainPage() {
             >
               <div className="flex items-center gap-3 mb-2">
                 <Image
-                  src={i % 2 === 0 ? "/tanjiro.jpg" : "/noobcat.png"}
-                  alt="avatar"
+                  src={
+                    i % 2 === 0
+                      ? (currentUser?.profileImg ?? "/tanjiro.jpg")
+                      : (currentUser?.persona?.avatarUrl ?? "/noobcat.png")
+                  }
+                  alt={i % 2 === 0 ? (currentUser?.name ?? "avatar") : (currentUser?.persona?.displayName ?? "avatar")}
                   width={40}
                   height={40}
                   className="rounded-full object-cover"
