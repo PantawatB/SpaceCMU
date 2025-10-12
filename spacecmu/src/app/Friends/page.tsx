@@ -8,29 +8,18 @@ import { API_BASE_URL } from "../../utils/apiConfig";
 import ChatWindow from '@/components/ChatWindow';
 
 // Interface for friend request API response
-interface FriendRequestUser {
-  id: string;
-  studentId: string;
-  email: string;
+interface FriendRequestActor {
   name: string;
-  bio: string | null;
-  isAdmin: boolean;
-  isBanned: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastActiveAt: string;
+  type: string;
+  actorId: string;
 }
 
 interface FriendRequestResponse {
   id: string;
+  from: FriendRequestActor;
+  to: FriendRequestActor;
   status: string;
-  createdAt: string;
-  updatedAt: string;
-  fromUser: FriendRequestUser;
-  toUser: FriendRequestUser;
 }
-
-
 
 // Friend card component
 interface FriendCardProps {
@@ -38,22 +27,29 @@ interface FriendCardProps {
   name: string;
   bio: string;
   followed: boolean;
+  avatarUrl?: string | null;
+  isFriend?: boolean;
   onFollow: () => void;
   onRemove: () => void;
+  onMessage?: () => void;
 }
-function FriendCard({ name, bio, followed, onFollow, onRemove }: FriendCardProps) {
+function FriendCard({ name, bio, followed, avatarUrl, isFriend, onFollow, onRemove, onMessage }: FriendCardProps) {
   return (
     <div className="relative rounded-xl overflow-hidden flex flex-col items-center shadow-lg bg-white font-Roboto-light mb-6">
       <div className="h-24 w-full bg-gray-500"></div>
       <div className="top-24 z-10 flex items-center flex-col gap-4 px-5 py-5">
         <div className="-mt-16">
-          <Image
-            src="/tanjiro.jpg"
-            alt="Profile Avatar"
-            width={75}
-            height={75}
-            className="rounded-full border-2 border-white shadow"
-          />
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt="Profile Avatar"
+              width={75}
+              height={75}
+              className="rounded-full border-2 border-white shadow object-cover"
+            />
+          ) : (
+            <div className="w-[75px] h-[75px] rounded-full border-2 border-white shadow bg-gray-200" />
+          )}
         </div>
         <div className="flex items-center flex-col">
           <p title="name" className="text-black font-Roboto-md">
@@ -80,8 +76,27 @@ function FriendCard({ name, bio, followed, onFollow, onRemove }: FriendCardProps
                 Reject
               </button>
             </>
+          ) : isFriend ? (
+            // Existing friend: show Unfriend + Message
+            <>
+              <button
+                className={`bg-red-600 hover:bg-red-700 transition-all text-[15px] text-white px-3 py-[6px] rounded-full flex items-center gap-1`}
+                onClick={onRemove}
+              >
+                Unfriend
+              </button>
+              <button
+                className="bg-gray-200/65 hover:bg-gray-200 transition-colors p-2 rounded-full"
+                onClick={onMessage}
+                aria-label="Message"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </button>
+            </>
           ) : (
-            // Other cards: keep Add Friend + remove icon
+            // Other cards: keep Add Friend + Message
             <>
               <button
                 className={`bg-gray-600 transition-all gradient text-[15px] text-white px-3 py-[6px] rounded-full flex items-center gap-1`}
@@ -91,21 +106,11 @@ function FriendCard({ name, bio, followed, onFollow, onRemove }: FriendCardProps
               </button>
               <button
                 className="bg-gray-200/65 hover:bg-gray-200 transition-colors p-2 rounded-full"
-                onClick={onRemove}
+                onClick={onMessage}
+                aria-label="Message"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="1.5"
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
-                  />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-6 4h4M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </button>
             </>
@@ -188,11 +193,12 @@ export default function FriendsMainPage() {
       // Transform API data to match FriendCardProps interface
       const transformedRequests: FriendCardProps[] = data.map((request) => ({
         id: request.id,
-        name: request.fromUser.name,
-        bio: request.fromUser.bio || "No bio available",
-        followed: request.status === "pending",
+        name: request.from?.name ?? 'Unknown',
+        bio: 'No bio available',
+        followed: request.status === 'pending',
         onFollow: () => handleAcceptRequest(request.id),
         onRemove: () => handleRejectRequest(request.id),
+        onMessage: () => {},
       }));
 
       setFriendRequests(transformedRequests);
@@ -210,7 +216,28 @@ export default function FriendsMainPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const res = await fetch(`${API_BASE_URL}/api/friends`, {
+      // First get current user's actorId
+      const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!meRes.ok) {
+        console.warn('Failed to fetch current user:', meRes.status);
+        return;
+      }
+
+      const meData: { actorId?: string } = await meRes.json();
+      const actorId = meData.actorId;
+      if (!actorId) {
+        console.warn('No actorId found for current user');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/friends/${actorId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -223,14 +250,17 @@ export default function FriendsMainPage() {
         return;
       }
 
-      const data: { id: string; name: string; bio: string | null }[] = await res.json();
+      const data: { actorId: string; name: string; type: string; profileImg?: string | null; bio?: string | null }[] = await res.json();
       const transformed: FriendCardProps[] = data.map((u) => ({
-        id: u.id,
+        id: u.actorId,
         name: u.name,
         bio: u.bio || 'No bio available',
         followed: false,
+        isFriend: true,
         onFollow: () => {},
         onRemove: () => {},
+        onMessage: () => {},
+        avatarUrl: u.profileImg, // Map profileImg to avatarUrl
       }));
 
       setFriends(transformed);
@@ -298,6 +328,7 @@ export default function FriendsMainPage() {
       followed: false,
       onFollow: () => {},
       onRemove: () => {},
+      onMessage: () => {},
     },
     {
       id: 'p6',
@@ -306,6 +337,7 @@ export default function FriendsMainPage() {
       followed: false,
       onFollow: () => {},
       onRemove: () => {},
+      onMessage: () => {},
     },
     {
       id: 'p7',
@@ -314,6 +346,7 @@ export default function FriendsMainPage() {
       followed: false,
       onFollow: () => {},
       onRemove: () => {},
+      onMessage: () => {},
     },
     {
       id: 'p8',
@@ -322,6 +355,7 @@ export default function FriendsMainPage() {
       followed: false,
       onFollow: () => {},
       onRemove: () => {},
+      onMessage: () => {},
     },
     {
       id: 'p9',
@@ -330,6 +364,7 @@ export default function FriendsMainPage() {
       followed: false,
       onFollow: () => {},
       onRemove: () => {},
+      onMessage: () => {},
     },
   ];
   
