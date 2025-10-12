@@ -74,6 +74,43 @@ export async function sendFriendRequest(
 }
 
 /**
+ * 📌 ยกเลิกคำขอเป็นเพื่อนที่ส่งไป
+ */
+export async function cancelFriendRequest(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { requestId } = req.params;
+    const user = req.user!;
+
+    const frRepo = AppDataSource.getRepository(FriendRequest);
+    const request = await frRepo.findOne({
+      where: { id: requestId },
+      relations: ["fromUser"],
+    });
+
+    if (!request) {
+      return res.status(404).json({ message: "Friend request not found" });
+    }
+
+    // อนุญาตให้ยกเลิกได้เฉพาะคนที่ส่งคำขอไปเท่านั้น
+    if (request.fromUser.id !== user.id) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to cancel this request" });
+    }
+
+    await frRepo.remove(request);
+
+    return res.status(200).json({ message: "Friend request cancelled" });
+  } catch (err) {
+    console.error("cancelFriendRequest error:", err);
+    return res.status(500).json({ message: "Failed to cancel friend request" });
+  }
+}
+
+/**
  * 📌 ดึงคำขอเป็นเพื่อน (pending)
  */
 export async function listFriendRequests(

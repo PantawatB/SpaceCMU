@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import jwt from "jsonwebtoken";
 import { User } from "../entities/User";
+import { Persona } from "../entities/Persona";
 import { hashPassword, comparePassword } from "../utils/hash";
 import {
   sanitizeUser,
@@ -9,6 +10,7 @@ import {
   createResponse,
   listResponse,
 } from "../utils/serialize";
+import { generateRandomPersonaName } from "../utils/personaGenerator";
 
 /**
  * Registers a new user. This function expects a CMU student ID, CMU email,
@@ -43,6 +45,16 @@ export async function register(req: Request, res: Response) {
     });
 
     await userRepo.save(user);
+
+    const personaRepo = AppDataSource.getRepository(Persona);
+    const randomName = generateRandomPersonaName();
+
+    const newPersona = personaRepo.create({
+      displayName: randomName,
+      user: user,
+    });
+
+    await personaRepo.save(newPersona);
     return res.status(201).json({ message: "Registration successful" });
   } catch (err) {
     console.error("Register error:", err);
@@ -66,7 +78,11 @@ export async function login(req: Request, res: Response) {
 
     // Find user by email or studentId
     const whereCondition = email ? { email } : { studentId };
-    const user = await userRepo.findOne({ where: whereCondition });
+
+    const user = await userRepo.findOne({
+      where: whereCondition,
+      relations: ["persona"],
+    });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -130,7 +146,7 @@ export async function updateUser(
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, password, bio } = req.body;
+    const { name, password, bio, profileImg } = req.body;
     const userRepo = AppDataSource.getRepository(User);
 
     if (name) {
@@ -139,6 +155,10 @@ export async function updateUser(
 
     if (password) {
       user.passwordHash = await hashPassword(password);
+    }
+
+    if (typeof profileImg !== "undefined") {
+      user.profileImg = profileImg;
     }
 
     if (typeof bio === "string") {

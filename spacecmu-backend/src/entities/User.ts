@@ -52,6 +52,9 @@ export class User {
   @Column()
   name!: string;
 
+  @Column({ nullable: true })
+  profileImg?: string;
+
   @Column({ type: "text", nullable: true }) // ใช้ type: "text" สำหรับข้อความยาวๆ
   bio?: string;
 
