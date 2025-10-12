@@ -5,6 +5,7 @@ import {
   OneToOne,
   OneToMany,
   ManyToMany,
+  JoinColumn,
 } from "typeorm";
 import { Persona } from "./Persona";
 import { Post } from "./Post";
@@ -93,6 +94,7 @@ export class User {
     cascade: true,
     nullable: true,
   })
+  @JoinColumn()
   persona?: Persona;
 
   /**

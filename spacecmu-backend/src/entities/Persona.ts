@@ -23,7 +23,6 @@ export class Persona {
    * User เจ้าของ persona (1:1)
    */
   @OneToOne(() => User, (user) => user.persona, { onDelete: "CASCADE" })
-  @JoinColumn()
   user!: User;
 
   /**

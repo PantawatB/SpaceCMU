@@ -379,6 +379,7 @@ export async function getChatMessages(
           id: msg.id,
           content: msg.content,
           type: msg.type,
+          imageUrl: msg.fileUrl, // Include image URL for image messages
           sender: {
             id: msg.sender.id,
             name: msg.sender.name,
@@ -601,6 +602,7 @@ export async function getNewMessages(
           id: msg.id,
           content: msg.content,
           type: msg.type,
+          imageUrl: msg.fileUrl, // Include image URL for image messages
           sender: {
             id: msg.sender.id,
             name: msg.sender.name,
