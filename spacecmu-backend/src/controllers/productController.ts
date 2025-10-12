@@ -42,7 +42,7 @@ export const createProduct = async (
   res: Response
 ) => {
   try {
-    const { name, price, description } = req.body;
+    const { name, price, description, imageUrl } = req.body;
     const user = req.user!;
 
     if (!name || !price) {
@@ -57,18 +57,17 @@ export const createProduct = async (
       name,
       price: parseFloat(price),
       description,
+      imageUrl,
       seller: user,
     });
 
     await productRepo.save(product);
 
-    return res
-      .status(201)
-      .json(
-        createResponse("Product created successfully", {
-          product: { ...product, seller: sanitizeSeller(user) },
-        })
-      );
+    return res.status(201).json(
+      createResponse("Product created successfully", {
+        product: { ...product, seller: sanitizeSeller(user) },
+      })
+    );
   } catch (error) {
     console.error("Error creating product:", error);
     return res.status(500).json({
@@ -152,6 +151,60 @@ export const updateProductStatus = async (
     );
   } catch (error) {
     console.error("Error updating product status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// PUT /api/products/:id/image - อัพเดทรูปภาพสินค้า
+export const updateProductImage = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+    const user = req.user!;
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Image URL is required",
+      });
+    }
+
+    const productRepo = AppDataSource.getRepository(Product);
+    const product = await productRepo.findOne({
+      where: { id: parseInt(id) },
+      relations: ["seller"],
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // ตรวจสอบว่าเป็นเจ้าของสินค้าหรือไม่
+    if (product.seller.id !== user.id) {
+      return res
+        .status(403)
+        .json(createResponse("You can only update your own products", null));
+    }
+
+    product.imageUrl = imageUrl;
+    await productRepo.save(product);
+
+    return res.json(
+      createResponse("Product image updated successfully", {
+        product: { ...product, seller: sanitizeSeller(product.seller) },
+      })
+    );
+  } catch (error) {
+    console.error("Error updating product image:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

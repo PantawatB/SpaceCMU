@@ -15,5 +15,10 @@ router.patch(
   authenticateToken,
   productController.updateProductStatus
 );
+router.put(
+  "/:id/image",
+  authenticateToken,
+  productController.updateProductImage
+);
 
 export default router;

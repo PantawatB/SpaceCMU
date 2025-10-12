@@ -3,6 +3,7 @@ import { authenticateToken } from "../middleware/auth";
 import {
   getMyChats,
   createDirectChat,
+  createProductChat,
   getChatMessages,
   sendMessage,
   getNewMessages,
@@ -19,6 +20,7 @@ router.use(authenticateToken);
 // Chat management
 router.get("/", getMyChats); // GET /api/chats - Get all user's chats
 router.post("/direct", createDirectChat); // POST /api/chats/direct - Create direct chat
+router.post("/product", createProductChat); // POST /api/chats/product - Contact product seller
 
 // Message management
 router.get("/:chatId/messages", getChatMessages); // GET /api/chats/:chatId/messages - Get chat messages (real-time)

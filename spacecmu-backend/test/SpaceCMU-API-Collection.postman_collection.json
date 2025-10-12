@@ -424,6 +424,49 @@
           }
         },
         {
+          "name": "Create Chat with Product Seller",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const chatId = response.data?.chatId;",
+                  "    ",
+                  "    if (chatId) {",
+                  "        pm.collectionVariables.set('chatId', chatId);",
+                  "        console.log('Product Chat ID saved:', chatId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userBToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"message\": \"สวัสดีครับ สนใจสินค้านี้ครับ ราคาต่อรองได้ไหมครับ\",\n  \"imageUrl\": \"{{chatImageUrl}}\",\n  \"fileName\": \"{{sampleFileName}}\",\n  \"fileSize\": {{sampleFileSize}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/product",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "product"]
+            }
+          }
+        },
+        {
           "name": "Get Chat Messages (Real-Time)",
           "request": {
             "method": "GET",
@@ -526,6 +569,74 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"content\": \"Hello from Postman! 👋\",\n  \"type\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const messageId = response.data?.id;",
+                  "    ",
+                  "    if (messageId) {",
+                  "        pm.collectionVariables.set('lastMessageId', messageId);",
+                  "        console.log('Message ID saved:', messageId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello! This is a test message with image\",\n  \"imageUrl\": \"{{chatImageUrl}}\",\n  \"fileName\": \"{{sampleFileName}}\",\n  \"fileSize\": {{sampleFileSize}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Message (Text Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is a text-only message\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
@@ -1285,7 +1396,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"MacBook Pro M3\",\n  \"description\": \"Brand new MacBook Pro with M3 chip, 16GB RAM, 512GB SSD. Perfect for students and professionals.\",\n  \"price\": 58900,\n  \"category\": \"Electronics\",\n  \"condition\": \"New\",\n  \"contactInfo\": \"Line: @seller123, Tel: 081-234-5678\",\n  \"imageUrls\": [\"https://example.com/macbook1.jpg\"]\n}"
+                  "raw": "{\n  \"name\": \"MacBook Pro M3\",\n  \"description\": \"Brand new MacBook Pro with M3 chip, 16GB RAM, 512GB SSD. Perfect for students and professionals.\",\n  \"price\": 58900,\n  \"category\": \"Electronics\",\n  \"condition\": \"New\",\n  \"contactInfo\": \"Line: @seller123, Tel: 081-234-5678\",\n  \"imageUrl\": \"{{sampleImageUrl}}\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/products",
@@ -1366,6 +1477,31 @@
                   "raw": "{{baseUrl}}/products/{{productId}}/status",
                   "host": ["{{baseUrl}}"],
                   "path": ["products", "{{productId}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "Update Product Image",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"imageUrl\": \"{{sampleImageUrl}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/products/{{productId}}/image",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products", "{{productId}}", "image"]
                 }
               }
             },

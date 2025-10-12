@@ -22,6 +22,9 @@ export class Product {
   @Column({ type: "text", nullable: true })
   description?: string;
 
+  @Column({ type: "varchar", nullable: true, name: "imageurl" })
+  imageUrl?: string;
+
   @Column({ type: "enum", enum: ["active", "sold"], default: "active" })
   status!: "active" | "sold";
 

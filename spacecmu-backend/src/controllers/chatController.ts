@@ -161,6 +161,139 @@ export async function createDirectChat(
 }
 
 /**
+ * Create a chat to contact product seller
+ */
+export async function createProductChat(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user!;
+    const { productId, message, imageUrl } = req.body;
+
+    if (!productId) {
+      return res.status(400).json({ message: "Product ID is required" });
+    }
+
+    // Get product and seller info
+    const { Product } = await import("../entities/Product");
+    const productRepo = AppDataSource.getRepository(Product);
+    const product = await productRepo.findOne({
+      where: { id: productId },
+      relations: ["seller"],
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Check if user is trying to contact themselves
+    if (product.seller.id === user.id) {
+      return res.status(400).json({
+        message: "You cannot contact yourself about your own product",
+      });
+    }
+
+    // Create or find existing chat with seller
+    const userRepo = AppDataSource.getRepository(User);
+    const chatRepo = AppDataSource.getRepository(Chat);
+    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
+
+    // Check if chat already exists between buyer and seller
+    const existingParticipations = await chatParticipantRepo.find({
+      where: { user: { id: user.id } },
+      relations: ["chat", "user"],
+    });
+
+    let existingChat = null;
+    for (const participation of existingParticipations) {
+      const chat = participation.chat;
+      if (chat.type === "direct") {
+        // Get all participants for this chat
+        const allParticipants = await chatParticipantRepo.find({
+          where: { chat: { id: chat.id } },
+          relations: ["user"],
+        });
+
+        if (allParticipants.length === 2) {
+          const otherParticipant = allParticipants.find(
+            (p: any) => p.user.id !== user.id
+          );
+          if (
+            otherParticipant &&
+            otherParticipant.user.id === product.seller.id
+          ) {
+            existingChat = chat;
+            break;
+          }
+        }
+      }
+    }
+
+    let chat;
+    if (existingChat) {
+      chat = existingChat;
+    } else {
+      // Create new chat
+      chat = chatRepo.create({
+        type: "direct" as ChatType,
+        createdBy: user,
+      });
+      await chatRepo.save(chat);
+
+      // Add participants
+      const buyerParticipant = chatParticipantRepo.create({
+        chat,
+        user: user,
+        joinedAt: new Date(),
+      });
+
+      const sellerParticipant = chatParticipantRepo.create({
+        chat,
+        user: product.seller,
+        joinedAt: new Date(),
+      });
+
+      await chatParticipantRepo.save([buyerParticipant, sellerParticipant]);
+    }
+
+    // Send initial message if provided
+    if (message) {
+      const { Message, MessageType } = await import("../entities/Message");
+      const messageRepo = AppDataSource.getRepository(Message);
+
+      const newMessage = messageRepo.create({
+        chat: chat,
+        sender: user,
+        content: message,
+        type: imageUrl ? MessageType.IMAGE : MessageType.TEXT,
+        fileUrl: imageUrl || null,
+      });
+
+      await messageRepo.save(newMessage);
+
+      // Update chat's last message
+      chat.lastMessage = newMessage;
+      await chatRepo.save(chat);
+    }
+
+    return res.status(201).json({
+      message: "Chat created successfully",
+      data: {
+        chatId: chat.id,
+        sellerId: product.seller.id,
+        sellerName: product.seller.name,
+        productId: product.id,
+        productName: product.name,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating product chat:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/**
  * Get messages in a specific chat (Real-time chat - NO pagination)
  * Returns recent messages for immediate display, suitable for real-time updates
  */
@@ -284,10 +417,26 @@ export async function sendMessage(
   try {
     const user = req.user!;
     const { chatId } = req.params;
-    const { content, type = MessageType.TEXT, replyToId } = req.body;
+    const {
+      content,
+      type = MessageType.TEXT,
+      replyToId,
+      imageUrl,
+      fileName,
+      fileSize,
+    } = req.body;
 
-    if (!content && type === MessageType.TEXT) {
-      return res.status(400).json({ message: "Message content is required" });
+    // Validation based on message type
+    if (type === MessageType.TEXT && !content) {
+      return res
+        .status(400)
+        .json({ message: "Text message content is required" });
+    }
+
+    if (type === MessageType.IMAGE && !imageUrl) {
+      return res
+        .status(400)
+        .json({ message: "Image URL is required for image messages" });
     }
 
     const chatRepo = AppDataSource.getRepository(Chat);
@@ -330,6 +479,9 @@ export async function sendMessage(
       sender: user,
       content,
       type,
+      fileUrl: imageUrl || null,
+      fileName: fileName || null,
+      fileSize: fileSize || null,
       replyTo: replyToMessage || undefined,
     });
     await messageRepo.save(newMessage);
