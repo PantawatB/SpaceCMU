@@ -2,6 +2,11 @@
 
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
+import { useEffect, useState } from 'react';
+type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string };
+type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bio?: string; persona?: Persona } | null;
+
+import { API_BASE_URL } from '@/utils/apiConfig';
 
 export default function ProfileMainPage() {
 
@@ -161,6 +166,58 @@ export default function ProfileMainPage() {
     },
   ];
 
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
+  const [activeProfile, setActiveProfile] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('activeProfile');
+      return v ? parseInt(v, 10) : 0;
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
+    const fetchMe = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch current user');
+        const data = await res.json();
+        setCurrentUser(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchMe();
+
+    // listen for activeProfile changes from Sidebar
+    const handler = (e: Event) => {
+      // event detail is the new profile index
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') setActiveProfile(detail);
+    };
+    window.addEventListener('activeProfileChanged', handler as EventListener);
+    return () => window.removeEventListener('activeProfileChanged', handler as EventListener);
+  }, []);
+
+  // compute displayed profile
+  const publicProfile = {
+    name: currentUser?.name ?? 'Kamado Tanjiro',
+    studentId: currentUser?.studentId ?? '6506xxxxx',
+    avatar: currentUser?.profileImg ?? '/tanjiro.jpg',
+    bio: currentUser?.bio ?? 'A kind-hearted Demon Slayer who fights to protect humanity while seeking a cure for his sister.',
+  };
+
+  const anonymousProfile = {
+    name: currentUser?.persona?.displayName ?? 'Noobcat',
+    avatar: currentUser?.persona?.avatarUrl ?? '/noobcat.png',
+    bio: currentUser?.persona?.bio ?? '',
+  };
+
+  const displayed = activeProfile === 0 ? publicProfile : anonymousProfile;
+
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
       {/* Sidebar */}
@@ -208,21 +265,33 @@ export default function ProfileMainPage() {
           <div className="bg-white rounded-2xl shadow relative overflow-hidden">
             {/* Cover Image */}
             <div className="h-40 w-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 flex items-center justify-center relative">
-              {/* Rainbow background can be replaced with SVG or image for more accuracy */}
+              {/* Rainbow background */}
             </div>
             {/* Profile Avatar - left aligned */}
             <div className="absolute left-10 top-28 flex items-center">
               <div className="rounded-full border-4 border-white p-1 bg-white">
-                <Image
-                  src="/tanjiro.jpg"
-                  alt="Profile Avatar"
-                  width={90}
-                  height={90}
-                  className="rounded-full"
-                />
+                {typeof displayed.avatar === 'string' && displayed.avatar.startsWith('http') ? (
+                  <Image
+                    loader={({ src }) => src}
+                    src={displayed.avatar}
+                    alt={displayed.name}
+                    width={90}
+                    height={90}
+                    unoptimized
+                    className="rounded-full"
+                  />
+                ) : (
+                  <Image
+                    src={displayed.avatar}
+                    alt={displayed.name}
+                    width={90}
+                    height={90}
+                    className="rounded-full"
+                  />
+                )}
               </div>
-              {/* Stats - right of avatar, vertically centered, adjust only stats position */}
-              <div className="flex flex-col justify-center ml-6 relative" style={{ top: '25px' }}>
+              {/* Stats - right of avatar */}
+              <div className="flex flex-col justify-center ml-6 relative" style={{ top: '18px' }}>
                 <div className="flex gap-8">
                   <div className="text-center">
                     <span className="text-xl font-semibold">1.25k</span>
@@ -231,24 +300,29 @@ export default function ProfileMainPage() {
                     <span className="text-black-500 ml-4 font-semibold">65</span>
                     <span className="text-gray-500 ml-1">Engineers</span>
                   </div>
-                  
                 </div>
               </div>
             </div>
             {/* Name & Verified */}
-            <div className="flex items-center mt-19 ml-8">
-              <span className="text-2xl font-bold">Kamado Tanjiro</span>
-              <svg
-                className="w-6 h-6 text-blue-500 ml-2"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.93 6.36l-4.24 4.24a1 1 0 01-1.41 0l-2.12-2.12a1 1 0 111.41-1.41l1.41 1.41 3.54-3.54a1 1 0 111.41 1.41z" />
-              </svg>
+            <div className="flex items-center mt-20 ml-8">
+              <span className="text-2xl font-bold">{displayed.name}</span>
+              {activeProfile === 0 && (
+                <svg
+                  className="w-6 h-6 text-blue-500 ml-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm3.93 6.36l-4.24 4.24a1 1 0 01-1.41 0l-2.12-2.12a1 1 0 111.41-1.41l1.41 1.41 3.54-3.54a1 1 0 111.41 1.41z" />
+                </svg>
+              )}
             </div>
+            {/* Student id (only for public) */}
+            {activeProfile === 0 && (
+              <div className="text-left text-gray-600 mt-2 px-8">@{publicProfile.studentId}</div>
+            )}
             {/* Bio */}
             <div className="text-left text-gray-600 mt-2 px-8">
-              A kind-hearted Demon Slayer who fights to protect humanity while seeking a cure for his sister Nezuko.
+              {displayed.bio}
             </div>
             {/* Tabs */}
             <div className="flex justify-center mt-6 border-b border-gray-200">
