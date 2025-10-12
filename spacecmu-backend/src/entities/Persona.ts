@@ -35,6 +35,9 @@ export class Persona {
   @Column({ nullable: true })
   avatarUrl?: string;
 
+  @Column({ type: "text", nullable: true })
+  bio?: string;
+
   /**
    * จำนวนครั้งที่เปลี่ยน persona ในเดือนนี้
    */

@@ -456,7 +456,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"displayName\": \"UserA-NewName\",\n    \"avatarUrl\": \"http://example.com/avatarA.jpg\"\n}",
+							"raw": "{\n    \"displayName\": \"UserA-NewName\",\n    \"avatarUrl\": \"http://example.com/avatarA.jpg\",\n    \"bio\": \"This is my new personaA bio.\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -511,7 +511,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"displayName\": \"UserB-NewName\",\n    \"avatarUrl\": \"http://example.com/avatarB.jpg\"\n}",
+							"raw": "{\n    \"displayName\": \"UserB-NewName\",\n    \"avatarUrl\": \"http://example.com/avatarB.jpg\",\n    \"bio\": \"This is my new personaB bio.\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -996,7 +996,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This is a public post from User B!\",\n    \"visibility\": \"public\",\n    \"imageUrl\": \"{{postImageUrl}}\",\n    \"location\": \"CMU\"\n}",
+							"raw": "{\n    \"content\": \"This is a public post from User B!\",\n    \"visibility\": \"public\",\n    \"imageUrl\": \"http://example.com/new-ImagePost.jpg\",\n    \"location\": \"CMU\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1033,7 +1033,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"visibility\": \"friends\"\n}",
+							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"visibility\": \"friends\",\n    \"imageUrl\": \"\",\n    \"location\": \"\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
