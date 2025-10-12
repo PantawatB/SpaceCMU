@@ -1,0 +1,1226 @@
+{
+  "info": {
+    "name": "SpaceCMU Backend API",
+    "description": "Chat API และ Market API สำหรับ SpaceCMU Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sampleImageUrl",
+      "value": "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500",
+      "type": "string"
+    },
+    {
+      "key": "chatImageUrl",
+      "value": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500",
+      "type": "string"
+    },
+    {
+      "key": "userAToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userCToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userAId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userCId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatABId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatCAId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatCBId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    const userId = response.user?.id || response.data?.user?.id;",
+                  "    if (userId) {",
+                  "        pm.collectionVariables.set('userId', userId);",
+                  "        console.log('✅ User ID saved:', userId);",
+                  "    }",
+                  "} else if (pm.response.code === 400) {",
+                  "    console.log('ℹ️ User already exists - this is expected');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"SELLER001\",\n  \"password\": \"password123\",\n  \"name\": \"John Seller\",\n  \"email\": \"seller@cmu.ac.th\",\n  \"phone\": \"0801234567\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const token = response.token || response.data?.token;",
+                  "    const userId = response.user?.id || response.data?.user?.id;",
+                  "    ",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('authToken', token);",
+                  "        console.log('✅ Auth token saved');",
+                  "    }",
+                  "    ",
+                  "    if (userId) {",
+                  "        pm.collectionVariables.set('userId', userId);",
+                  "        console.log('✅ User ID saved:', userId);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Login failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"SELLER001\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Chat API",
+      "item": [
+        {
+          "name": "Get My Chats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chats",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats"]
+            }
+          }
+        },
+        {
+          "name": "Create Direct Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const chatId = response.data?.id || response.id;",
+                  "    ",
+                  "    if (chatId) {",
+                  "        pm.collectionVariables.set('chatId', chatId);",
+                  "        console.log('Chat ID saved:', chatId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otherUserId\": \"db7d463f-0430-4b6b-ad8d-1bf0ba5ca2a8\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/direct",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "direct"]
+            }
+          }
+        },
+        {
+          "name": "Create Chat with Product Seller",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const chatId = response.data?.chatId;",
+                  "    ",
+                  "    if (chatId) {",
+                  "        pm.collectionVariables.set('chatId', chatId);",
+                  "        console.log('Product Chat ID saved:', chatId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"message\": \"สวัสดีครับ สนใจสินค้านี้ครับ ราคาต่อรองได้ไหมครับ\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/product",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "product"]
+            }
+          }
+        },
+        {
+          "name": "Get Chat Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of recent messages to fetch"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello from Postman! 👋\",\n  \"type\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Message with Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello! This is a test message with image\",\n  \"imageUrl\": \"{{chatImageUrl}}\",\n  \"fileName\": \"sample-image.jpg\",\n  \"fileSize\": 150000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Image Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"image\",\n  \"content\": \"ดูรูปนี้ครับ 📷\",\n  \"imageUrl\": \"{{sampleImageUrl}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "� Multi-User Chat Testing",
+      "item": [
+        {
+          "name": "🔐 User Registration & Login",
+          "item": [
+            {
+              "name": "Register User A",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    const userId = response.user?.id || response.data?.user?.id;",
+                      "    if (userId) {",
+                      "        pm.collectionVariables.set('userAId', userId);",
+                      "        console.log('✅ User A registered, ID saved:', userId);",
+                      "    }",
+                      "} else if (pm.response.code === 400) {",
+                      "    console.log('ℹ️ User A already exists - this is expected');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"studentId\": \"testUserA\",\n  \"email\": \"testusera@cmu.ac.th\",\n  \"password\": \"Password123!\",\n  \"name\": \"User A\",\n  \"phone\": \"0811111111\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "register"]
+                }
+              }
+            },
+            {
+              "name": "Login User A",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const token = response.token || response.data?.token;",
+                      "    const userId = response.user?.id || response.data?.user?.id;",
+                      "    ",
+                      "    if (token) {",
+                      "        pm.collectionVariables.set('userAToken', token);",
+                      "        console.log('✅ User A token saved');",
+                      "    }",
+                      "    ",
+                      "    if (userId) {",
+                      "        pm.collectionVariables.set('userAId', userId);",
+                      "        console.log('✅ User A ID saved:', userId);",
+                      "    }",
+                      "} else {",
+                      "    console.log('❌ User A login failed');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"studentId\": \"testUserA\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "login"]
+                }
+              }
+            },
+            {
+              "name": "Register User B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    const userId = response.user?.id || response.data?.user?.id;",
+                      "    if (userId) {",
+                      "        pm.collectionVariables.set('userBId', userId);",
+                      "        console.log('✅ User B registered, ID saved:', userId);",
+                      "    }",
+                      "} else if (pm.response.code === 400) {",
+                      "    console.log('ℹ️ User B already exists - this is expected');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"studentId\": \"testUserB\",\n  \"email\": \"testuserb@cmu.ac.th\",\n  \"password\": \"Password123!\",\n  \"name\": \"User B\",\n  \"phone\": \"0822222222\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "register"]
+                }
+              }
+            },
+            {
+              "name": "Login User B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const token = response.token || response.data?.token;",
+                      "    const userId = response.user?.id || response.data?.user?.id;",
+                      "    ",
+                      "    if (token) {",
+                      "        pm.collectionVariables.set('userBToken', token);",
+                      "        console.log('✅ User B token saved');",
+                      "    }",
+                      "    ",
+                      "    if (userId) {",
+                      "        pm.collectionVariables.set('userBId', userId);",
+                      "        console.log('✅ User B ID saved:', userId);",
+                      "    }",
+                      "} else {",
+                      "    console.log('❌ User B login failed');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"studentId\": \"testUserB\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "login"]
+                }
+              }
+            },
+            {
+              "name": "Register User C",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    const userId = response.user?.id || response.data?.user?.id;",
+                      "    if (userId) {",
+                      "        pm.collectionVariables.set('userCId', userId);",
+                      "        console.log('✅ User C registered, ID saved:', userId);",
+                      "    }",
+                      "} else if (pm.response.code === 400) {",
+                      "    console.log('ℹ️ User C already exists - this is expected');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"studentId\": \"testUserC\",\n  \"email\": \"testuserc@cmu.ac.th\",\n  \"password\": \"Password123!\",\n  \"name\": \"User C\",\n  \"phone\": \"0833333333\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "register"]
+                }
+              }
+            },
+            {
+              "name": "Login User C",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const token = response.token || response.data?.token;",
+                      "    const userId = response.user?.id || response.data?.user?.id;",
+                      "    ",
+                      "    if (token) {",
+                      "        pm.collectionVariables.set('userCToken', token);",
+                      "        console.log('✅ User C token saved');",
+                      "    }",
+                      "    ",
+                      "    if (userId) {",
+                      "        pm.collectionVariables.set('userCId', userId);",
+                      "        console.log('✅ User C ID saved:', userId);",
+                      "    }",
+                      "} else {",
+                      "    console.log('❌ User C login failed');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"studentId\": \"testUserC\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "login"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "💬 Chat Creation",
+          "item": [
+            {
+              "name": "A → Create Chat with B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const chatId = response.data?.id || response.id;",
+                      "    ",
+                      "    if (chatId) {",
+                      "        pm.collectionVariables.set('chatABId', chatId);",
+                      "        console.log('✅ Chat A-B created:', chatId);",
+                      "    }",
+                      "} else {",
+                      "    console.log('❌ Failed to create chat A-B');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otherUserId\": \"{{userBId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/direct",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "direct"]
+                }
+              }
+            },
+            {
+              "name": "C → Create Chat with A",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const chatId = response.data?.id || response.id;",
+                      "    ",
+                      "    if (chatId) {",
+                      "        pm.collectionVariables.set('chatCAId', chatId);",
+                      "        console.log('✅ Chat C-A created:', chatId);",
+                      "    }",
+                      "} else {",
+                      "    console.log('❌ Failed to create chat C-A');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otherUserId\": \"{{userAId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/direct",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "direct"]
+                }
+              }
+            },
+            {
+              "name": "C → Create Chat with B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const chatId = response.data?.id || response.id;",
+                      "    ",
+                      "    if (chatId) {",
+                      "        pm.collectionVariables.set('chatCBId', chatId);",
+                      "        console.log('✅ Chat C-B created:', chatId);",
+                      "    }",
+                      "} else {",
+                      "    console.log('❌ Failed to create chat C-B');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otherUserId\": \"{{userBId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/direct",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "direct"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "📱 Multi-User Conversations",
+          "item": [
+            {
+              "name": "A → B: สวัสดี มาเรียนด้วยกันไหม?",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"สวัสดี User B! มาเรียนด้วยกันไหม? 📚\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "B → A: ตอบกลับ",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userBToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"สวัสดี User A! ได้เลย มีแผนเรียนอะไรไหม? 🤔\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "C → A: เชิญเข้า study group",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"เฮ้ User A! มี study group ไหม? อยากเข้าร่วมด้วย 📖\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatCAId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatCAId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "C → B: เชิญเข้า study session",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"User B อยากเข้าร่วม study session ไหม? มีหลายคนแล้ว! 👥\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatCBId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatCBId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "A → B: ตอบกลับเกี่ยวกับแผน",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"เราอยากทำโปรเจ็ค SpaceCMU ให้เสร็จ! ช่วยกันไหม? 💻\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "B → A: ตอกย้ำความสนใจ",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userBToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"เยี่ยมเลย! ชอบทำ full-stack development 🔥 เริ่มเมื่อไหร่?\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatABId}}", "messages"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "📊 View Chat Status",
+          "item": [
+            {
+              "name": "A: View My Chats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/chats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats"]
+                }
+              }
+            },
+            {
+              "name": "B: View My Chats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userBToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/chats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats"]
+                }
+              }
+            },
+            {
+              "name": "C: View My Chats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/chats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats"]
+                }
+              }
+            },
+            {
+              "name": "View A-B Chat Messages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "View C-A Chat Messages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatCAId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatCAId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "View C-B Chat Messages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/chats/{{chatCBId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["chats", "{{chatCBId}}", "messages"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "�🛒 Market API (Products)",
+      "item": [
+        {
+          "name": "📋 Public Endpoints",
+          "item": [
+            {
+              "name": "Get All Products",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/products",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "🔒 Protected Endpoints",
+          "item": [
+            {
+              "name": "Create Product",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const productId = response.data?.product?.id || response.data?.id || response.id;",
+                      "    ",
+                      "    if (productId) {",
+                      "        pm.collectionVariables.set('productId', productId);",
+                      "        console.log('Product ID saved:', productId);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"MacBook Pro M3\",\n  \"description\": \"Brand new MacBook Pro with M3 chip, 16GB RAM, 512GB SSD. Perfect for students and professionals.\",\n  \"price\": 58900,\n  \"category\": \"Electronics\",\n  \"condition\": \"New\",\n  \"contactInfo\": \"Line: @seller123, Tel: 081-234-5678\",\n  \"imageUrl\": \"{{sampleImageUrl}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/products",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products"]
+                }
+              }
+            },
+            {
+              "name": "Update Product Image",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"imageUrl\": \"{{sampleImageUrl}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/products/{{productId}}/image",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products", "{{productId}}", "image"]
+                }
+              }
+            },
+            {
+              "name": "Update Product Status - Sold",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"sold\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/products/{{productId}}/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products", "{{productId}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "Update Product Status - Active",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"active\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/products/{{productId}}/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products", "{{productId}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "Delete Product",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/products/{{productId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["products", "{{productId}}"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

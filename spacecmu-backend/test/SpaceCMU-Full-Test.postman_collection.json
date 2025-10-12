@@ -137,8 +137,8 @@
 									"pm.test(\"Login successful and token received\", function () {",
 									"    pm.response.to.have.status(200);",
 									"    const response = pm.response.json();",
-									"    pm.collectionVariables.set(\"user1Token\", response.token);",
-									"    pm.collectionVariables.set(\"user1Id\", response.user.id);",
+									"    pm.collectionVariables.set(\"user1Token\", response.data.token);",
+									"    pm.collectionVariables.set(\"user1Id\", response.data.user.id);",
 									"    console.log('User A Token & ID stored.');",
 									"});"
 								],
@@ -182,8 +182,8 @@
 									"pm.test(\"Login successful and token received\", function () {",
 									"    pm.response.to.have.status(200);",
 									"    const response = pm.response.json();",
-									"    pm.collectionVariables.set(\"user2Token\", response.token);",
-									"    pm.collectionVariables.set(\"user2Id\", response.user.id);",
+									"    pm.collectionVariables.set(\"user2Token\", response.data.token);",
+									"    pm.collectionVariables.set(\"user2Id\", response.data.user.id);",
 									"    console.log('User B Token & ID stored.');",
 									"});"
 								],
