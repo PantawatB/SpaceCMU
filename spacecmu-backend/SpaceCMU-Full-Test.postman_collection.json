@@ -930,7 +930,7 @@
 					"response": []
 				},
 				{
-					"name": "2.4 [A] Remove Friend B",
+					"name": "2.10 [A] Remove Friend B",
 					"request": {
 						"auth": {
 							"type": "bearer",
