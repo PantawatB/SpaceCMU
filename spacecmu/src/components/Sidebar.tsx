@@ -42,6 +42,7 @@ export default function Sidebar({ menuItems }: SidebarProps) {
   }, []);
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
+  const [userLoaded, setUserLoaded] = useState<boolean>(false);
 
   // helper to set and persist active profile immediately
   const setProfile = (idx: number) => {
@@ -100,6 +101,9 @@ export default function Sidebar({ menuItems }: SidebarProps) {
         setCurrentUser(data);
       } catch (err) {
         console.error(err);
+      } finally {
+        // mark user as loaded (whether fetch succeeded or not)
+        setUserLoaded(true);
       }
     };
     fetchMe();
@@ -157,52 +161,67 @@ export default function Sidebar({ menuItems }: SidebarProps) {
         </div>
         {/* Profile Section */}
         <div className="flex gap-8 items-center mb-8 justify-center">
-          {profiles.map((profile, idx) => {
-            const isActive = activeProfile === idx;
-            return (
-            <div
-              key={profile.type}
-              role="button"
-              tabIndex={0}
-              onClick={() => setProfile(idx)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfile(idx); }}
-              className={`cursor-pointer flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && isActive ? '' : 'opacity-50 grayscale'}`}
-             >
-               <div
-                 className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}
-               >
-                {typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
-                  // external image: use Next/Image with a simple loader and unoptimized to avoid hostname config
-                  <Image
-                    loader={({ src }) => src}
-                    src={profile.avatar}
-                    alt={profile.name}
-                    width={48}
-                    height={48}
-                    unoptimized
-                    className="w-12 h-12 rounded-full object-cover border-2 border-white"
-                    priority
-                  />
-                ) : (
-                  <Image
-                    src={profile.avatar}
-                    alt={profile.name}
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-white"
-                    priority
-                  />
-                )}
-                {hydrated && isActive && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
-                )}
-               </div>
-              <div className="mt-2 text-sm font-semibold text-gray-800">
-                <div className="max-w-[5rem] truncate text-center" title={profile.name}>{profile.name}</div>
+          {!userLoaded ? (
+            // skeleton placeholders while currentUser is being fetched
+            <>
+              <div className={`cursor-default flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''}`}>
+                <div className="w-14 h-14 rounded-full bg-gray-200 animate-pulse"></div>
+                <div className="mt-2 h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="mt-1 h-2 w-24 bg-gray-200 rounded animate-pulse"></div>
               </div>
-              <div className="text-xs text-gray-500 max-w-[10rem] truncate text-center" title={profile.username}>{profile.username}</div>
-            </div>
-          )})}
+              <div className={`cursor-default flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''}`}>
+                <div className="w-14 h-14 rounded-full bg-gray-200 animate-pulse"></div>
+                <div className="mt-2 h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="mt-1 h-2 w-24 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </>
+          ) : (
+            profiles.map((profile, idx) => {
+              const isActive = activeProfile === idx;
+              return (
+                <div
+                  key={profile.type}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setProfile(idx)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfile(idx); }}
+                  className={`cursor-pointer flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && isActive ? '' : 'opacity-50 grayscale'}`}
+                >
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}>
+                    {typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
+                      // external image: use Next/Image with a simple loader and unoptimized to avoid hostname config
+                      <Image
+                        loader={({ src }) => src}
+                        src={profile.avatar}
+                        alt={profile.name}
+                        width={48}
+                        height={48}
+                        unoptimized
+                        className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                        priority
+                      />
+                    ) : (
+                      <Image
+                        src={profile.avatar}
+                        alt={profile.name}
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                        priority
+                      />
+                    )}
+                    {hydrated && isActive && (
+                      <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-gray-800">
+                    <div className="max-w-[5rem] truncate text-center" title={profile.name}>{profile.name}</div>
+                  </div>
+                  <div className="text-xs text-gray-500 max-w-[10rem] truncate text-center" title={profile.username}>{profile.username}</div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Menu */}

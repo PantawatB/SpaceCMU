@@ -3,6 +3,8 @@
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import { useEffect, useState } from 'react';
+import ChatWindow from '@/components/ChatWindow';
+
 type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string; friendCount?: number };
 type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bio?: string | null; persona?: Persona; friendCount?: number } | null;
 
@@ -343,6 +345,8 @@ export default function ProfileMainPage() {
           </div>
         </section>
       </main>
+      {/* Chat Window */}
+      <ChatWindow />
     </div>
   );
 }

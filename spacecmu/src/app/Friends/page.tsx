@@ -5,6 +5,7 @@ import Sidebar from "../../components/Sidebar";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { API_BASE_URL } from "../../utils/apiConfig";
+import ChatWindow from '@/components/ChatWindow';
 
 // Interface for friend request API response
 interface FriendRequestUser {
@@ -549,6 +550,8 @@ export default function FriendsMainPage() {
           )}
         </div>
       </main>
+      {/* Chat Window */}
+      <ChatWindow />
     </div>
   );
 }

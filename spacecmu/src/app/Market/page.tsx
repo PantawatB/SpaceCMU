@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Sidebar from "../../components/Sidebar";
+import ChatWindow from '@/components/ChatWindow';
 
 // MarketCard component
 type MarketCardProps = {
@@ -262,6 +263,8 @@ export default function MarketMainPage() {
           ))}
         </div>
       </main>
+      {/* Chat Window */}
+      <ChatWindow />
     </div>
   );
 }
