@@ -87,7 +87,17 @@ export async function sendFriendRequest(
     });
     await frRepo.save(request);
 
-    return res.status(201).json({ message: "Friend request sent" });
+    const requestData = {
+      id: request.id,
+      fromActorId: fromActor.id,
+      toActorId: toActor.id,
+      status: "pending",
+      sentAt: new Date().toISOString(),
+    };
+
+    return res
+      .status(201)
+      .json(createResponse("Friend request sent", requestData));
   } catch (err) {
     console.error("sendFriendRequest error:", err);
     return res.status(500).json({ message: "Failed to send friend request" });
@@ -267,7 +277,16 @@ export async function acceptFriendRequest(
       await actorRepo.save([fromActor, toActor]);
     }
 
-    return res.json(createResponse("Friend request accepted", null));
+    // Return the updated friendship data
+    const friendshipData = {
+      requestId,
+      fromActorId: request.fromActor.id,
+      toActorId: request.toActor.id,
+      status: "accepted",
+      acceptedAt: new Date().toISOString(),
+    };
+
+    return res.json(createResponse("Friend request accepted", friendshipData));
   } catch (err) {
     console.error("acceptFriendRequest error:", err);
     return res.status(500).json({ message: "Failed to accept friend request" });
