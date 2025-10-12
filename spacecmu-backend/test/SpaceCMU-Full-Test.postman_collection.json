@@ -383,14 +383,14 @@
 							}
 						},
 						"url": {
-							"raw": "{{baseUrl}}/api/personas/{{user1Id}}",
+							"raw": "{{baseUrl}}/api/personas/me",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"personas",
-								"{{user1Id}}"
+								"me"
 							]
 						}
 					},
