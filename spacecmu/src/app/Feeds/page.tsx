@@ -509,13 +509,14 @@ export default function FeedsMainPage() {
                     className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 cursor-pointer transition border-b border-gray-50"
                   >
                     <div className="relative">
-                      <Image
-                        src={chat.avatar}
-                        alt={chat.name}
-                        width={48}
-                        height={48}
-                        className="rounded-full object-cover"
-                      />
+                      <div className="w-12 h-12 rounded-full overflow-hidden relative">
+                        <Image
+                          src={chat.avatar}
+                          alt={chat.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                       {chat.online && (
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                       )}
@@ -571,13 +572,14 @@ export default function FeedsMainPage() {
                   </svg>
                 </button>
                 <div className="relative">
-                  <Image
-                    src={mockChats.find(c => c.id === selectedChat)?.avatar || "/noobcat.png"}
-                    alt="chat"
-                    width={40}
-                    height={40}
-                    className="rounded-full object-cover"
-                  />
+                  <div className="w-10 h-10 rounded-full overflow-hidden relative">
+                    <Image
+                      src={mockChats.find(c => c.id === selectedChat)?.avatar || "/noobcat.png"}
+                      alt="chat"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                   {mockChats.find(c => c.id === selectedChat)?.online && (
                     <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></div>
                   )}
