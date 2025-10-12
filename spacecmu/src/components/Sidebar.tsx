@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import Image from "next/image";
 import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/utils/apiConfig';
@@ -22,33 +22,70 @@ type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?
 
 export default function Sidebar({ menuItems }: SidebarProps) {
   const pathname = usePathname();
-  // initialize activeProfile from localStorage so other pages can read the selected persona
-  const [activeProfile, setActiveProfile] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
+  // start with 0 on both server and client to avoid hydration mismatch
+  const [activeProfile, setActiveProfile] = useState<number>(0);
+  const [hydrated, setHydrated] = useState<boolean>(false);
+  // read persisted value synchronously on mount to avoid a visible flash
+  useLayoutEffect(() => {
+    try {
       const v = localStorage.getItem('activeProfile');
-      return v ? parseInt(v, 10) : 0;
+      if (v) {
+        const parsed = parseInt(v, 10);
+        if (!Number.isNaN(parsed)) setActiveProfile(parsed);
+      }
+    } catch {
+      // ignore
+    } finally {
+      // mark hydrated after reading storage so we can enable transitions
+      setHydrated(true);
     }
-    return 0;
-  });
+  }, []);
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
 
-  // persist activeProfile so Profile page (and others) can read it
-  useEffect(() => {
+  // helper to set and persist active profile immediately
+  const setProfile = (idx: number) => {
+    setActiveProfile(idx);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('activeProfile', String(activeProfile));
-        // notify other components in the same window that activeProfile changed
-        try {
-          window.dispatchEvent(new CustomEvent('activeProfileChanged', { detail: activeProfile }));
-        } catch {
-          // ignore if dispatch fails
-        }
+        localStorage.setItem('activeProfile', String(idx));
+      } catch {
+        // ignore
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('activeProfileChanged', { detail: idx }));
       } catch {
         // ignore
       }
     }
-  }, [activeProfile]);
+  };
+
+  // listen for custom activeProfileChanged events from other components (same-window)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') setActiveProfile(detail);
+    };
+    window.addEventListener('activeProfileChanged', handler as EventListener);
+    return () => window.removeEventListener('activeProfileChanged', handler as EventListener);
+  }, []);
+
+  // listen for storage events (cross-tab or code that writes directly to localStorage)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'activeProfile') {
+        try {
+          const v = e.newValue;
+          if (v) setActiveProfile(parseInt(v, 10));
+          else setActiveProfile(0);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -120,16 +157,20 @@ export default function Sidebar({ menuItems }: SidebarProps) {
         </div>
         {/* Profile Section */}
         <div className="flex gap-8 items-center mb-8 justify-center">
-          {profiles.map((profile, idx) => (
+          {profiles.map((profile, idx) => {
+            const isActive = activeProfile === idx;
+            return (
             <div
               key={profile.type}
-              className={`flex flex-col items-center transition-all duration-300 ${
-                activeProfile === idx ? "" : "opacity-50 grayscale"
-              }`}
-            >
-              <div
-                className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}
-              >
+              role="button"
+              tabIndex={0}
+              onClick={() => setProfile(idx)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfile(idx); }}
+              className={`cursor-pointer flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && isActive ? '' : 'opacity-50 grayscale'}`}
+             >
+               <div
+                 className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}
+               >
                 {typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
                   // external image: use Next/Image with a simple loader and unoptimized to avoid hostname config
                   <Image
@@ -152,16 +193,16 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                     priority
                   />
                 )}
-                 {activeProfile === idx && (
-                   <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
-                 )}
+                {hydrated && isActive && (
+                  <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
+                )}
                </div>
               <div className="mt-2 text-sm font-semibold text-gray-800">
                 <div className="max-w-[5rem] truncate text-center" title={profile.name}>{profile.name}</div>
               </div>
               <div className="text-xs text-gray-500 max-w-[10rem] truncate text-center" title={profile.username}>{profile.username}</div>
             </div>
-          ))}
+          )})}
         </div>
 
         {/* Menu */}
@@ -204,22 +245,14 @@ export default function Sidebar({ menuItems }: SidebarProps) {
         {/* Toggle Profile Button */}
         <div className="flex mb-6 rounded-lg overflow-hidden border border-gray-200">
           <button
-            className={`flex-1 py-2 text-center font-semibold transition-all duration-300 ${
-              activeProfile === 0
-                ? "bg-white text-black"
-                : "bg-gray-200 text-gray-500"
-            }`}
-            onClick={() => setActiveProfile(0)}
+            className={`flex-1 py-2 text-center font-semibold ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && activeProfile === 0 ? 'bg-white text-black' : 'bg-gray-200 text-gray-500'}`}
+            onClick={() => setProfile(0)}
           >
             Public
           </button>
           <button
-            className={`flex-1 py-2 text-center font-semibold transition-all duration-300 ${
-              activeProfile === 1
-                ? "bg-white text-black"
-                : "bg-gray-200 text-gray-500"
-            }`}
-            onClick={() => setActiveProfile(1)}
+            className={`flex-1 py-2 text-center font-semibold ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && activeProfile === 1 ? 'bg-white text-black' : 'bg-gray-200 text-gray-500'}`}
+            onClick={() => setProfile(1)}
           >
             Anonymous
           </button>
