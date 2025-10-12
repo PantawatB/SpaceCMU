@@ -63,8 +63,7 @@ async function bootstrap() {
 
     const port = parseInt(process.env.PORT || "3001");
     // Use 0.0.0.0 for Docker compatibility - allows external connections
-    const host =
-      process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
+    const host = "0.0.0.0";
     const server = app.listen(port, host, () => {
       const addr = server.address();
       console.log(`Server listening on ${host}:${port}`);
