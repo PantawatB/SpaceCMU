@@ -2,6 +2,7 @@ import "reflect-metadata";
 import express from "express";
 import { AppDataSource } from "./ormconfig";
 import dotenv from "dotenv";
+import cors from "cors";
 
 // Import routes
 import userRoutes from "./routes/userRoutes";
@@ -24,6 +25,20 @@ async function bootstrap() {
     console.log("Data Source has been initialized!");
 
     const app = express();
+
+    app.use(cors({
+      origin: "http://localhost:3001", // Frontend รันที่ port 3001
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      exposedHeaders: ["Authorization"]
+    }));
+
+    // Debug: log incoming Authorization header
+    app.use((req, res, next) => {
+      console.log('Incoming request', req.method, req.url, 'Authorization:', req.headers['authorization']);
+      next();
+    });
 
     app.use(express.json());
 

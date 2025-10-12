@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from 'next/navigation';
 
 export interface SidebarMenuItem {
   name: string;
@@ -34,6 +35,20 @@ const profiles = [
 export default function Sidebar({ menuItems }: SidebarProps) {
   const pathname = usePathname();
   const [activeProfile, setActiveProfile] = useState(0);
+  const router = useRouter();
+  
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        // ignore
+      }
+    }
+    router.push('/');
+  };
 
   return (
     <aside className="w-64 p-6 flex flex-col justify-between h-screen bg-white">
@@ -148,7 +163,7 @@ export default function Sidebar({ menuItems }: SidebarProps) {
             Anonymous
           </button>
         </div>
-        <button className="w-full flex items-center gap-3 justify-center bg-black text-white rounded-lg px-3 py-2 font-semibold hover:bg-gray-800">
+        <button className="w-full flex items-center gap-3 justify-center bg-black text-white rounded-lg px-3 py-2 font-semibold hover:bg-gray-800" onClick={handleLogout}>
           <span className="w-5 h-5 flex items-center justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
