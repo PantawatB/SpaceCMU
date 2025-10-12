@@ -7,6 +7,7 @@ import {
   removeFriend,
   listFriends,
   listFriendRequests,
+  cancelFriendRequest,
   getFriendStatuses,
 } from "../controllers/friendController";
 import { updateLastActive } from "../middleware/updateLastActive";
@@ -19,6 +20,10 @@ router.use(authenticateToken, updateLastActive);
 // 📌 ส่งคำขอเป็นเพื่อน
 // POST /api/friends/request
 router.post("/request", sendFriendRequest);
+
+// 📌 ยกเลิกคำขอเป็นเพื่อน
+// DELETE /api/friends/request/:requestId
+router.delete("/request/:requestId", cancelFriendRequest);
 
 // 📌 ยอมรับคำขอเป็นเพื่อน
 // POST /api/friends/accept/:friendId

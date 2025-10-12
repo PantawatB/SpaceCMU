@@ -42,6 +42,47 @@ export async function createCommentOnPost(
 }
 
 /**
+ * 📌 แก้ไขคอมเมนต์
+ */
+export async function updateComment(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { commentId } = req.params;
+    const { content } = req.body;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!content)
+      return res.status(400).json({ message: "Content is required" });
+
+    const commentRepo = AppDataSource.getRepository(Comment);
+    const comment = await commentRepo.findOne({
+      where: { id: commentId },
+      relations: ["user"],
+    });
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // อนุญาตให้แก้ไขได้เฉพาะเจ้าของคอมเมนต์เท่านั้น
+    if (comment.user.id !== user.id) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to edit this comment" });
+    }
+
+    comment.content = content;
+    await commentRepo.save(comment);
+
+    return res.json(comment);
+  } catch (err) {
+    console.error("updateComment error:", err);
+    return res.status(500).json({ message: "Failed to update comment" });
+  }
+}
+/**
  * 📌 ดึงคอมเมนต์ทั้งหมดของโพสต์
  */
 export async function listCommentsForPost(req: Request, res: Response) {
