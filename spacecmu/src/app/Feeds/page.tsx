@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import { API_BASE_URL } from '@/utils/apiConfig';
@@ -19,14 +19,43 @@ export default function FeedsMainPage() {
   const [selectedChat, setSelectedChat] = useState<number | null>(null);
   const [chatMessage, setChatMessage] = useState("");
 
-  // Mock chat data
-  const mockChats = [
+  // Current logged-in user (fetched from API)
+  type Persona = { id?: string; displayName?: string; avatarUrl?: string };
+  type CurrentUser = { id?: string; name?: string; persona?: Persona } | null;
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
+
+    const fetchMe = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/users/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error('Failed to fetch current user');
+        const data = await res.json();
+        setCurrentUser(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchMe();
+  }, []);
+
+  // Mock chat data (typed) — re-added to fix missing identifier
+  type ChatItem = { id: number; name: string; avatar: string; lastMessage: string; time: string; unread: number; online: boolean };
+  const mockChats: ChatItem[] = [
     { id: 1, name: "Nezuko Kamado", avatar: "/nezuko.jpg", lastMessage: "Thanks for helping me!", time: "2m", unread: 2, online: true },
     { id: 2, name: "Zenitsu Agatsuma", avatar: "/zenitsu.jpg", lastMessage: "Are you free tomorrow?", time: "15m", unread: 0, online: true },
     { id: 3, name: "Inosuke Hashibira", avatar: "/inosuke.jpeg", lastMessage: "Let's train together!", time: "1h", unread: 1, online: false },
   ];
 
-  const mockMessages = [
+  type MessageItem = { id: number; senderId: number; text: string; time: string; isMine: boolean };
+  const mockMessages: MessageItem[] = [
     { id: 1, senderId: 1, text: "Hey! How are you?", time: "10:30 AM", isMine: false },
     { id: 2, senderId: 0, text: "I'm good! How about you?", time: "10:32 AM", isMine: true },
     { id: 3, senderId: 1, text: "Thanks for helping me!", time: "10:35 AM", isMine: false },
@@ -302,7 +331,9 @@ export default function FeedsMainPage() {
                 />
                 <div>
                   <div className="font-bold">
-                    {i % 2 === 0 ? "Kamado Tanjiro" : "Noobcat"}
+                    {i % 2 === 0
+                      ? (currentUser?.name ?? "Kamado Tanjiro")
+                      : (currentUser?.persona?.displayName ?? "Noobcat")}
                   </div>
                   <div className="text-xs text-gray-400">
                     {i % 2 === 0 ? "65,Engineering" : "Anonymous"}

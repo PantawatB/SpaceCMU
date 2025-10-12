@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/utils/apiConfig';
 
 export interface SidebarMenuItem {
   name: string;
@@ -15,35 +16,81 @@ interface SidebarProps {
   menuItems: SidebarMenuItem[];
 }
 
-const profiles = [
-  {
-    type: "Public",
-    name: "Kamado Tanjiro",
-    username: "@6506xxxxx",
-    avatar: "/tanjiro.jpg", // เปลี่ยนเป็น path รูปจริง
-    bg: "bg-gradient-to-tr from-purple-400 via-cyan-300 to-yellow-300",
-  },
-  {
-    type: "Anonymous",
-    name: "Noobcat",
-    username: "@anonymous",
-    avatar: "/noobcat.png", // เปลี่ยนเป็น path รูปจริง
-    bg: "bg-gray-400",
-  },
-];
+// profiles will be derived from current user (public and anonymous persona)
+type Persona = { id?: string; displayName?: string; avatarUrl?: string };
+type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; persona?: Persona } | null;
 
 export default function Sidebar({ menuItems }: SidebarProps) {
   const pathname = usePathname();
-  const [activeProfile, setActiveProfile] = useState(0);
+  // initialize activeProfile from localStorage so other pages can read the selected persona
+  const [activeProfile, setActiveProfile] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('activeProfile');
+      return v ? parseInt(v, 10) : 0;
+    }
+    return 0;
+  });
   const router = useRouter();
-  
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
+
+  // persist activeProfile so Profile page (and others) can read it
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('activeProfile', String(activeProfile));
+        // notify other components in the same window that activeProfile changed
+        try {
+          window.dispatchEvent(new CustomEvent('activeProfileChanged', { detail: activeProfile }));
+        } catch {
+          // ignore if dispatch fails
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [activeProfile]);
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
+    const fetchMe = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch current user');
+        const data = await res.json();
+        setCurrentUser(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchMe();
+  }, []);
+
+  const profiles = [
+    {
+      type: "Public",
+      name: currentUser?.name ?? "Kamado Tanjiro",
+      username: currentUser?.studentId ? `@${currentUser.studentId}` : "@6506xxxxx",
+      avatar: currentUser?.profileImg ?? "/tanjiro.jpg",
+      bg: "bg-gradient-to-tr from-purple-400 via-cyan-300 to-yellow-300",
+    },
+    {
+      type: "Anonymous",
+      name: currentUser?.persona?.displayName ?? "Noobcat",
+      username: "@anonymous",
+      avatar: currentUser?.persona?.avatarUrl ?? "/noobcat.png",
+      bg: "bg-gray-400",
+    },
+  ];
+
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -72,7 +119,7 @@ export default function Sidebar({ menuItems }: SidebarProps) {
           <span className="text-xl font-bold text-gray-800">SpaceCMU</span>
         </div>
         {/* Profile Section */}
-        <div className="flex gap-4 items-center mb-8">
+        <div className="flex gap-8 items-center mb-8 justify-center">
           {profiles.map((profile, idx) => (
             <div
               key={profile.type}
@@ -83,22 +130,36 @@ export default function Sidebar({ menuItems }: SidebarProps) {
               <div
                 className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}
               >
-                <Image
-                  src={profile.avatar}
-                  alt={profile.name}
-                  width={48}
-                  height={48}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-white"
-                  priority
-                />
-                {activeProfile === idx && (
-                  <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
+                {typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
+                  // external image: use Next/Image with a simple loader and unoptimized to avoid hostname config
+                  <Image
+                    loader={({ src }) => src}
+                    src={profile.avatar}
+                    alt={profile.name}
+                    width={48}
+                    height={48}
+                    unoptimized
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                    priority
+                  />
+                ) : (
+                  <Image
+                    src={profile.avatar}
+                    alt={profile.name}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                    priority
+                  />
                 )}
-              </div>
+                 {activeProfile === idx && (
+                   <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
+                 )}
+               </div>
               <div className="mt-2 text-sm font-semibold text-gray-800">
-                {profile.name}
+                <div className="max-w-[5rem] truncate text-center" title={profile.name}>{profile.name}</div>
               </div>
-              <div className="text-xs text-gray-500">{profile.username}</div>
+              <div className="text-xs text-gray-500 max-w-[10rem] truncate text-center" title={profile.username}>{profile.username}</div>
             </div>
           ))}
         </div>
