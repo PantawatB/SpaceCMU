@@ -1,5 +1,6 @@
 "use client";
 import Sidebar from "../../components/Sidebar";
+import ChatWindow from '@/components/ChatWindow';
 
 export default function SettingPage() {
   const menuItems = [
@@ -32,6 +33,8 @@ export default function SettingPage() {
           {/* ...setting content... */}
         </div>
       </main>
+      {/* Chat Window */}
+      <ChatWindow />
     </div>
   )
 }
