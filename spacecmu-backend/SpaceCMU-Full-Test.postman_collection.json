@@ -347,7 +347,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"User A (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"title\": \"Software Engineer\"\n}",
+							"raw": "{\n    \"name\": \"User A (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"title\": \"Software Engineer\", \n    \"profileImg\": \"http://example.com/new-profile.jpg\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -421,7 +421,172 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "1.9 [A] Update persona",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Persona for User A updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.persona.displayName).to.eql(\"UserA-NewName\");",
+									"    pm.expect(response.persona.avatarUrl).to.eql(\"http://example.com/avatarA.jpg\");",
+									"    console.log('✅ Verified: User A persona was updated.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"displayName\": \"UserA-NewName\",\n    \"avatarUrl\": \"http://example.com/avatarA.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/personas/{{user1Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"personas",
+								"{{user1Id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.10 [B] Update persona",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Persona for User B updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.persona.displayName).to.eql(\"UserA-NewName\");",
+									"    pm.expect(response.persona.avatarUrl).to.eql(\"http://example.com/avatarB.jpg\");",
+									"    console.log('✅ Verified: User B persona was updated.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"displayName\": \"UserB-NewName\",\n    \"avatarUrl\": \"http://example.com/avatarB.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/personas/{{user2Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"personas",
+								"{{user2Id}}"
+							]
+						}
+					},
+					"response": []
+				},
+		{
+			"name": "1.11 Upload Image",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"File uploaded successfully and returns a URL\", function () {",
+							"    pm.response.to.have.status(201);",
+							"    const response = pm.response.json();",
+							"    pm.expect(response).to.have.property('url');",
+							"    pm.expect(response.url).to.include('/uploads/file-');",
+							"    console.log('✅ Upload successful! File URL:', response.url);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
 				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{uploadToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/uploads",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"uploads"
+					]
+				}
+			},
+			"response": []
+		}
 			]
 		},
 		{
@@ -682,38 +847,118 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "2.8 [Flow: Cancel] A cancels request",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/friends/request/{{cancelRequestId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"friends",
+								"request",
+								"{{cancelRequestId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2.9 [A] Search for Friend 'User B'",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Search should return User B\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.be.an('array').with.lengthOf(1);",
+									"    pm.expect(response[0].name).to.eql(\"User B\");",
+									"    console.log('✅ Friend search successful.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/friends?name=User B",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"friends"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "User B"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2.4 [A] Remove Friend B",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/friends/{{user2Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"friends",
+								"{{user2Id}}"
+							]
+						}
+					},
+					"response": []
 				}
 			]
-		},
-		{
-			"name": "2.8 [Flow: Cancel] A cancels request",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{user1Token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{baseUrl}}/api/friends/request/{{cancelRequestId}}",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"friends",
-						"request",
-						"{{cancelRequestId}}"
-					]
-				}
-			},
-			"response": []
 		},
 		{
 			"name": "3. Posts & Interactions",
@@ -1279,6 +1524,86 @@
 										"api",
 										"posts",
 										"{{post1Id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "3.5 Anonymous Posting (Persona)",
+					"description": "NOTE: This will fail with a 403 Forbidden error if the user has less than 10 friends.",
+					"item": [
+						{
+							"name": "[A] Create Anonymous Post",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"This is an anonymous post from User A.\",\n    \"isAnonymous\": true\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/posts",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[B] Create Anonymous Post",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user2Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"This is an anonymous post from User B.\",\n    \"isAnonymous\": true\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/posts",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts"
 									]
 								}
 							},
