@@ -132,7 +132,13 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       actorId: user.actor ? user.actor.id : null,
       persona: user.persona
         ? {
-            ...user.persona,
+            id: user.persona.id,
+            displayName: user.persona.displayName,
+            avatarUrl: user.persona.avatarUrl,
+            bio: user.persona.bio,
+            changeCount: user.persona.changeCount,
+            lastChangedAt: user.persona.lastChangedAt,
+            isBanned: user.persona.isBanned,
             actorId: user.persona.actor ? user.persona.actor.id : null,
           }
         : null,

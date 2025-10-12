@@ -18,8 +18,8 @@ router.use(authenticateToken);
 router.post("/", createPersona);
 
 // 📌 แก้ persona
-// PUT /api/personas/:id
-router.put("/:id", updatePersona);
+// PUT /api/personas/me
+router.put("/me", updatePersona);
 
 // 📌 ลบ persona
 // DELETE /api/personas/:id
