@@ -98,15 +98,21 @@ async function testCompleteAPI() {
       sendMessageResponse.data.message
     );
 
-    // Get chat messages
+    // Get chat messages (updated for real-time API)
     const messagesResponse = await axios.get(
       `${BASE_URL}/api/chats/${chatId}/messages`,
       { headers }
     );
+    const messagesData = messagesResponse.data.data || messagesResponse.data;
+    const messageCount = messagesData.messages
+      ? messagesData.messages.length
+      : messagesResponse.data.messages
+      ? messagesResponse.data.messages.length
+      : 0;
     console.log(
       "✅ Get Messages:",
       messagesResponse.status,
-      `${messagesResponse.data.messages.length} messages`
+      `${messageCount} messages`
     );
 
     // 4. Test Market API

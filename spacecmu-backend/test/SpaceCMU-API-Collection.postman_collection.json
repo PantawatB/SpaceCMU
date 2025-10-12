@@ -85,6 +85,11 @@
       "key": "chatCBId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "lastMessageId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -419,7 +424,7 @@
           }
         },
         {
-          "name": "Get Chat Messages",
+          "name": "Get Chat Messages (Real-Time)",
           "request": {
             "method": "GET",
             "header": [
@@ -429,14 +434,83 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages?limit=50",
               "host": ["{{baseUrl}}"],
-              "path": ["chats", "{{chatId}}", "messages"]
+              "path": ["chats", "{{chatId}}", "messages"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of recent messages to fetch"
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "Get messages since this timestamp",
+                  "disabled": true
+                },
+                {
+                  "key": "messageId",
+                  "value": "",
+                  "description": "Get messages after this message ID",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Poll for New Messages ⭐ NEW",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages/new?lastMessageId={{lastMessageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages", "new"],
+              "query": [
+                {
+                  "key": "lastMessageId",
+                  "value": "{{lastMessageId}}",
+                  "description": "ID of the last message client has"
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "Alternative: timestamp since last check",
+                  "disabled": true
+                }
+              ]
             }
           }
         },
         {
           "name": "Send Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const messageId = response.data?.id || response.id;",
+                  "    ",
+                  "    if (messageId) {",
+                  "        pm.collectionVariables.set('lastMessageId', messageId);",
+                  "        console.log('✅ Last Message ID saved:', messageId);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Send message failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [

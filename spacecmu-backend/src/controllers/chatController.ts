@@ -161,7 +161,8 @@ export async function createDirectChat(
 }
 
 /**
- * Get messages in a specific chat
+ * Get messages in a specific chat (Real-time chat - NO pagination)
+ * Returns recent messages for immediate display, suitable for real-time updates
  */
 export async function getChatMessages(
   req: Request & { user?: User },
@@ -170,7 +171,11 @@ export async function getChatMessages(
   try {
     const user = req.user!;
     const { chatId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
+    const {
+      limit = 50, // Default recent messages limit
+      since, // Optional: get messages since this timestamp for real-time updates
+      messageId, // Optional: get messages after this message ID
+    } = req.query;
 
     const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
     const messageRepo = AppDataSource.getRepository(Message);
@@ -189,22 +194,78 @@ export async function getChatMessages(
         .json({ message: "You are not a participant in this chat" });
     }
 
-    // Get messages with pagination
-    const [messages, total] = await messageRepo.findAndCount({
+    // Build query for real-time updates
+    const queryBuilder = messageRepo
+      .createQueryBuilder("message")
+      .where("message.chat = :chatId", { chatId })
+      .leftJoinAndSelect("message.sender", "sender")
+      .leftJoinAndSelect("message.replyTo", "replyTo")
+      .leftJoinAndSelect("replyTo.sender", "replyToSender")
+      .orderBy("message.createdAt", "ASC");
+
+    // If requesting updates since a specific time (real-time polling)
+    if (since) {
+      queryBuilder.andWhere("message.createdAt > :since", {
+        since: new Date(since as string),
+      });
+    }
+    // If requesting messages after a specific message (real-time updates)
+    else if (messageId) {
+      const afterMessage = await messageRepo.findOne({
+        where: { id: messageId as string },
+        select: ["createdAt"],
+      });
+      if (afterMessage) {
+        queryBuilder.andWhere("message.createdAt > :afterTime", {
+          afterTime: afterMessage.createdAt,
+        });
+      }
+    }
+    // Default: get recent messages for initial load
+    else {
+      queryBuilder.limit(Number(limit));
+      // For initial load, get recent messages in DESC order, then reverse
+      queryBuilder.orderBy("message.createdAt", "DESC");
+    }
+
+    let messages = await queryBuilder.getMany();
+
+    // For initial load, reverse to show oldest first (chronological order)
+    if (!since && !messageId) {
+      messages = messages.reverse();
+    }
+
+    const totalMessages = await messageRepo.count({
       where: { chat: { id: chatId } },
-      relations: ["sender", "replyTo", "replyTo.sender"],
-      order: { createdAt: "ASC" },
-      skip: (Number(page) - 1) * Number(limit),
-      take: Number(limit),
     });
 
     return res.json({
-      messages: messages, // Show oldest first without reverse
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
+      message: "Chat messages retrieved",
+      data: {
+        messages: messages.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          type: msg.type,
+          sender: {
+            id: msg.sender.id,
+            name: msg.sender.name,
+          },
+          replyTo: msg.replyTo
+            ? {
+                id: msg.replyTo.id,
+                content: msg.replyTo.content,
+                sender: {
+                  id: msg.replyTo.sender.id,
+                  name: msg.replyTo.sender.name,
+                },
+              }
+            : null,
+          createdAt: msg.createdAt,
+          updatedAt: msg.updatedAt,
+        })),
+        totalMessages,
+        isRealTimeUpdate: !!(since || messageId),
+        chatId,
       },
     });
   } catch (error) {
@@ -283,9 +344,134 @@ export async function sendMessage(
       relations: ["sender", "replyTo", "replyTo.sender"],
     });
 
-    return res.status(201).json(savedMessage);
+    return res.status(201).json({
+      message: "Message sent successfully",
+      data: {
+        id: savedMessage!.id,
+        content: savedMessage!.content,
+        type: savedMessage!.type,
+        sender: {
+          id: savedMessage!.sender.id,
+          name: savedMessage!.sender.name,
+        },
+        replyTo: savedMessage!.replyTo
+          ? {
+              id: savedMessage!.replyTo.id,
+              content: savedMessage!.replyTo.content,
+              sender: {
+                id: savedMessage!.replyTo.sender.id,
+                name: savedMessage!.replyTo.sender.name,
+              },
+            }
+          : null,
+        createdAt: savedMessage!.createdAt,
+        chatId: chat.id,
+      },
+    });
   } catch (error) {
     console.error("Error sending message:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/**
+ * Get new messages for real-time updates (polling endpoint)
+ * This endpoint is optimized for frequent polling by chat clients
+ */
+export async function getNewMessages(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user!;
+    const { chatId } = req.params;
+    const { lastMessageId, since } = req.query;
+
+    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
+    const messageRepo = AppDataSource.getRepository(Message);
+
+    // Verify user is a participant in this chat
+    const participation = await chatParticipantRepo.findOne({
+      where: {
+        chat: { id: chatId },
+        user: { id: user.id },
+      },
+    });
+
+    if (!participation) {
+      return res
+        .status(403)
+        .json({ message: "You are not a participant in this chat" });
+    }
+
+    let newMessages: any[] = [];
+
+    if (lastMessageId) {
+      // Get messages after specific message ID
+      const lastMessage = await messageRepo.findOne({
+        where: { id: lastMessageId as string },
+        select: ["createdAt"],
+      });
+
+      if (lastMessage) {
+        // Get messages after the specified message by timestamp, then filter out the reference message
+        newMessages = await messageRepo
+          .createQueryBuilder("message")
+          .where("message.chat = :chatId", { chatId })
+          .andWhere("message.createdAt > :afterTime", {
+            afterTime: lastMessage.createdAt,
+          })
+          .leftJoinAndSelect("message.sender", "sender")
+          .leftJoinAndSelect("message.replyTo", "replyTo")
+          .leftJoinAndSelect("replyTo.sender", "replyToSender")
+          .orderBy("message.createdAt", "ASC")
+          .getMany();
+      }
+    } else if (since) {
+      // Get messages since timestamp
+      newMessages = await messageRepo
+        .createQueryBuilder("message")
+        .where("message.chat = :chatId", { chatId })
+        .andWhere("message.createdAt > :since", {
+          since: new Date(since as string),
+        })
+        .leftJoinAndSelect("message.sender", "sender")
+        .leftJoinAndSelect("message.replyTo", "replyTo")
+        .leftJoinAndSelect("replyTo.sender", "replyToSender")
+        .orderBy("message.createdAt", "ASC")
+        .getMany();
+    }
+
+    return res.json({
+      message: "New messages retrieved",
+      data: {
+        newMessages: newMessages.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          type: msg.type,
+          sender: {
+            id: msg.sender.id,
+            name: msg.sender.name,
+          },
+          replyTo: msg.replyTo
+            ? {
+                id: msg.replyTo.id,
+                content: msg.replyTo.content,
+                sender: {
+                  id: msg.replyTo.sender.id,
+                  name: msg.replyTo.sender.name,
+                },
+              }
+            : null,
+          createdAt: msg.createdAt,
+        })),
+        hasNewMessages: newMessages.length > 0,
+        count: newMessages.length,
+        chatId,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting new messages:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
