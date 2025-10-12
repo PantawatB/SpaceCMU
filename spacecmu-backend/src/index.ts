@@ -13,6 +13,7 @@ import adminRoutes from "./routes/adminRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
+import productRoutes from "./routes/productRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -25,17 +26,25 @@ async function bootstrap() {
 
     const app = express();
 
-    app.use(cors({
-      origin: "http://localhost:3001", // Frontend รันที่ port 3001
-      credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      exposedHeaders: ["Authorization"]
-    }));
+    app.use(
+      cors({
+        origin: "http://localhost:3001", // Frontend รันที่ port 3001
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"],
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        exposedHeaders: ["Authorization"],
+      })
+    );
 
     // Debug: log incoming Authorization header
     app.use((req, res, next) => {
-      console.log('Incoming request', req.method, req.url, 'Authorization:', req.headers['authorization']);
+      console.log(
+        "Incoming request",
+        req.method,
+        req.url,
+        "Authorization:",
+        req.headers["authorization"]
+      );
       next();
     });
 
@@ -47,13 +56,35 @@ async function bootstrap() {
     app.use("/api/posts", postRoutes);
     app.use("/api/friends", friendRoutes);
     app.use("/api/admin", adminRoutes);
-    app.use("/api/posts", commentRoutes);
+    app.use("/api/posts", commentRoutes); // Comments are sub-routes of posts
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
+    app.use("/api/products", productRoutes);
 
-    const port = process.env.PORT;
-    app.listen(port, () => {
-      console.log(`Server listening on port ${port}`);
+    const port = parseInt(process.env.PORT || "3001");
+    // Use 0.0.0.0 for Docker compatibility - allows external connections
+    const host =
+      process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1";
+    const server = app.listen(port, host, () => {
+      const addr = server.address();
+      console.log(`Server listening on ${host}:${port}`);
+      try {
+        console.log("server.address():", addr);
+      } catch (e) {
+        console.error("failed to read server.address():", e);
+      }
+    });
+
+    server.on("error", (err) => {
+      console.error("HTTP server error:", err);
+    });
+
+    process.on("uncaughtException", (err) => {
+      console.error("uncaughtException:", err);
+    });
+
+    process.on("unhandledRejection", (reason) => {
+      console.error("unhandledRejection:", reason);
     });
   } catch (err) {
     console.error("Failed to start application:", err);

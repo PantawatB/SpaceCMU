@@ -3,6 +3,7 @@ import { AppDataSource } from "../ormconfig";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
 import { Comment } from "../entities/Comment";
+import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 
 /**
  * 📌 สร้างคอมเมนต์ใหม่ใต้โพสต์
@@ -34,7 +35,10 @@ export async function createCommentOnPost(
 
     await commentRepo.save(newComment);
 
-    return res.status(201).json(newComment);
+    const toReturn = { ...newComment, user: sanitizeUser(newComment.user) };
+    return res
+      .status(201)
+      .json(createResponse("Comment created", { comment: toReturn }));
   } catch (err) {
     console.error("createCommentOnPost error:", err);
     return res.status(500).json({ message: "Failed to create comment" });
@@ -96,7 +100,11 @@ export async function listCommentsForPost(req: Request, res: Response) {
       order: { createdAt: "ASC" },
     });
 
-    return res.json(comments);
+    const sanitized = comments.map((c) => ({
+      ...c,
+      user: sanitizeUser(c.user),
+    }));
+    return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("listCommentsForPost error:", err);
     return res.status(500).json({ message: "Failed to fetch comments" });
@@ -131,7 +139,7 @@ export async function deleteComment(
 
     await commentRepo.remove(comment);
 
-    return res.status(200).json({ message: "Comment deleted" });
+    return res.status(200).json(createResponse("Comment deleted", null));
   } catch (err) {
     console.error("deleteComment error:", err);
     return res.status(500).json({ message: "Failed to delete comment" });

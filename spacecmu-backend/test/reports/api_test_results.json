@@ -1,0 +1,72 @@
+[
+  {
+    "name": "register A",
+    "status": "fail",
+    "code": null,
+    "body": "Error"
+  },
+  {
+    "name": "login A",
+    "status": "fail",
+    "code": null,
+    "body": "Error"
+  },
+  {
+    "name": "me A",
+    "status": "skipped",
+    "reason": "no token"
+  },
+  {
+    "name": "create post A",
+    "status": "skipped",
+    "reason": "no token"
+  },
+  {
+    "name": "list posts",
+    "status": "fail",
+    "code": null,
+    "body": "Error"
+  },
+  {
+    "name": "create persona",
+    "status": "skipped",
+    "reason": "no token"
+  },
+  {
+    "name": "product flows",
+    "status": "skipped",
+    "reason": "no token"
+  },
+  {
+    "name": "register B",
+    "status": "fail",
+    "code": null,
+    "body": "Error"
+  },
+  {
+    "name": "login B",
+    "status": "fail",
+    "code": null,
+    "body": "Error"
+  },
+  {
+    "name": "friend request A->B",
+    "status": "skipped",
+    "reason": "no token"
+  },
+  {
+    "name": "create direct chat",
+    "status": "skipped",
+    "reason": "missing token or userBId"
+  },
+  {
+    "name": "send message",
+    "status": "skipped",
+    "reason": "missing token or chatId"
+  },
+  {
+    "name": "create comment",
+    "status": "skipped",
+    "reason": "missing token or postId"
+  }
+]

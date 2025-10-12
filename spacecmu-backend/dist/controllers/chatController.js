@@ -14,6 +14,8 @@ exports.createDirectChat = createDirectChat;
 exports.getChatMessages = getChatMessages;
 exports.sendMessage = sendMessage;
 exports.deleteMessage = deleteMessage;
+exports.clearChatMessages = clearChatMessages;
+exports.getChatParticipants = getChatParticipants;
 const ormconfig_1 = require("../ormconfig");
 const Chat_1 = require("../entities/Chat");
 const Message_1 = require("../entities/Message");
@@ -160,12 +162,12 @@ function getChatMessages(req, res) {
             const [messages, total] = yield messageRepo.findAndCount({
                 where: { chat: { id: chatId } },
                 relations: ["sender", "replyTo", "replyTo.sender"],
-                order: { createdAt: "DESC" },
+                order: { createdAt: "ASC" },
                 skip: (Number(page) - 1) * Number(limit),
                 take: Number(limit),
             });
             return res.json({
-                messages: messages.reverse(), // Reverse to show oldest first
+                messages: messages, // Show oldest first without reverse
                 pagination: {
                     page: Number(page),
                     limit: Number(limit),
@@ -255,6 +257,7 @@ function deleteMessage(req, res) {
             const user = req.user;
             const { messageId } = req.params;
             const messageRepo = ormconfig_1.AppDataSource.getRepository(Message_1.Message);
+            const chatRepo = ormconfig_1.AppDataSource.getRepository(Chat_1.Chat);
             const message = yield messageRepo.findOne({
                 where: { id: messageId },
                 relations: ["sender", "chat"],
@@ -268,11 +271,96 @@ function deleteMessage(req, res) {
                     .status(403)
                     .json({ message: "You can only delete your own messages" });
             }
+            // Check if this message is the lastMessage of its chat
+            const chat = yield chatRepo.findOne({
+                where: { id: message.chat.id },
+                relations: ["lastMessage"],
+            });
+            if (chat && chat.lastMessage && chat.lastMessage.id === messageId) {
+                // Find the previous message to set as new lastMessage
+                const previousMessage = yield messageRepo
+                    .createQueryBuilder("message")
+                    .where("message.chatId = :chatId", { chatId: chat.id })
+                    .andWhere("message.id != :messageId", { messageId })
+                    .orderBy("message.createdAt", "DESC")
+                    .leftJoinAndSelect("message.sender", "sender")
+                    .getOne();
+                // Update chat's lastMessage before deleting
+                chat.lastMessage = previousMessage || null;
+                yield chatRepo.save(chat);
+            }
             yield messageRepo.remove(message);
             return res.json({ message: "Message deleted successfully" });
         }
         catch (error) {
             console.error("Error deleting message:", error);
+            return res.status(500).json({ message: "Internal server error" });
+        }
+    });
+}
+/**
+ * Clear all messages in a chat (for testing purposes)
+ */
+function clearChatMessages(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const user = req.user;
+            const { chatId } = req.params;
+            const chatRepo = ormconfig_1.AppDataSource.getRepository(Chat_1.Chat);
+            const messageRepo = ormconfig_1.AppDataSource.getRepository(Message_1.Message);
+            const chatParticipantRepo = ormconfig_1.AppDataSource.getRepository(ChatParticipant_1.ChatParticipant);
+            // Verify user is a participant in this chat
+            const participation = yield chatParticipantRepo.findOne({
+                where: {
+                    chat: { id: chatId },
+                    user: { id: user.id },
+                },
+            });
+            if (!participation) {
+                return res
+                    .status(403)
+                    .json({ message: "You are not a participant in this chat" });
+            }
+            // Delete all messages in the chat
+            yield messageRepo.delete({ chat: { id: chatId } });
+            // Update chat's lastMessage to null
+            const chat = yield chatRepo.findOne({ where: { id: chatId } });
+            if (chat) {
+                chat.lastMessage = null;
+                yield chatRepo.save(chat);
+            }
+            return res.json({ message: "All messages cleared successfully" });
+        }
+        catch (error) {
+            console.error("Error clearing chat messages:", error);
+            return res.status(500).json({ message: "Internal server error" });
+        }
+    });
+}
+/**
+ * Get chat participants (for debugging)
+ */
+function getChatParticipants(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { chatId } = req.params;
+            const chatParticipantRepo = ormconfig_1.AppDataSource.getRepository(ChatParticipant_1.ChatParticipant);
+            const participants = yield chatParticipantRepo.find({
+                where: { chat: { id: chatId } },
+                relations: ["user", "chat"],
+            });
+            return res.json({
+                chatId,
+                participants: participants.map((p) => ({
+                    userId: p.user.id,
+                    userName: p.user.name,
+                    email: p.user.email,
+                    joinedAt: p.joinedAt,
+                })),
+            });
+        }
+        catch (error) {
+            console.error("Error getting chat participants:", error);
             return res.status(500).json({ message: "Internal server error" });
         }
     });

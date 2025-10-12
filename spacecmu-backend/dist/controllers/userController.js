@@ -66,13 +66,9 @@ function register(req, res) {
 function login(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log("=== LOGIN REQUEST ===");
-            console.log("Request body:", JSON.stringify(req.body));
-            console.log("Request headers:", JSON.stringify(req.headers));
             const { email, studentId, password } = req.body;
             // Support both email and studentId login
             if ((!email && !studentId) || !password) {
-                console.log("Missing credentials - email:", email, "studentId:", studentId, "password:", password ? "***" : "undefined");
                 return res.status(400).json({ message: "Missing credentials" });
             }
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);

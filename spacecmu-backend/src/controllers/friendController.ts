@@ -1,8 +1,15 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { User } from "../entities/User";
-import { FriendRequest } from "../entities/FriendRequest";
 import { Actor } from "../entities/Actor";
+import { FriendRequest } from "../entities/FriendRequest";
+import {
+  sanitizeUser,
+  sanitizeFriend,
+  createResponse,
+  listResponse,
+} from "../utils/serialize";
+
 import { isUserOnline } from "../socket";
 import { In } from "typeorm";
 
@@ -181,7 +188,7 @@ export async function listFriendRequests(
         : {
             name: req.toActor.persona!.displayName,
             type: "persona",
-            actorId: req.toActor.id,
+            actorId: req.fromActor.id,
           };
 
       return {
@@ -222,11 +229,9 @@ export async function acceptFriendRequest(
     });
 
     if (!request || request.status !== "pending") {
-      return res
-        .status(404)
-        .json({
-          message: "Friend request not found or has already been handled",
-        });
+      return res.status(404).json({
+        message: "Friend request not found or has already been handled",
+      });
     }
 
     const isReceiver =
@@ -262,7 +267,7 @@ export async function acceptFriendRequest(
       await actorRepo.save([fromActor, toActor]);
     }
 
-    return res.json({ message: "Friend request accepted" });
+    return res.json(createResponse("Friend request accepted", null));
   } catch (err) {
     console.error("acceptFriendRequest error:", err);
     return res.status(500).json({ message: "Failed to accept friend request" });
@@ -288,11 +293,9 @@ export async function rejectFriendRequest(
     });
 
     if (!request || request.status !== "pending") {
-      return res
-        .status(404)
-        .json({
-          message: "Friend request not found or has already been handled",
-        });
+      return res.status(404).json({
+        message: "Friend request not found or has already been handled",
+      });
     }
 
     const isReceiver =
@@ -308,7 +311,7 @@ export async function rejectFriendRequest(
     request.status = "declined";
     await frRepo.save(request);
 
-    return res.json({ message: "Friend request rejected" });
+    return res.json(createResponse("Friend request rejected", null));
   } catch (err) {
     console.error("rejectFriendRequest error:", err);
     return res.status(500).json({ message: "Failed to reject friend request" });
@@ -399,11 +402,9 @@ export async function removeFriend(
       (fromActor.user && fromActor.user.id === user.id) ||
       (fromActor.persona && fromActor.persona.user.id === user.id);
     if (!isOwner) {
-      return res
-        .status(403)
-        .json({
-          message: "Not authorized to remove friends from this profile",
-        });
+      return res.status(403).json({
+        message: "Not authorized to remove friends from this profile",
+      });
     }
     const friendToRemove = await actorRepo.findOne({
       where: { id: friendActorId },
@@ -423,7 +424,7 @@ export async function removeFriend(
 
     await actorRepo.save([fromActor, friendToRemove]);
 
-    return res.json({ message: "Friend removed" });
+    return res.json(createResponse("Friend removed", null));
   } catch (err) {
     console.error("removeFriend error:", err);
     return res.status(500).json({ message: "Failed to remove friend" });

@@ -13,4 +13,7 @@ router.post("/direct", chatController_1.createDirectChat); // POST /api/chats/di
 router.get("/:chatId/messages", chatController_1.getChatMessages); // GET /api/chats/:chatId/messages - Get chat messages
 router.post("/:chatId/messages", chatController_1.sendMessage); // POST /api/chats/:chatId/messages - Send message
 router.delete("/messages/:messageId", chatController_1.deleteMessage); // DELETE /api/chats/messages/:messageId - Delete message
+router.delete("/:chatId/messages", chatController_1.clearChatMessages); // DELETE /api/chats/:chatId/messages - Clear all messages
+// Chat info routes
+router.get("/:chatId/participants", chatController_1.getChatParticipants); // GET /api/chats/:chatId/participants - Get chat participants
 exports.default = router;
