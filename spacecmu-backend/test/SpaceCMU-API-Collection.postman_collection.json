@@ -87,6 +87,31 @@
       "type": "string"
     },
     {
+      "key": "lastImageMessageId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sellerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "buyerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testProductId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testChatId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "lastMessageId",
       "value": "",
       "type": "string"
@@ -457,7 +482,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"message\": \"สวัสดีครับ สนใจสินค้านี้ครับ ราคาต่อรองได้ไหมครับ\",\n  \"imageUrl\": \"{{chatImageUrl}}\",\n  \"fileName\": \"{{sampleFileName}}\",\n  \"fileSize\": {{sampleFileSize}}\n}"
+              "raw": "{\n  \"productId\": {{productId}},\n  \"message\": \"สวัสดีครับ สนใจสินค้านี้ครับ ราคาต่อรองได้ไหมครับ\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/chats/product",
@@ -637,6 +662,51 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"content\": \"This is a text-only message\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{chatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Image Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const messageId = response.data?.id;",
+                  "    ",
+                  "    if (messageId) {",
+                  "        pm.collectionVariables.set('lastImageMessageId', messageId);",
+                  "        console.log('✅ Image Message ID saved:', messageId);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Send image message failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"image\",\n  \"content\": \"ดูรูปนี้ครับ 📷\",\n  \"imageUrl\": \"{{sampleImageUrl}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/chats/{{chatId}}/messages",
@@ -1776,6 +1846,372 @@
           "}"
         ]
       }
+    },
+    {
+      "name": "🎯 Complete Product-Chat Workflow Test",
+      "item": [
+        {
+          "name": "1️⃣ Register Seller User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    console.log('✅ Seller registered successfully');",
+                  "} else {",
+                  "    console.log('❌ Seller registration failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"studentId\\\": \\\"SELLER001\\\",\\n  \\\"email\\\": \\\"seller@cmu.ac.th\\\",\\n  \\\"password\\\": \\\"{{testPassword}}\\\",\\n  \\\"name\\\": \\\"Product Seller\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            }
+          }
+        },
+        {
+          "name": "2️⃣ Login Seller & Get Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const token = response.data?.token;",
+                  "    ",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('sellerToken', token);",
+                  "        console.log('✅ Seller token saved');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Seller login failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"email\\\": \\\"seller@cmu.ac.th\\\",\\n  \\\"password\\\": \\\"{{testPassword}}\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          }
+        },
+        {
+          "name": "3️⃣ Create Product with Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const productId = response.data?.product?.id;",
+                  "    ",
+                  "    if (productId) {",
+                  "        pm.collectionVariables.set('testProductId', productId);",
+                  "        console.log('✅ Product created with ID:', productId);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Product creation failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"name\\\": \\\"iPhone 16 Pro Max\\\",\\n  \\\"price\\\": 50000,\\n  \\\"description\\\": \\\"Latest iPhone with advanced AI features\\\",\\n  \\\"imageUrl\\\": \\\"{{sampleImageUrl}}\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "4️⃣ Update Product Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Product image updated successfully');",
+                  "} else {",
+                  "    console.log('❌ Product image update failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{sellerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"imageUrl\\\": \\\"https://example.com/updated-iphone16.jpg\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/{{testProductId}}/image",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{testProductId}}", "image"]
+            }
+          }
+        },
+        {
+          "name": "5️⃣ Register Buyer User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    console.log('✅ Buyer registered successfully');",
+                  "} else {",
+                  "    console.log('❌ Buyer registration failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"studentId\\\": \\\"BUYER001\\\",\\n  \\\"email\\\": \\\"buyer@cmu.ac.th\\\",\\n  \\\"password\\\": \\\"{{testPassword}}\\\",\\n  \\\"name\\\": \\\"Product Buyer\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            }
+          }
+        },
+        {
+          "name": "6️⃣ Login Buyer & Get Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const token = response.data?.token;",
+                  "    ",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('buyerToken', token);",
+                  "        console.log('✅ Buyer token saved');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Buyer login failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"email\\\": \\\"buyer@cmu.ac.th\\\",\\n  \\\"password\\\": \\\"{{testPassword}}\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          }
+        },
+        {
+          "name": "7️⃣ Create Chat with Product Seller",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const chatId = response.data?.chatId;",
+                  "    ",
+                  "    if (chatId) {",
+                  "        pm.collectionVariables.set('testChatId', chatId);",
+                  "        console.log('✅ Product chat created with ID:', chatId);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Product chat creation failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"productId\\\": {{testProductId}},\\n  \\\"message\\\": \\\"สวัสดีครับ สนใจ iPhone 16 Pro Max นี้ครับ ราคาต่อรองได้ไหมครับ?\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/product",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "product"]
+            }
+          }
+        },
+        {
+          "name": "8️⃣ Send Image Message in Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    console.log('✅ Image message sent successfully');",
+                  "} else {",
+                  "    console.log('❌ Image message failed');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"type\\\": \\\"image\\\",\\n  \\\"content\\\": \\\"ดูรูปนี้ครับ เป็นโทรศัพท์ที่ผมต้องการ 📱\\\",\\n  \\\"imageUrl\\\": \\\"{{chatImageUrl}}\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{testChatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{testChatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "9️⃣ Get Chat Messages (Verify)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const messages = response.data?.messages || [];",
+                  "    ",
+                  "    console.log(`✅ Retrieved ${messages.length} messages`);",
+                  "    ",
+                  "    messages.forEach((msg, index) => {",
+                  "        console.log(`Message ${index + 1}: ${msg.type} - ${msg.content}`);",
+                  "        if (msg.imageUrl) {",
+                  "            console.log(`  📷 Image: ${msg.imageUrl}`);",
+                  "        }",
+                  "    });",
+                  "} else {",
+                  "    console.log('❌ Failed to retrieve messages');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chats/{{testChatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["chats", "{{testChatId}}", "messages"]
+            }
+          }
+        }
+      ]
     }
   ]
 }
