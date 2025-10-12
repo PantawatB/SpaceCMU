@@ -2,6 +2,11 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { Product } from "../entities/Product";
 import { User } from "../entities/User";
+import {
+  sanitizeSeller,
+  createResponse,
+  listResponse,
+} from "../utils/serialize";
 
 interface AuthenticatedRequest extends Request {
   user?: User;
@@ -13,12 +18,15 @@ export const getAllProducts = async (req: Request, res: Response) => {
     const productRepo = AppDataSource.getRepository(Product);
     const products = await productRepo.find({
       order: { createdAt: "DESC" },
+      relations: ["seller"],
     });
 
-    return res.json({
-      success: true,
-      data: products,
-    });
+    const sanitized = products.map((p) => ({
+      ...p,
+      seller: sanitizeSeller((p as any).seller),
+    }));
+
+    return res.json(listResponse(sanitized));
   } catch (error) {
     console.error("Error getting products:", error);
     return res.status(500).json({
@@ -54,11 +62,13 @@ export const createProduct = async (
 
     await productRepo.save(product);
 
-    return res.status(201).json({
-      success: true,
-      message: "Product created successfully",
-      data: product,
-    });
+    return res
+      .status(201)
+      .json(
+        createResponse("Product created successfully", {
+          product: { ...product, seller: sanitizeSeller(user) },
+        })
+      );
   } catch (error) {
     console.error("Error creating product:", error);
     return res.status(500).json({
@@ -81,25 +91,18 @@ export const deleteProduct = async (
     const product = await productRepo.findOne({ where: { id: parseInt(id) } });
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return res.status(404).json(createResponse("Product not found", null));
     }
 
     if (product.seller.id !== user.id) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only delete your own products",
-      });
+      return res
+        .status(403)
+        .json(createResponse("You can only delete your own products", null));
     }
 
     await productRepo.remove(product);
 
-    return res.json({
-      success: true,
-      message: "Product deleted successfully",
-    });
+    return res.json(createResponse("Product deleted successfully", null));
   } catch (error) {
     console.error("Error deleting product:", error);
     return res.status(500).json({
@@ -130,27 +133,23 @@ export const updateProductStatus = async (
     const product = await productRepo.findOne({ where: { id: parseInt(id) } });
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      return res.status(404).json(createResponse("Product not found", null));
     }
 
     if (product.seller.id !== user.id) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only update your own products",
-      });
+      return res
+        .status(403)
+        .json(createResponse("You can only update your own products", null));
     }
 
     product.status = status;
     await productRepo.save(product);
 
-    return res.json({
-      success: true,
-      message: "Product status updated successfully",
-      data: product,
-    });
+    return res.json(
+      createResponse("Product status updated successfully", {
+        product: { ...product, seller: sanitizeSeller(product.seller) },
+      })
+    );
   } catch (error) {
     console.error("Error updating product status:", error);
     return res.status(500).json({

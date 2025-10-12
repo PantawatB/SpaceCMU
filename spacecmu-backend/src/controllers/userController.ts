@@ -3,6 +3,12 @@ import { AppDataSource } from "../ormconfig";
 import jwt from "jsonwebtoken";
 import { User } from "../entities/User";
 import { hashPassword, comparePassword } from "../utils/hash";
+import {
+  sanitizeUser,
+  sanitizeUserProfile,
+  createResponse,
+  listResponse,
+} from "../utils/serialize";
 
 /**
  * Registers a new user. This function expects a CMU student ID, CMU email,
@@ -73,18 +79,12 @@ export async function login(req: Request, res: Response) {
     const secret = process.env.JWT_SECRET || "changeme";
     const token = jwt.sign({ userId: user.id }, secret, { expiresIn: "7d" });
 
-    return res.json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        studentId: user.studentId,
-        email: user.email,
-        name: user.name,
-        bio: user.bio,
-        isAdmin: user.isAdmin,
-      },
-    });
+    return res.json(
+      createResponse("Login successful", {
+        token,
+        user: sanitizeUserProfile(user), // Login gets full profile
+      })
+    );
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json({ message: "Login failed" });
@@ -103,18 +103,14 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
 
     const friendCount = user.friends ? user.friends.length : 0;
 
-    return res.json({
-      id: user.id,
-      studentId: user.studentId,
-      email: user.email,
-      name: user.name,
-      bio: user.bio,
-      isAdmin: user.isAdmin,
-      friendCount,
-      persona: user.persona || null,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    });
+    return res.json(
+      createResponse("User profile fetched", {
+        ...sanitizeUserProfile(user), // Own profile gets full info
+        friendCount,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })
+    );
   } catch (err) {
     console.error("GetMe error:", err);
     return res.status(500).json({ message: "Failed to fetch user profile" });
@@ -151,16 +147,11 @@ export async function updateUser(
 
     await userRepo.save(user);
 
-    return res.json({
-      message: "User updated successfully",
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        studentId: user.studentId,
-        bio: user.bio,
-      },
-    });
+    return res.json(
+      createResponse("User updated successfully", {
+        user: sanitizeUserProfile(user), // Updated profile gets full info
+      })
+    );
   } catch (err) {
     console.error("UpdateUser error:", err);
     return res.status(500).json({ message: "Failed to update user" });
@@ -203,7 +194,12 @@ export async function getMyReposts(
       );
     }
 
-    return res.json(repostedPosts);
+    // sanitize post.user for safety
+    const sanitized = repostedPosts.map((post: any) => {
+      if (post.isAnonymous && post.persona) return post;
+      return { ...post, user: sanitizeUser(post.user) };
+    });
+    return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("getMyReposts error:", err);
     return res.status(500).json({ message: "Failed to fetch reposts" });
@@ -242,7 +238,11 @@ export async function getMyLikedPosts(
       );
     }
 
-    return res.json(likedPosts);
+    const sanitized = likedPosts.map((post: any) => {
+      if (post.isAnonymous && post.persona) return post;
+      return { ...post, user: sanitizeUser(post.user) };
+    });
+    return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("getMyLikedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch liked posts" });
@@ -281,7 +281,11 @@ export async function getMySavedPosts(
       );
     }
 
-    return res.json(savedPosts);
+    const sanitized = savedPosts.map((post: any) => {
+      if (post.isAnonymous && post.persona) return post;
+      return { ...post, user: sanitizeUser(post.user) };
+    });
+    return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("getMySavedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch saved posts" });

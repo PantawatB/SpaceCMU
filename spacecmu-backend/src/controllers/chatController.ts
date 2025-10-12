@@ -3,6 +3,7 @@ import { AppDataSource } from "../ormconfig";
 import { Chat, ChatType } from "../entities/Chat";
 import { Message, MessageType } from "../entities/Message";
 import { ChatParticipant } from "../entities/ChatParticipant";
+import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 import { User } from "../entities/User";
 
 /**
@@ -390,15 +391,15 @@ export async function getChatParticipants(
       relations: ["user", "chat"],
     });
 
-    return res.json({
-      chatId,
-      participants: participants.map((p) => ({
-        userId: p.user.id,
-        userName: p.user.name,
-        email: p.user.email,
-        joinedAt: p.joinedAt,
-      })),
-    });
+    return res.json(
+      createResponse("Chat participants fetched", {
+        chatId,
+        participants: participants.map((p) => ({
+          ...sanitizeUser(p.user),
+          joinedAt: p.joinedAt,
+        })),
+      })
+    );
   } catch (error) {
     console.error("Error getting chat participants:", error);
     return res.status(500).json({ message: "Internal server error" });

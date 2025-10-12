@@ -4,6 +4,7 @@ import { In } from "typeorm";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
 import { Persona } from "../entities/Persona";
+import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 
 /**
  * 📌 สร้างโพสต์ใหม่
@@ -61,7 +62,11 @@ export async function createPost(
 
     await postRepo.save(post);
 
-    return res.status(201).json({ message: "Post created", post });
+    // sanitize author before returning
+    const postToReturn = { ...post, user: sanitizeUser(post.user) };
+    return res
+      .status(201)
+      .json(createResponse("Post created", { post: postToReturn }));
   } catch (err) {
     console.error("createPost error:", err);
     return res.status(500).json({ message: "Failed to create post" });
@@ -99,7 +104,8 @@ export async function updatePost(
     }
 
     await postRepo.save(post);
-    return res.json({ message: "Post updated", post });
+    const postToReturn = { ...post, user: sanitizeUser((post as any).user) };
+    return res.json(createResponse("Post updated", { post: postToReturn }));
   } catch (err) {
     console.error("updatePost error:", err);
     return res.status(500).json({ message: "Failed to update post" });
@@ -129,7 +135,7 @@ export async function deletePost(
     }
 
     await postRepo.remove(post);
-    return res.json({ message: "Post deleted" });
+    return res.json(createResponse("Post deleted", null));
   } catch (err) {
     console.error("deletePost error:", err);
     return res.status(500).json({ message: "Failed to delete post" });
@@ -147,7 +153,12 @@ export async function listPosts(req: Request, res: Response) {
       order: { createdAt: "DESC" },
       take: 50,
     });
-    return res.json(posts);
+    // sanitize user for each post unless anonymous
+    const sanitized = posts.map((p) => {
+      if (p.isAnonymous && p.persona) return p;
+      return { ...p, user: sanitizeUser(p.user) };
+    });
+    return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("listPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch posts" });
@@ -169,7 +180,12 @@ export async function getPost(req: Request, res: Response) {
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    return res.json(post);
+    const postToReturn = {
+      ...post,
+      user:
+        post.isAnonymous && post.persona ? undefined : sanitizeUser(post.user),
+    };
+    return res.json(createResponse("Post fetched", { post: postToReturn }));
   } catch (err) {
     console.error("getPost error:", err);
     return res.status(500).json({ message: "Failed to fetch post" });
@@ -208,16 +224,18 @@ export async function getPublicFeed(req: Request, res: Response) {
 
     const totalPages = Math.ceil(totalItems / limit);
 
-    return res.json({
-      items: items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages,
-        currentPage: page,
-      },
-    });
+    return res.json(
+      createResponse("Public feed fetched", {
+        items: items,
+        meta: {
+          totalItems,
+          itemCount: items.length,
+          itemsPerPage: limit,
+          totalPages,
+          currentPage: page,
+        },
+      })
+    );
   } catch (err) {
     console.error("getPublicFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch public feed" });
@@ -265,16 +283,18 @@ export async function getFriendFeed(
 
     const totalPages = Math.ceil(totalItems / limit);
 
-    return res.json({
-      items: items,
-      meta: {
-        totalItems,
-        itemCount: items.length,
-        itemsPerPage: limit,
-        totalPages,
-        currentPage: page,
-      },
-    });
+    return res.json(
+      createResponse("Friend feed fetched", {
+        items: items,
+        meta: {
+          totalItems,
+          itemCount: items.length,
+          itemsPerPage: limit,
+          totalPages,
+          currentPage: page,
+        },
+      })
+    );
   } catch (err) {
     console.error("getFriendFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch friend feed" });
@@ -296,7 +316,12 @@ export async function getPostById(req: Request, res: Response) {
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    return res.json(post);
+    const postToReturn = {
+      ...post,
+      user:
+        post.isAnonymous && post.persona ? undefined : sanitizeUser(post.user),
+    };
+    return res.json(createResponse("Post fetched", { post: postToReturn }));
   } catch (err) {
     console.error("getPostById error:", err);
     return res.status(500).json({ message: "Failed to fetch post" });

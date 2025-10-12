@@ -1,0 +1,309 @@
+{
+  "info": {
+    "name": "SpaceCMU API - Integration Runner",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Register A",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"studentId\": \"uA\", \"email\": \"uA@example.com\", \"password\": \"Password123!\", \"name\": \"User A\" }"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 201 or 409', function() { pm.expect([201,409]).to.include(pm.response.code); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login A",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"uA@example.com\", \"password\": \"Password123!\" }"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('login 200', function() { pm.expect(pm.response.code).to.be.oneOf([200]); });",
+              "var json = pm.response.json();",
+              "if (json && json.token) { pm.environment.set('tokenA', json.token); pm.environment.set('userAId', json.user && json.user.id); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Me A",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "me"]
+        }
+      }
+    },
+    {
+      "name": "Create Post A",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/posts",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "posts"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"content\": \"Integration test post\", \"visibility\": \"public\" }"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json(); if (j.post && j.post.id) pm.environment.set('postId', j.post.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Posts",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/posts",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "posts"]
+        }
+      }
+    },
+    {
+      "name": "Create Persona A",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/personas",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "personas"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"displayName\": \"Persona A\", \"bio\": \"Test\" }"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json(); if (j.persona && j.persona.id) pm.environment.set('personaId', j.persona.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create Product A",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "products"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Test Item\", \"price\": 9.99, \"description\": \"runner\" }"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json(); if (j.data && j.data.id) pm.environment.set('productId', j.data.id); if (j.id) pm.environment.set('productId', j.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Products",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "products"]
+        }
+      }
+    },
+    {
+      "name": "Delete Product A",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{tokenA}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/products/{{productId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "products", "{{productId}}"]
+        }
+      }
+    },
+    {
+      "name": "Register B",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"studentId\": \"uB\", \"email\": \"uB@example.com\", \"password\": \"Password123!\", \"name\": \"User B\" }"
+        }
+      }
+    },
+    {
+      "name": "Login B",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users", "login"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"uB@example.com\", \"password\": \"Password123!\" }"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json(); if (j && j.token) { pm.environment.set('tokenB', j.token); pm.environment.set('userBId', j.user && j.user.id); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Friend request A->B",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/friends/request",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "friends", "request"]
+        },
+        "body": { "mode": "raw", "raw": "{\"toUserId\": \"{{userBId}}\" }" }
+      }
+    },
+    {
+      "name": "Create Direct Chat A->B",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chats/direct",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "chats", "direct"]
+        },
+        "body": { "mode": "raw", "raw": "{\"otherUserId\": \"{{userBId}}\" }" }
+      }
+    },
+    {
+      "name": "Send Message A",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chats/{{chatId}}/messages",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "chats", "{{chatId}}", "messages"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"content\": \"Hello from Postman\" }"
+        }
+      }
+    },
+    {
+      "name": "Create Comment on Post",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{tokenA}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "posts", "{{postId}}", "comments"]
+        },
+        "body": { "mode": "raw", "raw": "{\"content\": \"Nice\" }" }
+      }
+    }
+  ],
+  "event": [],
+  "variable": []
+}

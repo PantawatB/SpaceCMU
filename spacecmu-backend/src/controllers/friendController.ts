@@ -1,7 +1,14 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { User } from "../entities/User";
+import { Friend } from "../entities/Friend";
 import { FriendRequest } from "../entities/FriendRequest";
+import {
+  sanitizeUser,
+  sanitizeFriend,
+  createResponse,
+  listResponse,
+} from "../utils/serialize";
 import { isUserOnline } from "../socket";
 
 /**
@@ -85,7 +92,14 @@ export async function listFriendRequests(
       relations: ["fromUser", "toUser"],
     });
 
-    return res.json(requests);
+    // Sanitize user data in friend requests
+    const sanitized = requests.map((req) => ({
+      ...req,
+      fromUser: sanitizeUser(req.fromUser),
+      toUser: sanitizeUser(req.toUser),
+    }));
+
+    return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("listFriendRequests error:", err);
     return res.status(500).json({ message: "Failed to fetch friend requests" });
@@ -138,7 +152,7 @@ export async function acceptFriendRequest(
       await userRepo.save(toUser);
     }
 
-    return res.json({ message: "Friend request accepted" });
+    return res.json(createResponse("Friend request accepted", null));
   } catch (err) {
     console.error("acceptFriendRequest error:", err);
     return res.status(500).json({ message: "Failed to accept friend request" });
@@ -173,7 +187,7 @@ export async function rejectFriendRequest(
     request.status = "declined";
     await frRepo.save(request);
 
-    return res.json({ message: "Friend request rejected" });
+    return res.json(createResponse("Friend request rejected", null));
   } catch (err) {
     console.error("rejectFriendRequest error:", err);
     return res.status(500).json({ message: "Failed to reject friend request" });
@@ -200,13 +214,9 @@ export async function listFriends(
       );
     }
 
-    const result = friends.map((f) => ({
-      id: f.id,
-      name: f.name,
-      bio: f.bio,
-    }));
+    const result = friends.map(sanitizeFriend);
 
-    return res.json(result);
+    return res.json(listResponse(result));
   } catch (err) {
     console.error("listFriends error:", err);
     return res.status(500).json({ message: "Failed to fetch friends list" });
@@ -239,7 +249,7 @@ export async function removeFriend(
     await userRepo.save(user);
     await userRepo.save(friend);
 
-    return res.json({ message: "Friend removed" });
+    return res.json(createResponse("Friend removed", null));
   } catch (err) {
     console.error("removeFriend error:", err);
     return res.status(500).json({ message: "Failed to remove friend" });
@@ -258,13 +268,12 @@ export async function getFriendStatuses(
     if (!user || !user.friends) return res.json([]);
 
     const statuses = user.friends.map((friend) => ({
-      userId: friend.id,
-      name: friend.name,
+      ...sanitizeFriend(friend),
       isOnline: isUserOnline(friend.id), // เช็คจาก Map ของ Socket.IO
       lastActiveAt: friend.lastActiveAt, // ดึงจาก database
     }));
 
-    return res.json(statuses);
+    return res.json(listResponse(statuses));
   } catch (err) {
     console.error("getFriendStatuses error:", err);
     return res.status(500).json({ message: "Failed to fetch friend statuses" });
