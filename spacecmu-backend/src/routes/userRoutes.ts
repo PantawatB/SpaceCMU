@@ -4,6 +4,7 @@ import {
   login,
   getMe,
   updateUser,
+  searchUsers,
   getMyReposts,
   getMyLikedPosts,
   getMySavedPosts,
@@ -15,6 +16,9 @@ const router = Router();
 // Public routes
 router.post("/register", register);
 router.post("/login", login);
+
+// GET /api/users/search?name=...
+router.get("/search", authenticateToken, searchUsers);
 
 // Protected routes
 router.get("/me", authenticateToken, getMe);

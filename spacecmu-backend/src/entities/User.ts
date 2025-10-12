@@ -5,16 +5,13 @@ import {
   OneToOne,
   OneToMany,
   ManyToMany,
-  JoinColumn,
-  JoinTable,
 } from "typeorm";
 import { Persona } from "./Persona";
 import { Post } from "./Post";
-import { Friend } from "./Friend";
 import { Report } from "./Report";
 import { Comment } from "./Comment";
-import { FriendRequest } from "./FriendRequest";
 import { Message } from "./Message";
+import { Actor } from "./Actor";
 
 /**
  * The User entity represents a single CMU student in the system. A user has
@@ -58,6 +55,9 @@ export class User {
   @Column({ type: "text", nullable: true }) // ใช้ type: "text" สำหรับข้อความยาวๆ
   bio?: string;
 
+  @Column({ nullable: true })
+  title?: string;
+
   /**
    * Optional flag used to elevate a user to administrator privileges.
    */
@@ -93,7 +93,6 @@ export class User {
     cascade: true,
     nullable: true,
   })
-  @JoinColumn()
   persona?: Persona;
 
   /**
@@ -101,35 +100,6 @@ export class User {
    */
   @OneToMany(() => Post, (post) => post.user)
   posts!: Post[];
-
-  /**
-   * Friendships where this user is user1.
-   */
-  @OneToMany(() => Friend, (friend) => friend.user1)
-  friendships1!: Friend[];
-
-  /**
-   * Friendships where this user is user2.
-   */
-  @OneToMany(() => Friend, (friend) => friend.user2)
-  friendships2!: Friend[];
-
-  /**
-   * Friend requests (sent and received).
-   */
-  @OneToMany(() => FriendRequest, (fr) => fr.fromUser)
-  sentFriendRequests!: FriendRequest[];
-
-  @OneToMany(() => FriendRequest, (fr) => fr.toUser)
-  receivedFriendRequests!: FriendRequest[];
-
-  /**
-   * Many-to-many self-referential relation for accepted friendships.
-   * (Optional: if you want to query friends directly without Friend entity)
-   */
-  @ManyToMany(() => User, (user) => user.friends)
-  @JoinTable({ name: "user_friends" })
-  friends!: User[];
 
   /**
    * Reports created by this user.
@@ -176,4 +146,10 @@ export class User {
    */
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
   lastActiveAt!: Date;
+
+  /**
+   * The social actor profile for this User.
+   */
+  @OneToOne(() => Actor, (actor) => actor.user, { cascade: true })
+  actor!: Actor;
 }
