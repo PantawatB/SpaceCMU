@@ -4,6 +4,8 @@ import { User } from "../entities/User";
 import { FriendRequest } from "../entities/FriendRequest";
 import { isUserOnline } from "../socket";
 
+// src/controllers/friendController.ts
+
 /**
  * 📌 ส่งคำขอเป็นเพื่อน
  */
@@ -25,7 +27,6 @@ export async function sendFriendRequest(
     const userRepo = AppDataSource.getRepository(User);
     const target = await userRepo.findOne({
       where: { id: toUserId },
-      relations: ["friends"],
     });
     if (!target) {
       return res.status(404).json({ message: "Target user not found" });
@@ -36,22 +37,30 @@ export async function sendFriendRequest(
     }
 
     const frRepo = AppDataSource.getRepository(FriendRequest);
-    const existing = await frRepo.findOne({
-      where: { fromUser, toUser: target, status: "pending" },
+    const anyExistingRequest = await frRepo.findOne({
+      where: [
+        { fromUser: { id: fromUser.id }, toUser: { id: toUserId } },
+        { fromUser: { id: toUserId }, toUser: { id: fromUser.id } },
+      ],
     });
-    if (existing) {
-      return res.status(400).json({ message: "Friend request already sent" });
-    }
 
-    const reverse = await frRepo.findOne({
-      where: { fromUser: target, toUser: fromUser, status: "pending" },
-    });
-    if (reverse) {
-      return res
-        .status(400)
-        .json({ message: "Friend request already received" });
-    }
+    if (anyExistingRequest) {
+      if (anyExistingRequest.status === "pending") {
+        if (anyExistingRequest.fromUser.id === fromUser.id) {
+          return res
+            .status(400)
+            .json({ message: "Friend request already sent" });
+        } else {
+          return res
+            .status(400)
+            .json({
+              message: "Friend request already received from this user",
+            });
+        }
+      }
 
+      await frRepo.remove(anyExistingRequest);
+    }
     const request = frRepo.create({
       fromUser,
       toUser: target,
