@@ -5,14 +5,14 @@ import {
   Column,
   Unique,
 } from "typeorm";
-import { User } from "./User";
+import { Actor } from "./Actor";
 
 /**
  * FriendRequest represents a pending request between two users.
  * When accepted the Friend entity is created; otherwise it is removed.
  */
 @Entity()
-@Unique(["fromUser", "toUser"]) // ป้องกันการส่ง request ซ้ำ
+@Unique(["fromActor", "toActor"])
 export class FriendRequest {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -20,20 +20,20 @@ export class FriendRequest {
   /**
    * ผู้ส่งคำขอเป็นเพื่อน
    */
-  @ManyToOne(() => User, (user) => user.sentFriendRequests, {
+  @ManyToOne(() => Actor, (actor) => actor.sentFriendRequests, {
     eager: true,
-    onDelete: "CASCADE", // ถ้าผู้ใช้ถูกลบ -> ลบคำขอด้วย
+    onDelete: "CASCADE",
   })
-  fromUser!: User;
+  fromActor!: Actor;
 
   /**
    * ผู้รับคำขอเป็นเพื่อน
    */
-  @ManyToOne(() => User, (user) => user.receivedFriendRequests, {
+  @ManyToOne(() => Actor, (actor) => actor.receivedFriendRequests, {
     eager: true,
     onDelete: "CASCADE",
   })
-  toUser!: User;
+  toActor!: Actor;
 
   /**
    * สถานะของคำขอ

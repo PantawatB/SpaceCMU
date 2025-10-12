@@ -3,6 +3,7 @@ import { AppDataSource } from "../ormconfig";
 import jwt from "jsonwebtoken";
 import { User } from "../entities/User";
 import { Persona } from "../entities/Persona";
+import { Actor } from "../entities/Actor";
 import { hashPassword, comparePassword } from "../utils/hash";
 import {
   sanitizeUser,
@@ -30,31 +31,30 @@ export async function register(req: Request, res: Response) {
     if (existingById) {
       return res.status(409).json({ message: "Student ID already registered" });
     }
-
     const existingByEmail = await userRepo.findOne({ where: { email } });
     if (existingByEmail) {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    const hashed = await hashPassword(password);
+    const userActor = new Actor();
+    const personaActor = new Actor();
     const user = userRepo.create({
       studentId,
       email,
-      passwordHash: hashed,
+      passwordHash: await hashPassword(password),
       name,
+      actor: userActor,
     });
+    const newPersona = new Persona();
+    newPersona.displayName = generateRandomPersonaName();
+    newPersona.actor = personaActor;
 
+    user.persona = newPersona;
+    newPersona.user = user;
+    userActor.user = user;
+    personaActor.persona = newPersona;
     await userRepo.save(user);
 
-    const personaRepo = AppDataSource.getRepository(Persona);
-    const randomName = generateRandomPersonaName();
-
-    const newPersona = personaRepo.create({
-      displayName: randomName,
-      user: user,
-    });
-
-    await personaRepo.save(newPersona);
     return res.status(201).json({ message: "Registration successful" });
   } catch (err) {
     console.error("Register error:", err);
@@ -117,16 +117,28 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const friendCount = user.friends ? user.friends.length : 0;
+    const friendCount =
+      user.actor && user.actor.friends ? user.actor.friends.length : 0;
 
-    return res.json(
-      createResponse("User profile fetched", {
-        ...sanitizeUserProfile(user), // Own profile gets full info
-        friendCount,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      })
-    );
+    return res.json({
+      id: user.id,
+      studentId: user.studentId,
+      email: user.email,
+      name: user.name,
+      bio: user.bio,
+      isAdmin: user.isAdmin,
+      profileImg: user.profileImg,
+      friendCount,
+      actorId: user.actor ? user.actor.id : null,
+      persona: user.persona
+        ? {
+            ...user.persona,
+            actorId: user.persona.actor ? user.persona.actor.id : null,
+          }
+        : null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
   } catch (err) {
     console.error("GetMe error:", err);
     return res.status(500).json({ message: "Failed to fetch user profile" });
@@ -175,6 +187,64 @@ export async function updateUser(
   } catch (err) {
     console.error("UpdateUser error:", err);
     return res.status(500).json({ message: "Failed to update user" });
+  }
+}
+
+/**
+ * 📌 ค้นหาผู้ใช้ทั้งหมดในระบบจากชื่อ (มี Pagination)
+ */
+export async function searchUsers(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const currentUser = req.user!;
+    const { name } = req.query;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    if (!name || typeof name !== "string" || name.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "Search 'name' query is required" });
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const [users, totalItems] = await userRepo
+      .createQueryBuilder("user")
+      .where("user.name ILIKE :name", { name: `%${name}%` })
+      .leftJoinAndSelect("user.actor", "actor")
+      .orderBy("user.name", "ASC")
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const results = users
+      .filter((user) => user.id !== currentUser.id)
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        profileImg: user.profileImg,
+        bio: user.bio,
+        actorId: user.actor ? user.actor.id : null,
+      }));
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return res.json({
+      items: results,
+      meta: {
+        totalItems,
+        itemCount: results.length,
+        itemsPerPage: limit,
+        totalPages,
+        currentPage: page,
+      },
+    });
+  } catch (err) {
+    console.error("searchUsers error:", err);
+    return res.status(500).json({ message: "Failed to search for users" });
   }
 }
 
