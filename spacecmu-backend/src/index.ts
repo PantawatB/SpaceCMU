@@ -56,7 +56,7 @@ async function bootstrap() {
     app.use("/api/posts", postRoutes);
     app.use("/api/friends", friendRoutes);
     app.use("/api/admin", adminRoutes);
-    app.use("/api/posts", commentRoutes);
+    app.use("/api/posts", commentRoutes); // Comments are sub-routes of posts
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
     app.use("/api/products", productRoutes);

@@ -23,11 +23,13 @@ const router = Router();
 router.get("/search", searchPostsByAuthor);
 router.get("/feed/public", getPublicFeed);
 router.get("/", listPosts);
-router.get("/:id", getPost);
 
 // 📌 Protected endpoints (ต้อง login)
 // Feed ของเพื่อน
 router.get("/feed/friends", authenticateToken, getFriendFeed);
+
+// 📌 Get single post (must be after specific routes)
+router.get("/:id", getPost);
 
 // สร้าง/แก้ไข/ลบโพสต์
 router.post("/", authenticateToken, createPost);

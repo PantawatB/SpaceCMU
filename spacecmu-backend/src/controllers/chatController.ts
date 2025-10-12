@@ -63,14 +63,36 @@ export async function createDirectChat(
   req: Request & { user?: User },
   res: Response
 ) {
-  try {
-    const user = req.user!;
-    const { otherUserId } = req.body;
+  console.log("=== CREATE DIRECT CHAT DEBUG ===");
+  console.log("Request body:", req.body);
+  console.log(
+    "User from req:",
+    req.user ? { id: req.user.id, name: req.user.name } : "undefined"
+  );
 
+  try {
+    // Validate user authentication
+    if (!req.user) {
+      console.log("❌ No user in request");
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const currentUser = req.user;
+    console.log("✅ Current user:", {
+      id: currentUser.id,
+      name: currentUser.name,
+    });
+
+    // Validate request body
+    const { otherUserId } = req.body;
     if (!otherUserId) {
+      console.log("❌ No otherUserId provided");
       return res.status(400).json({ message: "Other user ID is required" });
     }
 
+    console.log("🔍 Looking for other user:", otherUserId);
+
+    // Get repositories
     const userRepo = AppDataSource.getRepository(User);
     const chatRepo = AppDataSource.getRepository(Chat);
     const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
@@ -78,65 +100,63 @@ export async function createDirectChat(
     // Check if other user exists
     const otherUser = await userRepo.findOne({ where: { id: otherUserId } });
     if (!otherUser) {
+      console.log("❌ Other user not found");
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if direct chat already exists between these users
-    const existingParticipations = await chatParticipantRepo
-      .createQueryBuilder("cp1")
-      .innerJoin(
-        ChatParticipant,
-        "cp2",
-        "cp1.chatId = cp2.chatId AND cp2.userId = :otherUserId",
-        { otherUserId }
-      )
-      .innerJoin("cp1.chat", "chat")
-      .where("cp1.userId = :userId AND chat.type = :type", {
-        userId: user.id,
-        type: ChatType.DIRECT,
-      })
-      .getOne();
+    console.log("✅ Other user found:", {
+      id: otherUser.id,
+      name: otherUser.name,
+    });
 
-    if (existingParticipations) {
-      const chat = await chatRepo.findOne({
-        where: { id: existingParticipations.chat.id },
-        relations: ["lastMessage", "lastMessage.sender"],
-      });
+    // Skip checking for existing chats for now - just create new one
+    console.log("🔄 Skipping existing chat check for simplicity");
 
-      return res.json({
-        id: chat?.id,
-        type: chat?.type,
-        otherUser: {
-          id: otherUser.id,
-          name: otherUser.name,
-        },
-      });
-    }
+    console.log("🆕 Creating new chat...");
 
     // Create new direct chat
     const newChat = chatRepo.create({
       type: ChatType.DIRECT,
+      createdBy: currentUser,
     });
-    await chatRepo.save(newChat);
+
+    const savedChat = await chatRepo.save(newChat);
+    console.log("✅ Chat created with ID:", savedChat.id);
 
     // Add both users as participants
-    const participants = [
-      chatParticipantRepo.create({ chat: newChat, user }),
-      chatParticipantRepo.create({ chat: newChat, user: otherUser }),
-    ];
-    await chatParticipantRepo.save(participants);
+    const participant1 = chatParticipantRepo.create({
+      chat: savedChat,
+      user: currentUser,
+    });
+    const participant2 = chatParticipantRepo.create({
+      chat: savedChat,
+      user: otherUser,
+    });
 
-    return res.status(201).json({
-      id: newChat.id,
-      type: newChat.type,
+    await chatParticipantRepo.save([participant1, participant2]);
+    console.log("✅ Participants added successfully");
+
+    const response = {
+      id: savedChat.id,
+      type: savedChat.type,
       otherUser: {
         id: otherUser.id,
         name: otherUser.name,
       },
-    });
+    };
+
+    console.log("✅ Returning response:", response);
+    return res.status(201).json(response);
   } catch (error) {
-    console.error("Error creating direct chat:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("❌ Error creating direct chat:", error);
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "Unknown error"
+    );
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }
 
