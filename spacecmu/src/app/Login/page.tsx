@@ -22,19 +22,25 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json().catch(() => ({}));
+      const body = await res.json().catch(() => ({}));
+      // support responses like { token, user } and { message, data: { token, user } }
+      const payload = body?.data ?? body;
+
       if (!res.ok) {
-        setError(data?.message || 'Login failed');
+        setError(body?.message ?? payload?.message ?? 'Login failed');
         setLoading(false);
         return;
       }
 
-      // store token and user for future requests
-      if (typeof window !== 'undefined' && data.token) {
-        localStorage.setItem('token', data.token);
+      // store token and user for future requests (support both shapes)
+      const token = payload?.token ?? body?.token;
+      const user = payload?.user ?? body?.user;
+
+      if (typeof window !== 'undefined' && token) {
+        localStorage.setItem('token', token);
       }
-      if (typeof window !== 'undefined' && data.user) {
-        try { localStorage.setItem('user', JSON.stringify(data.user)); } catch {}
+      if (typeof window !== 'undefined' && user) {
+        try { localStorage.setItem('user', JSON.stringify(user)); } catch {}
       }
 
       // สำเร็จ -> ไปหน้า Feeds
