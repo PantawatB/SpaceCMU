@@ -3,8 +3,8 @@
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import { useEffect, useState } from 'react';
-type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string };
-type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bio?: string; persona?: Persona } | null;
+type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string; friendCount?: number };
+type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bio?: string | null; persona?: Persona; friendCount?: number } | null;
 
 import { API_BASE_URL } from '@/utils/apiConfig';
 
@@ -207,13 +207,16 @@ export default function ProfileMainPage() {
     name: currentUser?.name ?? 'Kamado Tanjiro',
     studentId: currentUser?.studentId ?? '6506xxxxx',
     avatar: currentUser?.profileImg ?? '/tanjiro.jpg',
-    bio: currentUser?.bio ?? 'A kind-hearted Demon Slayer who fights to protect humanity while seeking a cure for his sister.',
+    // keep bio null when not set so UI can show 'No bio.' explicitly
+    bio: currentUser?.bio ?? null,
+    friendCount: currentUser?.friendCount ?? 0,
   };
 
   const anonymousProfile = {
     name: currentUser?.persona?.displayName ?? 'Noobcat',
     avatar: currentUser?.persona?.avatarUrl ?? '/noobcat.png',
-    bio: currentUser?.persona?.bio ?? '',
+    bio: currentUser?.persona?.bio ?? null,
+    friendCount: currentUser?.persona?.friendCount ?? 0,
   };
 
   const displayed = activeProfile === 0 ? publicProfile : anonymousProfile;
@@ -294,11 +297,11 @@ export default function ProfileMainPage() {
               <div className="flex flex-col justify-center ml-6 relative" style={{ top: '18px' }}>
                 <div className="flex gap-8">
                   <div className="text-center">
-                    <span className="text-xl font-semibold">1.25k</span>
+                    <span className="text-xl font-semibold">{displayed.friendCount}</span>
                     <span className="text-gray-500 ml-1">Friends</span>
-                    <span className="text-gray-500 ml-4">|</span>
-                    <span className="text-black-500 ml-4 font-semibold">65</span>
-                    <span className="text-gray-500 ml-1">Engineers</span>
+                    {/* <span className="text-gray-500 ml-4">|</span> */}
+                    {/* <span className="text-black-500 ml-4 font-semibold">65</span>
+                    <span className="text-gray-500 ml-1">Engineers</span> */}
                   </div>
                 </div>
               </div>
@@ -317,12 +320,12 @@ export default function ProfileMainPage() {
               )}
             </div>
             {/* Student id (only for public) */}
-            {activeProfile === 0 && (
+            {/* {activeProfile === 0 && (
               <div className="text-left text-gray-600 mt-2 px-8">@{publicProfile.studentId}</div>
-            )}
+            )} */}
             {/* Bio */}
             <div className="text-left text-gray-600 mt-2 px-8">
-              {displayed.bio}
+              {displayed.bio ?? 'No bio.'}
             </div>
             {/* Tabs */}
             <div className="flex justify-center mt-6 border-b border-gray-200">
