@@ -36,7 +36,8 @@ export async function createPost(
         });
       }
 
-      const friendCount = user.friends ? user.friends.length : 0;
+      const friendCount =
+        user.actor && user.actor.friends ? user.actor.friends.length : 0;
       const MIN_FRIENDS_TO_POST_ANON = 10;
 
       if (friendCount < MIN_FRIENDS_TO_POST_ANON) {
@@ -239,7 +240,10 @@ export async function getFriendFeed(
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
 
-    const friendIds = user.friends ? user.friends.map((f) => f.id) : [];
+    const friendIds =
+      user.actor && user.actor.friends
+        ? user.actor.friends.map((f) => f.id)
+        : [];
     const ids = [...friendIds, user.id];
 
     const postRepo = AppDataSource.getRepository(Post);

@@ -2,7 +2,9 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { User } from "../entities/User";
 import { FriendRequest } from "../entities/FriendRequest";
+import { Actor } from "../entities/Actor";
 import { isUserOnline } from "../socket";
+import { In } from "typeorm";
 
 // src/controllers/friendController.ts
 
@@ -14,56 +16,66 @@ export async function sendFriendRequest(
   res: Response
 ) {
   try {
-    const { toUserId } = req.body;
-    if (!toUserId) {
-      return res.status(400).json({ message: "toUserId is required" });
+    const { fromActorId, toActorId } = req.body;
+    const user = req.user!;
+
+    if (!fromActorId || !toActorId) {
+      return res
+        .status(400)
+        .json({ message: "fromActorId and toActorId are required" });
     }
 
-    const fromUser = req.user!;
-    if (fromUser.id === toUserId) {
-      return res.status(400).json({ message: "You cannot friend yourself" });
+    if (fromActorId === toActorId) {
+      return res
+        .status(400)
+        .json({ message: "Cannot send friend request to yourself" });
     }
 
-    const userRepo = AppDataSource.getRepository(User);
-    const target = await userRepo.findOne({
-      where: { id: toUserId },
+    const actorRepo = AppDataSource.getRepository(Actor);
+
+    const fromActor = await actorRepo.findOne({
+      where: { id: fromActorId },
+      relations: ["user", "persona.user"],
     });
-    if (!target) {
-      return res.status(404).json({ message: "Target user not found" });
+
+    if (!fromActor) {
+      return res.status(404).json({ message: "Sending actor not found" });
     }
 
-    if (fromUser.friends && fromUser.friends.some((f) => f.id === toUserId)) {
-      return res.status(400).json({ message: "You are already friends" });
+    const isOwner =
+      (fromActor.user && fromActor.user.id === user.id) ||
+      (fromActor.persona && fromActor.persona.user.id === user.id);
+    if (!isOwner) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to send request from this actor" });
+    }
+
+    const toActor = await actorRepo.findOneBy({ id: toActorId });
+    if (!toActor) {
+      return res.status(404).json({ message: "Target actor not found" });
     }
 
     const frRepo = AppDataSource.getRepository(FriendRequest);
     const anyExistingRequest = await frRepo.findOne({
       where: [
-        { fromUser: { id: fromUser.id }, toUser: { id: toUserId } },
-        { fromUser: { id: toUserId }, toUser: { id: fromUser.id } },
+        { fromActor: { id: fromActorId }, toActor: { id: toActorId } },
+        { fromActor: { id: toActorId }, toActor: { id: fromActorId } },
       ],
     });
 
     if (anyExistingRequest) {
       if (anyExistingRequest.status === "pending") {
-        if (anyExistingRequest.fromUser.id === fromUser.id) {
-          return res
-            .status(400)
-            .json({ message: "Friend request already sent" });
-        } else {
-          return res
-            .status(400)
-            .json({
-              message: "Friend request already received from this user",
-            });
-        }
+        return res
+          .status(400)
+          .json({ message: "Friend request is already pending" });
       }
 
       await frRepo.remove(anyExistingRequest);
     }
     const request = frRepo.create({
-      fromUser,
-      toUser: target,
+      fromActor,
+      toActor,
       status: "pending",
     });
     await frRepo.save(request);
@@ -76,7 +88,7 @@ export async function sendFriendRequest(
 }
 
 /**
- * 📌 ยกเลิกคำขอเป็นเพื่อนที่ส่งไป
+ * 📌 ยกเลิกคำขอเป็นเพื่อนที่ส่งไประหว่าง Actors
  */
 export async function cancelFriendRequest(
   req: Request & { user?: User },
@@ -89,15 +101,19 @@ export async function cancelFriendRequest(
     const frRepo = AppDataSource.getRepository(FriendRequest);
     const request = await frRepo.findOne({
       where: { id: requestId },
-      relations: ["fromUser"],
+      relations: ["fromActor", "fromActor.user", "fromActor.persona.user"],
     });
 
     if (!request) {
       return res.status(404).json({ message: "Friend request not found" });
     }
 
-    // อนุญาตให้ยกเลิกได้เฉพาะคนที่ส่งคำขอไปเท่านั้น
-    if (request.fromUser.id !== user.id) {
+    const isOwner =
+      (request.fromActor.user && request.fromActor.user.id === user.id) ||
+      (request.fromActor.persona &&
+        request.fromActor.persona.user.id === user.id);
+
+    if (!isOwner) {
       return res
         .status(403)
         .json({ message: "Not authorized to cancel this request" });
@@ -113,7 +129,7 @@ export async function cancelFriendRequest(
 }
 
 /**
- * 📌 ดึงคำขอเป็นเพื่อน (pending)
+ * 📌 ดึงคำขอเป็นเพื่อนที่เกี่ยวข้องกับ Actor ทั้งหมดของผู้ใช้
  */
 export async function listFriendRequests(
   req: Request & { user?: User },
@@ -121,17 +137,62 @@ export async function listFriendRequests(
 ) {
   try {
     const user = req.user!;
+    if (!user.actor) {
+      return res.status(400).json({ message: "User actor profile not found" });
+    }
+
+    const myActorIds = [user.actor.id];
+    if (user.persona && user.persona.actor) {
+      myActorIds.push(user.persona.actor.id);
+    }
+
     const frRepo = AppDataSource.getRepository(FriendRequest);
 
     const requests = await frRepo.find({
       where: [
-        { toUser: { id: user.id }, status: "pending" },
-        { fromUser: { id: user.id }, status: "pending" },
+        { toActor: { id: In(myActorIds) }, status: "pending" },
+        { fromActor: { id: In(myActorIds) }, status: "pending" },
       ],
-      relations: ["fromUser", "toUser"],
+      relations: [
+        "fromActor",
+        "fromActor.user",
+        "fromActor.persona",
+        "toActor",
+        "toActor.user",
+        "toActor.persona",
+      ],
     });
 
-    return res.json(requests);
+    const formattedRequests = requests.map((req) => {
+      const from = req.fromActor.user
+        ? {
+            name: req.fromActor.user.name,
+            type: "user",
+            actorId: req.fromActor.id,
+          }
+        : {
+            name: req.fromActor.persona!.displayName,
+            type: "persona",
+            actorId: req.fromActor.id,
+          };
+
+      const to = req.toActor.user
+        ? { name: req.toActor.user.name, type: "user", actorId: req.toActor.id }
+        : {
+            name: req.toActor.persona!.displayName,
+            type: "persona",
+            actorId: req.toActor.id,
+          };
+
+      return {
+        id: req.id,
+        from,
+        to,
+        status: req.status,
+      };
+    });
+
+    return res.json(formattedRequests);
   } catch (err) {
     console.error("listFriendRequests error:", err);
     return res.status(500).json({ message: "Failed to fetch friend requests" });
@@ -139,7 +200,7 @@ export async function listFriendRequests(
 }
 
 /**
- * 📌 ยอมรับคำขอเพื่อน
+ * 📌 ตอบรับคำขอเป็นเพื่อนระหว่าง Actors
  */
 export async function acceptFriendRequest(
   req: Request & { user?: User },
@@ -152,36 +213,53 @@ export async function acceptFriendRequest(
 
     const request = await frRepo.findOne({
       where: { id: requestId },
-      relations: ["fromUser", "toUser"],
+      relations: [
+        "fromActor",
+        "toActor",
+        "toActor.user",
+        "toActor.persona.user",
+      ],
     });
 
     if (!request || request.status !== "pending") {
-      return res.status(404).json({ message: "Friend request not found" });
+      return res
+        .status(404)
+        .json({
+          message: "Friend request not found or has already been handled",
+        });
     }
 
-    if (request.toUser.id !== user.id) {
-      return res.status(403).json({ message: "Not authorized" });
+    const isReceiver =
+      (request.toActor.user && request.toActor.user.id === user.id) ||
+      (request.toActor.persona && request.toActor.persona.user.id === user.id);
+
+    if (!isReceiver) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to accept this request" });
     }
 
     request.status = "accepted";
     await frRepo.save(request);
 
-    // add each other to friends
-    const userRepo = AppDataSource.getRepository(User);
-    const fromUser = await userRepo.findOne({
-      where: { id: request.fromUser.id },
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const fromActor = await actorRepo.findOne({
+      where: { id: request.fromActor.id },
       relations: ["friends"],
     });
-    const toUser = await userRepo.findOne({
-      where: { id: request.toUser.id },
+    const toActor = await actorRepo.findOne({
+      where: { id: request.toActor.id },
       relations: ["friends"],
     });
 
-    if (fromUser && toUser) {
-      fromUser.friends = [...(fromUser.friends || []), toUser];
-      toUser.friends = [...(toUser.friends || []), fromUser];
-      await userRepo.save(fromUser);
-      await userRepo.save(toUser);
+    if (fromActor && toActor) {
+      if (!fromActor.friends) fromActor.friends = [];
+      if (!toActor.friends) toActor.friends = [];
+
+      fromActor.friends.push(toActor);
+      toActor.friends.push(fromActor);
+
+      await actorRepo.save([fromActor, toActor]);
     }
 
     return res.json({ message: "Friend request accepted" });
@@ -192,7 +270,7 @@ export async function acceptFriendRequest(
 }
 
 /**
- * 📌 ปฏิเสธคำขอเพื่อน
+ * 📌 ปฏิเสธคำขอเป็นเพื่อนระหว่าง Actors
  */
 export async function rejectFriendRequest(
   req: Request & { user?: User },
@@ -201,19 +279,30 @@ export async function rejectFriendRequest(
   try {
     const { requestId } = req.params;
     const user = req.user!;
+
     const frRepo = AppDataSource.getRepository(FriendRequest);
 
     const request = await frRepo.findOne({
       where: { id: requestId },
-      relations: ["toUser"],
+      relations: ["toActor", "toActor.user", "toActor.persona.user"],
     });
 
     if (!request || request.status !== "pending") {
-      return res.status(404).json({ message: "Friend request not found" });
+      return res
+        .status(404)
+        .json({
+          message: "Friend request not found or has already been handled",
+        });
     }
 
-    if (request.toUser.id !== user.id) {
-      return res.status(403).json({ message: "Not authorized" });
+    const isReceiver =
+      (request.toActor.user && request.toActor.user.id === user.id) ||
+      (request.toActor.persona && request.toActor.persona.user.id === user.id);
+
+    if (!isReceiver) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to reject this request" });
     }
 
     request.status = "declined";
@@ -227,32 +316,55 @@ export async function rejectFriendRequest(
 }
 
 /**
- * 📌 ดึงเพื่อนทั้งหมด (พร้อมฟังก์ชันค้นหาจากชื่อ)
+ * 📌 ดึงรายชื่อเพื่อนของ Actor ที่ระบุ (พร้อมฟังก์ชันค้นหาจากชื่อ)
  */
-export async function listFriends(
-  req: Request & { user?: User },
-  res: Response
-) {
+export async function listFriends(req: Request, res: Response) {
   try {
-    const user = req.user!;
+    const { actorId } = req.params;
     const { name } = req.query;
 
-    let friends = user.friends || [];
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const actor = await actorRepo.findOne({
+      where: { id: actorId },
+      relations: ["friends", "friends.user", "friends.persona"],
+    });
+
+    if (!actor) {
+      return res.status(404).json({ message: "Actor not found" });
+    }
+
+    let friends = (actor.friends || [])
+      .map((friend) => {
+        if (friend.user) {
+          return {
+            actorId: friend.id,
+            name: friend.user.name,
+            type: "user",
+            profileImg: friend.user.profileImg,
+            bio: friend.user.bio,
+          };
+        }
+        if (friend.persona) {
+          return {
+            actorId: friend.id,
+            name: friend.persona.displayName,
+            type: "persona",
+            profileImg: friend.persona.avatarUrl,
+            bio: friend.persona.bio,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
 
     if (name && typeof name === "string") {
       const searchTerm = name.toLowerCase();
       friends = friends.filter((friend) =>
-        friend.name.toLowerCase().includes(searchTerm)
+        friend!.name.toLowerCase().includes(searchTerm)
       );
     }
 
-    const result = friends.map((f) => ({
-      id: f.id,
-      name: f.name,
-      bio: f.bio,
-    }));
-
-    return res.json(result);
+    return res.json(friends);
   } catch (err) {
     console.error("listFriends error:", err);
     return res.status(500).json({ message: "Failed to fetch friends list" });
@@ -260,30 +372,56 @@ export async function listFriends(
 }
 
 /**
- * 📌 ลบเพื่อน
+ * 📌 ลบเพื่อนระหว่าง Actors
  */
 export async function removeFriend(
   req: Request & { user?: User },
   res: Response
 ) {
   try {
-    const { friendId } = req.params;
+    const { actorId, friendActorId } = req.params;
     const user = req.user!;
-    const userRepo = AppDataSource.getRepository(User);
 
-    const friend = await userRepo.findOne({
-      where: { id: friendId },
-      relations: ["friends"],
+    const actorRepo = AppDataSource.getRepository(Actor);
+
+    const fromActor = await actorRepo.findOne({
+      where: { id: actorId },
+      relations: ["friends", "user", "persona.user"],
     });
-    if (!friend) {
-      return res.status(404).json({ message: "Friend not found" });
+
+    if (!fromActor) {
+      return res
+        .status(404)
+        .json({ message: "Your actor profile was not found" });
     }
 
-    user.friends = (user.friends || []).filter((f) => f.id !== friendId);
-    friend.friends = (friend.friends || []).filter((f) => f.id !== user.id);
+    const isOwner =
+      (fromActor.user && fromActor.user.id === user.id) ||
+      (fromActor.persona && fromActor.persona.user.id === user.id);
+    if (!isOwner) {
+      return res
+        .status(403)
+        .json({
+          message: "Not authorized to remove friends from this profile",
+        });
+    }
+    const friendToRemove = await actorRepo.findOne({
+      where: { id: friendActorId },
+      relations: ["friends"],
+    });
 
-    await userRepo.save(user);
-    await userRepo.save(friend);
+    if (!friendToRemove) {
+      return res.status(404).json({ message: "Friend actor not found" });
+    }
+
+    fromActor.friends = (fromActor.friends || []).filter(
+      (f) => f.id !== friendActorId
+    );
+    friendToRemove.friends = (friendToRemove.friends || []).filter(
+      (f) => f.id !== actorId
+    );
+
+    await actorRepo.save([fromActor, friendToRemove]);
 
     return res.json({ message: "Friend removed" });
   } catch (err) {
@@ -293,22 +431,51 @@ export async function removeFriend(
 }
 
 /**
- * 📌 ดึงสถานะออนไลน์ของเพื่อนทั้งหมด
+ * 📌 ดึงสถานะออนไลน์ของเพื่อนทั้งหมดของ Actor ที่ระบุ
  */
-export async function getFriendStatuses(
-  req: Request & { user?: User },
-  res: Response
-) {
+export async function getFriendStatuses(req: Request, res: Response) {
   try {
-    const user = req.user;
-    if (!user || !user.friends) return res.json([]);
+    const { actorId } = req.params;
 
-    const statuses = user.friends.map((friend) => ({
-      userId: friend.id,
-      name: friend.name,
-      isOnline: isUserOnline(friend.id), // เช็คจาก Map ของ Socket.IO
-      lastActiveAt: friend.lastActiveAt, // ดึงจาก database
-    }));
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const actor = await actorRepo.findOne({
+      where: { id: actorId },
+      relations: [
+        "friends",
+        "friends.user",
+        "friends.persona",
+        "friends.persona.user",
+      ],
+    });
+
+    if (!actor) {
+      return res.status(404).json({ message: "Actor not found" });
+    }
+
+    const statuses = (actor.friends || [])
+      .map((friendActor) => {
+        if (friendActor.user) {
+          return {
+            actorId: friendActor.id,
+            name: friendActor.user.name,
+            type: "user",
+            isOnline: isUserOnline(friendActor.user.id),
+            lastActiveAt: friendActor.user.lastActiveAt,
+          };
+        }
+        if (friendActor.persona && friendActor.persona.user) {
+          const underlyingUser = friendActor.persona.user;
+          return {
+            actorId: friendActor.id,
+            name: friendActor.persona.displayName,
+            type: "persona",
+            isOnline: isUserOnline(underlyingUser.id),
+            lastActiveAt: underlyingUser.lastActiveAt,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
 
     return res.json(statuses);
   } catch (err) {

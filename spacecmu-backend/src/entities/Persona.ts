@@ -4,9 +4,11 @@ import {
   Column,
   OneToOne,
   OneToMany,
+  JoinColumn,
 } from "typeorm";
 import { User } from "./User";
 import { Report } from "./Report";
+import { Actor } from "./Actor";
 
 /**
  * Persona = ตัวตนเสมือน/นามแฝงของ user
@@ -21,6 +23,7 @@ export class Persona {
    * User เจ้าของ persona (1:1)
    */
   @OneToOne(() => User, (user) => user.persona, { onDelete: "CASCADE" })
+  @JoinColumn()
   user!: User;
 
   /**
@@ -75,4 +78,10 @@ export class Persona {
    */
   @OneToMany(() => Report, (report) => report.persona)
   reports!: Report[];
+
+  /**
+   * The social actor profile for this Persona.
+   */
+  @OneToOne(() => Actor, (actor) => actor.persona, { cascade: true })
+  actor!: Actor;
 }

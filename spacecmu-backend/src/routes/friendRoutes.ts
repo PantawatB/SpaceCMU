@@ -14,38 +14,43 @@ import { updateLastActive } from "../middleware/updateLastActive";
 
 const router = Router();
 
-// ทุก route เกี่ยวกับ friend ต้อง login ก่อน
+// Middleware ที่จะทำงานกับทุก Route ในไฟล์นี้
 router.use(authenticateToken, updateLastActive);
 
-// 📌 ส่งคำขอเป็นเพื่อน
+// --- ⚙️ Friend Requests ---
+
+// ส่งคำขอเป็นเพื่อน (ต้องระบุ fromActorId และ toActorId ใน body)
 // POST /api/friends/request
 router.post("/request", sendFriendRequest);
 
-// 📌 ยกเลิกคำขอเป็นเพื่อน
+// ยกเลิกคำขอเป็นเพื่อนที่ส่งไป
 // DELETE /api/friends/request/:requestId
 router.delete("/request/:requestId", cancelFriendRequest);
 
-// 📌 ยอมรับคำขอเป็นเพื่อน
-// POST /api/friends/accept/:friendId
-router.post("/accept/:requestId", acceptFriendRequest);
-
-// 📌 ดูคำขอเป็นเพื่อนทั้งหมด
+// ดูคำขอเป็นเพื่อนทั้งหมดที่เกี่ยวกับ User ที่ login อยู่
+// GET /api/friends/requests
 router.get("/requests", listFriendRequests);
 
-// 📌 ปฏิเสธคำขอเป็นเพื่อน
+// ตอบรับคำขอเป็นเพื่อน
+// POST /api/friends/accept/:requestId
+router.post("/accept/:requestId", acceptFriendRequest);
+
+// ปฏิเสธคำขอเป็นเพื่อน
 // POST /api/friends/reject/:requestId
 router.post("/reject/:requestId", rejectFriendRequest);
 
-// 📌 ลบเพื่อน
-// DELETE /api/friends/:friendId
-router.delete("/:friendId", removeFriend);
+// --- 🤝 Friends ---
 
-// 📌 ดูเพื่อนทั้งหมด
-// GET /api/friends
-router.get("/", listFriends);
+// ดึงรายชื่อเพื่อนของ Actor ที่ระบุ
+// GET /api/friends/:actorId
+router.get("/:actorId", listFriends);
 
-// 📌 ดูสถานะของเพื่อน
-// GET /api/friends/statuses
-router.get("/statuses", getFriendStatuses);
+// ลบเพื่อน
+// DELETE /api/friends/:actorId/friends/:friendActorId
+router.delete("/:actorId/friends/:friendActorId", removeFriend);
+
+// ดึงสถานะออนไลน์ของเพื่อนของ Actor ที่ระบุ
+// GET /api/friends/:actorId/statuses
+router.get("/:actorId/statuses", getFriendStatuses);
 
 export default router;
