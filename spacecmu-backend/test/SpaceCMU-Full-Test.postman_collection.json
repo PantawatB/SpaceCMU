@@ -336,7 +336,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"User A (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"profileImg\": \"http://example.com/new-profile.jpg\"\n}",
+							"raw": "{\n    \"name\": \"User A (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"profileImg\": \"http://example.com/new-profile.jpg\",\n    \"bannerImg\": \"http://example.com/user-a-banner.jpg\" \n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -375,7 +375,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"displayName\": \"Persona-A-Updated\",\n    \"avatarUrl\": \"http://example.com/avatarA.jpg\",\n    \"bio\": \"This is my new persona bio.\"\n}",
+							"raw": "{\n    \"displayName\": \"Persona-A-Updated\",\n    \"avatarUrl\": \"http://example.com/avatarA.jpg\",\n    \"bio\": \"This is my new persona bio.\",\n    \"bannerImg\": \"http://example.com/user-a-banner.jpg\" \n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -429,6 +429,35 @@
 							"path": [
 								"api",
 								"uploads"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.10 Get All Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"all"
 							]
 						}
 					},

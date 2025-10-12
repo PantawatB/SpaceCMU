@@ -128,6 +128,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       bio: user.bio,
       isAdmin: user.isAdmin,
       profileImg: user.profileImg,
+      bannerImg: user.bannerImg,
       friendCount,
       actorId: user.actor ? user.actor.id : null,
       persona: user.persona
@@ -135,6 +136,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
             id: user.persona.id,
             displayName: user.persona.displayName,
             avatarUrl: user.persona.avatarUrl,
+            bannerImg: user.persona.bannerImg,
             bio: user.persona.bio,
             changeCount: user.persona.changeCount,
             lastChangedAt: user.persona.lastChangedAt,
@@ -164,7 +166,7 @@ export async function updateUser(
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, password, bio, profileImg } = req.body;
+    const { name, password, bio, profileImg, bannerImg } = req.body;
     const userRepo = AppDataSource.getRepository(User);
 
     if (name) {
@@ -177,6 +179,10 @@ export async function updateUser(
 
     if (typeof profileImg !== "undefined") {
       user.profileImg = profileImg;
+    }
+
+    if (typeof bannerImg !== "undefined") {
+      user.bannerImg = bannerImg;
     }
 
     if (typeof bio === "string") {
@@ -385,5 +391,42 @@ export async function getMySavedPosts(
   } catch (err) {
     console.error("getMySavedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch saved posts" });
+  }
+}
+
+/**
+ * 📌 ดึงรายชื่อผู้ใช้ทั้งหมดในระบบ
+ */
+export async function listAllUsers(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const currentUser = req.user!;
+
+    const userRepo = AppDataSource.getRepository(User);
+    const users = await userRepo
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.actor", "actor")
+      .orderBy("user.name", "ASC")
+      // ❌ ไม่ต้องมี .skip() และ .take() แล้ว
+      .getMany();
+
+    // กรอง user ที่ login อยู่ปัจจุบันออกจากผลลัพธ์
+    const results = users
+      .filter((user) => user.id !== currentUser.id)
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        profileImg: user.profileImg,
+        bio: user.bio,
+        actorId: user.actor ? user.actor.id : null,
+      }));
+
+    // ส่งข้อมูลกลับไปเป็น array ตรงๆ
+    return res.json(results);
+  } catch (err) {
+    console.error("listAllUsers error:", err);
+    return res.status(500).json({ message: "Failed to fetch users" });
   }
 }

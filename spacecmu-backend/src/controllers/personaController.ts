@@ -117,13 +117,16 @@ export async function updatePersona(
       return res.status(404).json({ message: "Persona not found" });
     }
 
-    const { displayName, avatarUrl, bio } = req.body;
+    const { displayName, avatarUrl, bio, bannerImg } = req.body;
     const personaRepo = AppDataSource.getRepository(Persona);
     const persona = user.persona;
 
     if (displayName) persona.displayName = displayName;
     if (avatarUrl) persona.avatarUrl = avatarUrl;
     if (typeof bio !== "undefined") persona.bio = bio;
+    if (typeof bannerImg !== "undefined") {
+      persona.bannerImg = bannerImg;
+    }
     persona.changeCount += 1;
     persona.lastChangedAt = new Date();
 
