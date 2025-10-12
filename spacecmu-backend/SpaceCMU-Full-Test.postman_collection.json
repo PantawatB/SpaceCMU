@@ -1,0 +1,2459 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-4a7b-8c9d-1e2f3a4b5c6d",
+		"name": "SpaceCMU - Complete API Test Suite",
+		"description": "A comprehensive test suite for all features of the SpaceCMU backend. The chat system tests are self-contained in their own folder. Run requests in order within each folder.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000"
+		},
+		{
+			"key": "user1Token",
+			"value": ""
+		},
+		{
+			"key": "user2Token",
+			"value": ""
+		},
+		{
+			"key": "adminToken",
+			"value": ""
+		},
+		{
+			"key": "user1Id",
+			"value": ""
+		},
+		{
+			"key": "user2Id",
+			"value": ""
+		},
+		{
+			"key": "user1ActorId",
+			"value": ""
+		},
+		{
+			"key": "user2ActorId",
+			"value": ""
+		},
+		{
+			"key": "user1PersonaActorId",
+			"value": ""
+		},
+		{
+			"key": "user2PersonaActorId",
+			"value": ""
+		},
+		{
+			"key": "post1Id",
+			"value": ""
+		},
+		{
+			"key": "friendRequestId",
+			"value": ""
+		},
+		{
+			"key": "commentId",
+			"value": ""
+		},
+		{
+			"key": "chatId",
+			"value": ""
+		},
+		{
+			"key": "messageId",
+			"value": ""
+		}
+	],
+	"item": [
+		{
+			"name": "1. User & Persona Setup",
+			"item": [
+				{
+					"name": "1.1 Register User A",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"studentId\": \"111111\",\n    \"email\": \"usera@example.com\",\n    \"password\": \"passwordA\",\n    \"name\": \"User A\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.2 Register User B",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"studentId\": \"222222\",\n    \"email\": \"userb@example.com\",\n    \"password\": \"passwordB\",\n    \"name\": \"User B\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.3 Login User A",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login successful and token received\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set(\"user1Token\", response.token);",
+									"    pm.collectionVariables.set(\"user1Id\", response.user.id);",
+									"    console.log('User A Token & ID stored.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"usera@example.com\",\n    \"password\": \"passwordA\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.4 Login User B",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Login successful and token received\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set(\"user2Token\", response.token);",
+									"    pm.collectionVariables.set(\"user2Id\", response.user.id);",
+									"    console.log('User B Token & ID stored.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"userb@example.com\",\n    \"password\": \"passwordB\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.5 [A] Get My Profile & Store Actor IDs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Profile received and Actor IDs stored\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.actorId).to.not.be.empty;",
+									"    pm.expect(response.persona.actorId).to.not.be.empty;",
+									"",
+									"    pm.collectionVariables.set(\"user1ActorId\", response.actorId);",
+									"    pm.collectionVariables.set(\"user1PersonaActorId\", response.persona.actorId);",
+									"",
+									"    console.log(`✅ Stored User A Actor ID: ${response.actorId}`)",
+									"    console.log(`✅ Stored User A Persona Actor ID: ${response.persona.actorId}`)",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.6 [B] Get My Profile & Store Actor IDs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Profile received and Actor IDs stored\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.actorId).to.not.be.empty;",
+									"    pm.expect(response.persona.actorId).to.not.be.empty;",
+									"",
+									"    pm.collectionVariables.set(\"user2ActorId\", response.actorId);",
+									"    pm.collectionVariables.set(\"user2PersonaActorId\", response.persona.actorId);",
+									"",
+									"    console.log(`✅ Stored User B Actor ID: ${response.actorId}`)",
+									"    console.log(`✅ Stored User B Persona Actor ID: ${response.persona.actorId}`)",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.7 [A] Update My Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"User A (Updated)\",\n    \"bio\": \"This is my new bio after updating.\",\n    \"profileImg\": \"http://example.com/new-profile.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.8 [A] Update My Persona",
+					"description": "NOTE: The backend route for updating a persona (`PUT /api/personas/:id`) has a potential bug where the `:id` in the URL is ignored, and it always updates the authenticated user's persona. This test works with the current code.",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"displayName\": \"Persona-A-Updated\",\n    \"avatarUrl\": \"http://example.com/avatarA.jpg\",\n    \"bio\": \"This is my new persona bio.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/personas/{{user1Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"personas",
+								"{{user1Id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "1.9 Upload Image",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/uploads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"uploads"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Friends System (Actor Model)",
+			"item": [
+				{
+					"name": "Accept Flow",
+					"item": [
+						{
+							"name": "2.1.1 [A -> B] Send Friend Request (User to User)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"fromActorId\": \"{{user1ActorId}}\",\n    \"toActorId\": \"{{user2ActorId}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/request",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2.1.2 [B] List Requests & Store ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Should receive friend request from User A's actor\", function () {",
+											"    const response = pm.response.json();",
+											"    const requestFromA = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
+											"    pm.expect(requestFromA).to.not.be.undefined;",
+											"    pm.collectionVariables.set(\"friendRequestId\", requestFromA.id);",
+											"    console.log('✅ Friend Request ID stored for acceptance.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user2Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/requests",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"requests"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2.1.3 [B] Accept Request",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user2Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/accept/{{friendRequestId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"accept",
+										"{{friendRequestId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2.1.4 [A] List Friends & Verify",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"User A's friend list should contain User B\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    const friends = pm.response.json();",
+											"    const friendB = friends.find(f => f.actorId === pm.collectionVariables.get(\"user2ActorId\"));",
+											"    pm.expect(friendB).to.not.be.undefined;",
+											"    console.log('✅ Verification successful: User B is in User A friend list.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/{{user1ActorId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"{{user1ActorId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Cancel Flow",
+					"item": [
+						{
+							"name": "2.2.1 [A's Persona -> B] Send Friend Request",
+							"description": "NOTE: The backend has a potential bug where sending a new request to an existing friend will DELETE the friendship and create a new pending request. This test demonstrates that behavior.",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"fromActorId\": \"{{user1PersonaActorId}}\",\n    \"toActorId\": \"{{user2ActorId}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/request",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2.2.2 [A] List My Requests & Store ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Should find the outgoing request from Persona A\", function () {",
+											"    const response = pm.response.json();",
+											"    const outgoingRequest = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1PersonaActorId\"));",
+											"    pm.expect(outgoingRequest).to.not.be.undefined;",
+											"    pm.collectionVariables.set(\"friendRequestId\", outgoingRequest.id);",
+											"    console.log('✅ Friend Request ID stored for cancellation.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/requests",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"requests"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2.2.3 [A] Cancel The Request",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/request/{{friendRequestId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"request",
+										"{{friendRequestId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Remove Flow",
+					"item": [
+						{
+							"name": "2.3.1 Setup: A and B become friends again",
+							"item": [
+								{
+									"name": "Send Request",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{user1Token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"fromActorId\": \"{{user1ActorId}}\",\n    \"toActorId\": \"{{user2ActorId}}\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/friends/request",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"friends",
+												"request"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get Request ID",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const response = pm.response.json();",
+													"const requestFromA = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
+													"pm.collectionVariables.set(\"friendRequestId\", requestFromA.id);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{user2Token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/friends/requests",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"friends",
+												"requests"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Accept Request",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{user2Token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/friends/accept/{{friendRequestId}}",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"friends",
+												"accept",
+												"{{friendRequestId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "Re-establishing friendship for the remove test."
+						},
+						{
+							"name": "2.3.2 [A] Remove Friend B",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/{{user1ActorId}}/friends/{{user2ActorId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"{{user1ActorId}}",
+										"friends",
+										"{{user2ActorId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2.3.3 [A] List Friends & Verify Empty",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"User A's friend list should be empty\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    const friends = pm.response.json();",
+											"    pm.expect(friends).to.be.an('array').that.is.empty;",
+											"    console.log('✅ Verification successful: Friend list is empty after removal.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/{{user1ActorId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"{{user1ActorId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+				"name": "Search Within My Friends",
+				"item": [
+					{
+						"name": "Search for a specific friend",
+						"request": {
+							"auth": {
+								"type": "bearer",
+								"bearer": [
+									{
+										"key": "token",
+										"value": "{{user1Token}}",
+										"type": "string"
+									}
+								]
+							},
+							"method": "GET",
+							"header": [],
+							"url": {
+								"raw": "{{baseUrl}}/api/friends/{{user1ActorId}}?name=User B",
+								"host": [
+									"{{baseUrl}}"
+								],
+								"path": [
+									"api",
+									"friends",
+									"{{user1ActorId}}"
+								],
+								"query": [
+									{
+										"key": "name",
+										"value": "User B",
+										"description": "ใส่ชื่อเพื่อนที่ต้องการค้นหาที่นี่"
+									}
+								]
+							}
+						},
+						"response": []
+					}
+			],
+			"description": "ค้นหาจากรายชื่อคนที่เป็นเพื่อนกับเราแล้วเท่านั้น"
+		},
+		{
+			"name": "Search All Users (User Discovery)",
+			"item": [
+				{
+					"name": "Search for any user in the system",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request was successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response body is a valid paginated result\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property('items');",
+									"    pm.expect(response).to.have.property('meta');",
+									"    pm.expect(response.items).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Result items should have required properties for adding friends\", function () {",
+									"    const response = pm.response.json();",
+									"    if (response.items.length > 0) {",
+									"        const firstUser = response.items[0];",
+									"        pm.expect(firstUser).to.have.property('id');",
+									"        pm.expect(firstUser).to.have.property('name');",
+									"        pm.expect(firstUser).to.have.property('actorId');",
+									"        console.log(`Found user: ${firstUser.name}, Actor ID: ${firstUser.actorId}`);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/search?name=User&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"search"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "User",
+									"description": "ใส่ชื่อบางส่วนของผู้ใช้ที่ต้องการค้นหา"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "ค้นหาผู้ใช้ทั้งหมดในระบบ (ทั้งที่เป็นเพื่อนและยังไม่เป็นเพื่อน) เพื่อใช้ในการแอดเพื่อนใหม่"
+		}
+			]
+		},
+		{
+			"name": "3. Posts & Interactions",
+			"item": [
+				{
+					"name": "3.1 [B] Create Public Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Post created successfully\", function () {",
+									"    pm.response.to.have.status(201);",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set(\"post1Id\", response.post.id);",
+									"    console.log('Post 1 ID stored.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"This is a public post from User B!\",\n    \"visibility\": \"public\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3.2 Edit Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Post updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response body contains the updated content\", function () {",
+									"    const response = pm.response.json();",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(response.post.content).to.eql(requestBody.content);",
+									"    console.log(`✅ Verification successful: Post content is now '${response.post.content}'`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n    \"location\": \"Online\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/posts/{{post1Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post1Id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3.3 Delete Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Post deleted successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.message).to.eql(\"Post deleted\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user2Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/posts/{{post1Id}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post1Id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3.2 Interaction Cycle",
+					"item": [
+						{
+							"name": "Like Post",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/like",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"like"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Liked Posts",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/users/me/likes",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"likes"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Undo Like",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/like",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"like"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Repost Post",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/repost",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"repost"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Reposted Posts",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/users/me/reposts",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"reposts"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Undo Repost",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/repost",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"repost"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Save Post",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Post saved successfully\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.message).to.eql(\"Post saved\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/save",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"save"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List My Saved Posts",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Successfully retrieved saved posts\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Saved posts list should contain the saved post\", function () {",
+											"    const savedPosts = pm.response.json();",
+											"    const savedPost = savedPosts.find(post => post.id === pm.collectionVariables.get(\"post1Id\"));",
+											"    pm.expect(savedPost, \"The post with ID \" + pm.collectionVariables.get(\"post1Id\") + \" should be in the saved list\").to.not.be.undefined;",
+											"    console.log(\"✅ Verification successful: Found the saved post in the list.\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/users/me/saved",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"saved"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Unsave Post",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Post unsaved successfully\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.message).to.eql(\"Post unsaved\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/save",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"save"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "3.3 Comment Cycle",
+					"item": [
+						{
+							"name": "Create Comment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Comment created successfully\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    const response = pm.response.json();",
+											"    pm.collectionVariables.set(\"commentId\", response.id);",
+											"    console.log('Comment ID stored.');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"This is a comment from User A!\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/comments",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"comments"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Edit Comment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Comment updated successfully\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response body contains the updated content\", function () {",
+											"    const response = pm.response.json();",
+											"    const requestBody = JSON.parse(pm.request.body.raw);",
+											"    pm.expect(response.content).to.eql(requestBody.content);",
+											"    console.log(`✅ Verification successful: Comment content is now '${response.content}'`);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"This is an edited comment!\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/comments/{{commentId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"comments",
+										"{{commentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Comment",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/comments/{{commentId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"comments",
+										"{{commentId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4. Feeds & Anonymous Posts",
+			"item": [
+				{
+					"name": "4.1 Setup: A and B become friends",
+					"item": [
+						{
+							"name": "Send Request",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user1Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"fromActorId\": \"{{user1ActorId}}\",\n    \"toActorId\": \"{{user2ActorId}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/request",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Request ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const response = pm.response.json();",
+											"const requestFromA = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
+											"pm.collectionVariables.set(\"friendRequestId\", requestFromA.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user2Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/requests",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"requests"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Accept Request",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{user2Token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/friends/accept/{{friendRequestId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"friends",
+										"accept",
+										"{{friendRequestId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Re-establishing friendship for the feed test."
+				},
+				{
+					"name": "4.2 [A] Create Friends-Only Post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"visibility\": \"friends\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4.3 [A] Get Friend Feed & Verify",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Friend feed should contain own and friend's posts\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const feed = pm.response.json();",
+									"    const ownPost = feed.items.find(p => p.content === \"This post is for my friends only!\");",
+									"    const friendPost = feed.items.find(p => p.content === \"This is a public post from User B!\");",
+									"",
+									"    pm.expect(ownPost, \"Should see own friends-only post\").to.not.be.undefined;",
+									"    pm.expect(friendPost, \"Should see friend's public post\").to.not.be.undefined;",
+									"    console.log('✅ Friend Feed verified successfully.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/posts/feed/friends",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"feed",
+								"friends"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4.4 [A] Create Anonymous Post (FAIL - not enough friends)",
+					"description": "This test should fail with a 403 Forbidden error because the user has less than 10 friends.",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Should be forbidden to post anonymously\", function () {",
+									"    pm.response.to.have.status(403);",
+									"    console.log('✅ Correctly received 403 for anonymous post attempt.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"This is an anonymous post that should fail.\",\n    \"isAnonymous\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4.5 List All Posts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4.6 Get Public Feed (Paginated)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request was successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is a valid paginated result\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property('items');",
+									"    pm.expect(response).to.have.property('meta');",
+									"    pm.expect(response.items).to.be.an('array');",
+									"    pm.expect(response.meta).to.have.property('currentPage');",
+									"    pm.expect(response.meta).to.have.property('totalPages');",
+									"    console.log(`✅ Feed received. Page ${response.meta.currentPage} of ${response.meta.totalPages}.`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/posts/feed/public?page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"feed",
+								"public"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Chat System (Standalone Test)",
+			"item": [
+				{
+					"name": "5.1 [Chat] Register User 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    console.log('✅ Chat User 1 created successfully');",
+									"} else {",
+									"    console.log('ℹ️ Chat User 1 already exists or error:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"studentId\": \"650001001\",\n  \"email\": \"chatuser1@cmu.ac.th\",\n  \"name\": \"Chat User 1\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "5.2 [Chat] Register User 2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    console.log('✅ Chat User 2 created successfully');",
+									"} else {",
+									"    console.log('ℹ️ Chat User 2 already exists or error:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"studentId\": \"650001002\",\n  \"email\": \"chatuser2@cmu.ac.th\",\n  \"name\": \"Chat User 2\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "5.3 [Chat] Login User 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('user1Token', response.token);",
+									"    pm.collectionVariables.set('user1Id', response.user.id);",
+									"    console.log('✅ Chat User 1 login successful');",
+									"    console.log('Token stored for Chat User 1');",
+									"} else {",
+									"    console.log('❌ Chat User 1 login failed:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"chatuser1@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "5.4 [Chat] Login User 2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('user2Token', response.token);",
+									"    pm.collectionVariables.set('user2Id', response.user.id);",
+									"    console.log('✅ Chat User 2 login successful');",
+									"    console.log('Token stored for Chat User 2');",
+									"} else {",
+									"    console.log('❌ Chat User 2 login failed:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"chatuser2@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "5.5 [Chat] Create Direct Chat",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('chatId', response.id);",
+									"    console.log('✅ Direct chat created successfully');",
+									"    console.log('Chat ID:', response.id);",
+									"} else {",
+									"    console.log('❌ Failed to create chat:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user1Token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"otherUserId\": \"{{user2Id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/chats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"chats"
+							]
+						}
+					}
+				},
+				{
+					"name": "5.6 [Chat] Get My Chats",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    console.log('✅ User has', response.length, 'chats');",
+									"} else {",
+									"    console.log('❌ Failed to get chats:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user1Token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/chats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"chats"
+							]
+						}
+					}
+				},
+				{
+					"name": "5.7 [Chat] Get Chat Messages",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    console.log('✅ Retrieved', response.length, 'messages');",
+									"} else {",
+									"    console.log('❌ Failed to get messages:', pm.response.json().message);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user1Token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/chats/{{chatId}}/messages",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"chats",
+								"{{chatId}}",
+								"messages"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Admin & Moderation",
+			"item": [
+				{
+					"name": "6.1 Register Admin User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"studentId\": \"999999\",\n    \"email\": \"admin@example.com\",\n    \"password\": \"adminpass\",\n    \"name\": \"Admin User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6.2 Login as Admin",
+					"description": "NOTE: This test assumes you have manually set `isAdmin = true` for this user in the database, as there's no API endpoint to do so.",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Admin login successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set(\"adminToken\", response.token);",
+									"    console.log('✅ Admin Token stored.');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"adminpass\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6.3 [ADMIN] List Reports",
+					"description": "NOTE: This will return an empty array unless reports are manually created in the database, as there's no API endpoint for users to create reports.",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/reports",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"reports"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6.4 [ADMIN] Ban User B",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/user/{{user2Id}}/ban",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"user",
+								"{{user2Id}}",
+								"ban"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6.5 [ADMIN] Takedown Post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/post/{{post1Id}}/takedown",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"post",
+								"{{post1Id}}",
+								"takedown"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{user1Token}}",
+				"type": "string"
+			}
+		]
+	}
+}
