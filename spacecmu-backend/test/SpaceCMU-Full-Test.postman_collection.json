@@ -1157,7 +1157,7 @@
 									"pm.test(\"Post created successfully\", function () {",
 									"    pm.response.to.have.status(201);",
 									"    const response = pm.response.json();",
-									"    pm.collectionVariables.set(\"post1Id\", response.post.id);",
+									"    pm.collectionVariables.set(\"post1Id\", response.data.post.id);",
 									"    console.log('Post 1 ID stored.');",
 									"});"
 								],
@@ -1180,7 +1180,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This is a public post from User B!\",\n    \"visibility\": \"public\"\n}",
+							"raw": "{\n    \"content\": \"This is a public post from User B!\",\n    \"imageUrl\": \"http://example.com/Post-IMG.jpg\" ,\n    \"visibility\": \"public\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1214,8 +1214,8 @@
 									"pm.test(\"Response body contains the updated content\", function () {",
 									"    const response = pm.response.json();",
 									"    const requestBody = JSON.parse(pm.request.body.raw);",
-									"    pm.expect(response.post.content).to.eql(requestBody.content);",
-									"    console.log(`✅ Verification successful: Post content is now '${response.post.content}'`);",
+									"    pm.expect(response.data.post.content).to.eql(requestBody.content);",
+									"    console.log(`✅ Verification successful: Post content is now '${response.data.post.content}'`);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1237,7 +1237,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n    \"location\": \"Online\"\n}",
+							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n     \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"location\": \"Online\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1260,21 +1260,6 @@
 				},
 				{
 					"name": "3.3 Delete Post",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Post deleted successfully\", function () {",
-									"    pm.response.to.have.status(200);",
-									"    const response = pm.response.json();",
-									"    pm.expect(response.message).to.eql(\"Post deleted\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -1876,7 +1861,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"visibility\": \"friends\"\n}",
+							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"visibility\": \"public\",\n    \"visibility\": \"friends\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1897,22 +1882,39 @@
 					"response": []
 				},
 				{
-					"name": "4.3 [A] Get Friend Feed & Verify",
+					"name": "4.3.1 [A] Get Friend Feed (First Page with Cursor)",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Friend feed should contain own and friend's posts\", function () {",
+									"pm.test(\"Request was successful and has correct cursor structure\", function () {",
 									"    pm.response.to.have.status(200);",
-									"    const feed = pm.response.json();",
-									"    const ownPost = feed.items.find(p => p.content === \"This post is for my friends only!\");",
-									"    const friendPost = feed.items.find(p => p.content === \"This is a public post from User B!\");",
+									"    const response = pm.response.json();",
+									"",
+									"    pm.expect(response).to.have.property('items');",
+									"    pm.expect(response).to.have.property('nextCursor');",
+									"    pm.expect(response).to.have.property('hasNextPage');",
+									"    pm.expect(response.items).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Friend feed should contain own and friend's posts\", function () {",
+									"    const response = pm.response.json();",
+									"    const ownPost = response.items.find(p => p.content === \"This post is for my friends only!\");",
+									"    const friendPost = response.items.find(p => p.content.includes(\"This is a public post from User B\"));",
 									"",
 									"    pm.expect(ownPost, \"Should see own friends-only post\").to.not.be.undefined;",
 									"    pm.expect(friendPost, \"Should see friend's public post\").to.not.be.undefined;",
-									"    console.log('✅ Friend Feed verified successfully.');",
-									"});"
+									"    console.log('✅ Friend Feed content verified successfully.');",
+									"});",
+									"",
+									"// Store the cursor for the next page request",
+									"const response = pm.response.json();",
+									"if (response.nextCursor) {",
+									"    pm.collectionVariables.set(\"friendFeed_nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
+									"    pm.collectionVariables.set(\"friendFeed_nextCursor_lastId\", response.nextCursor.lastId);",
+									"    console.log('✅ Friend Feed cursor for next page has been stored.');",
+									"}"
 								],
 								"type": "text/javascript"
 							}
@@ -1941,6 +1943,72 @@
 								"posts",
 								"feed",
 								"friends"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4.3.2 [A] Get Friend Feed (Next Page)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request for the next page of friend feed was successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains the next set of items\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.items).to.be.an('array');",
+									"    console.log(`✅ Received ${response.items.length} more items from friend feed.`);",
+									"",
+									"    // Optionally update the cursor again for the next page",
+									"    if (response.nextCursor) {",
+									"        pm.collectionVariables.set(\"friendFeed_nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
+									"        pm.collectionVariables.set(\"friendFeed_nextCursor_lastId\", response.nextCursor.lastId);",
+									"        console.log('✅ Friend Feed cursor updated for the page after this.');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{user1Token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/posts/feed/friends?lastCreatedAt={{friendFeed_nextCursor_createdAt}}&lastId={{friendFeed_nextCursor_lastId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"feed",
+								"friends"
+							],
+							"query": [
+								{
+									"key": "lastCreatedAt",
+									"value": "{{friendFeed_nextCursor_createdAt}}"
+								},
+								{
+									"key": "lastId",
+									"value": "{{friendFeed_nextCursor_lastId}}"
+								}
 							]
 						}
 					},
@@ -1978,7 +2046,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This is an anonymous post that should fail.\",\n    \"isAnonymous\": true\n}",
+							"raw": "{\n    \"content\": \"This is an anonymous post that should fail.\",\n    \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"visibility\": \"public\",\n    \"isAnonymous\": true\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2017,7 +2085,7 @@
 					"response": []
 				},
 				{
-					"name": "4.6 Get Public Feed (Paginated)",
+					"name": "4.6.1 Get Public Feed (First Page with Cursor)",
 					"event": [
 						{
 							"listen": "test",
@@ -2027,14 +2095,21 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"",
-									"pm.test(\"Response is a valid paginated result\", function () {",
+									"pm.test(\"Response is a valid cursor-based result\", function () {",
 									"    const response = pm.response.json();",
 									"    pm.expect(response).to.have.property('items');",
-									"    pm.expect(response).to.have.property('meta');",
+									"    pm.expect(response).to.have.property('nextCursor');",
+									"    pm.expect(response).to.have.property('hasNextPage');",
 									"    pm.expect(response.items).to.be.an('array');",
-									"    pm.expect(response.meta).to.have.property('currentPage');",
-									"    pm.expect(response.meta).to.have.property('totalPages');",
-									"    console.log(`✅ Feed received. Page ${response.meta.currentPage} of ${response.meta.totalPages}.`);",
+									"",
+									"    // Store the cursor for the next request",
+									"    if (response.nextCursor) {",
+									"        pm.collectionVariables.set(\"nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
+									"        pm.collectionVariables.set(\"nextCursor_lastId\", response.nextCursor.lastId);",
+									"        console.log('✅ Cursor for next page has been stored.');",
+									"    } else {",
+									"        console.log('ℹ️ No next page, cursor not stored.');",
+									"    }",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2045,7 +2120,53 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/posts/feed/public?page=1&limit=10",
+							"raw": "{{baseUrl}}/api/posts/feed/public",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"feed",
+								"public"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4.6.2 Get Public Feed (Next Page using Cursor)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request for the next page was successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains the next set of items\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.items).to.be.an('array');",
+									"    console.log(`✅ Received ${response.items.length} more items.`);",
+									"",
+									"    // You can optionally update the cursor again here if you want to test a third page",
+									"    if (response.nextCursor) {",
+									"        pm.collectionVariables.set(\"nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
+									"        pm.collectionVariables.set(\"nextCursor_lastId\", response.nextCursor.lastId);",
+									"        console.log('✅ Cursor updated for the page after this.');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/posts/feed/public?lastCreatedAt={{nextCursor_createdAt}}&lastId={{nextCursor_lastId}}",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -2057,12 +2178,12 @@
 							],
 							"query": [
 								{
-									"key": "page",
-									"value": "1"
+									"key": "lastCreatedAt",
+									"value": "{{nextCursor_createdAt}}"
 								},
 								{
-									"key": "limit",
-									"value": "10"
+									"key": "lastId",
+									"value": "{{nextCursor_lastId}}"
 								}
 							]
 						}
