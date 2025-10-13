@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useEffect, useState } from 'react';
 import ChatWindow from '@/components/ChatWindow';
 
-type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string; friendCount?: number };
-type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bio?: string | null; persona?: Persona; friendCount?: number } | null;
+type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string; friendCount?: number; bannerImg?: string };
+type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bannerImg?: string; bio?: string | null; persona?: Persona; friendCount?: number } | null;
 
 import { API_BASE_URL } from '@/utils/apiConfig';
 
@@ -208,7 +208,10 @@ export default function ProfileMainPage() {
   const publicProfile = {
     name: currentUser?.name ?? 'Kamado Tanjiro',
     studentId: currentUser?.studentId ?? '6506xxxxx',
-    avatar: currentUser?.profileImg ?? '/tanjiro.jpg',
+    // keep avatar null when profileImg is null so UI can show a gray placeholder
+    avatar: currentUser?.profileImg ?? null,
+    // banner: use null when not provided so UI shows default gradient
+    banner: currentUser?.bannerImg ?? null,
     // keep bio null when not set so UI can show 'No bio.' explicitly
     bio: currentUser?.bio ?? null,
     friendCount: currentUser?.friendCount ?? 0,
@@ -216,7 +219,8 @@ export default function ProfileMainPage() {
 
   const anonymousProfile = {
     name: currentUser?.persona?.displayName ?? 'Noobcat',
-    avatar: currentUser?.persona?.avatarUrl ?? '/noobcat.png',
+    // keep avatar null when persona has no avatarUrl so UI can show gray placeholder
+    avatar: currentUser?.persona?.avatarUrl ?? null,
     bio: currentUser?.persona?.bio ?? null,
     friendCount: currentUser?.persona?.friendCount ?? 0,
   };
@@ -269,30 +273,61 @@ export default function ProfileMainPage() {
         <section className="flex-1 overflow-y-auto flex flex-col gap-6">
           <div className="bg-white rounded-2xl shadow relative overflow-hidden">
             {/* Cover Image */}
-            <div className="h-40 w-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 flex items-center justify-center relative">
-              {/* Rainbow background */}
-            </div>
+            {publicProfile.banner ? (
+              // show provided banner image
+              (publicProfile.banner.startsWith('http') ? (
+                <div className="h-40 w-full relative">
+                  <Image
+                    loader={({ src }) => src}
+                    src={publicProfile.banner}
+                    alt="banner"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <div className="h-40 w-full relative">
+                  <Image
+                    src={publicProfile.banner}
+                    alt="banner"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="h-40 w-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 flex items-center justify-center relative">
+                {/* Rainbow background (default when no banner) */}
+              </div>
+            )}
             {/* Profile Avatar - left aligned */}
             <div className="absolute left-10 top-28 flex items-center">
               <div className="rounded-full border-4 border-white p-1 bg-white">
-                {typeof displayed.avatar === 'string' && displayed.avatar.startsWith('http') ? (
-                  <Image
-                    loader={({ src }) => src}
-                    src={displayed.avatar}
-                    alt={displayed.name}
-                    width={90}
-                    height={90}
-                    unoptimized
-                    className="rounded-full"
-                  />
+                {displayed.avatar ? (
+                  // render provided avatar (external or local)
+                  (typeof displayed.avatar === 'string' && displayed.avatar.startsWith('http')) ? (
+                    <Image
+                      loader={({ src }) => src}
+                      src={displayed.avatar}
+                      alt={displayed.name}
+                      width={90}
+                      height={90}
+                      unoptimized
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <Image
+                      src={displayed.avatar}
+                      alt={displayed.name}
+                      width={90}
+                      height={90}
+                      className="rounded-full"
+                    />
+                  )
                 ) : (
-                  <Image
-                    src={displayed.avatar}
-                    alt={displayed.name}
-                    width={90}
-                    height={90}
-                    className="rounded-full"
-                  />
+                  // no profile image: show neutral gray placeholder circle
+                  <div className="w-[90px] h-[90px] rounded-full bg-gray-300 border-2 border-white" aria-hidden="true" />
                 )}
               </div>
               {/* Stats - right of avatar */}
