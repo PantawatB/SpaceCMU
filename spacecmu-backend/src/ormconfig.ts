@@ -10,6 +10,7 @@ import { Chat } from "./entities/Chat";
 import { Message } from "./entities/Message";
 import { ChatParticipant } from "./entities/ChatParticipant";
 import { Product } from "./entities/Product";
+import { ProductImage } from "./entities/ProductImage";
 import { Actor } from "./entities/Actor";
 
 // Load environment variables from .env file
@@ -35,6 +36,7 @@ export const AppDataSource = new DataSource({
     Message,
     ChatParticipant,
     Product,
+    ProductImage,
     Actor,
   ],
   ssl: process.env.DB_SSL === "true",

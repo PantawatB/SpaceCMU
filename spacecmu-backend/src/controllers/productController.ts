@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { Product } from "../entities/Product";
+import { ProductImage } from "../entities/ProductImage";
 import { User } from "../entities/User";
 import {
   sanitizeSeller,
@@ -12,6 +13,68 @@ interface AuthenticatedRequest extends Request {
   user?: User;
 }
 
+// Helper function to create absolute URL for images
+const createAbsoluteImageUrl = (req: Request, relativeUrl: string): string => {
+  if (!relativeUrl) return "";
+
+  // If it's already an absolute URL (starts with http), return as is
+  if (relativeUrl.startsWith("http")) {
+    return relativeUrl;
+  }
+
+  // Build absolute URL using request
+  const base = `${req.protocol}://${req.get("host")}`;
+  const cleanUrl = relativeUrl.startsWith("/")
+    ? relativeUrl
+    : `/${relativeUrl}`;
+
+  return `${base}${cleanUrl}`;
+};
+
+// Validation helper
+const validateProduct = (name: string, price: any, description?: string) => {
+  const errors: any = {};
+
+  // Name validation
+  if (!name || typeof name !== "string") {
+    errors.name = "Name is required";
+  } else if (name.length < 1 || name.length > 80) {
+    errors.name = "Name must be between 1 and 80 characters";
+  }
+
+  // Price validation
+  if (price === undefined || price === null || price === "") {
+    errors.price = "Price is required";
+  } else {
+    const numPrice = Number(price);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      errors.price = "Price must be a positive number";
+    }
+  }
+
+  // Description validation
+  if (description !== undefined && description !== null) {
+    if (typeof description !== "string") {
+      errors.description = "Description must be a string";
+    } else if (description.length > 500) {
+      errors.description = "Description must not exceed 500 characters";
+    } else {
+      // Check for URLs and phone numbers
+      const urlPattern =
+        /(https?:\/\/[^\s]+|www\.[^\s]+|[^\s]+\.(com|org|net|edu|gov|mil|int|co|th|us|uk|ca|au|de|fr|jp|cn|in|br|ru|za|nl|se|no|dk|fi|it|es|pl|be|ch|at|cz|hu|gr|pt|ie|si|sk|bg|ro|hr|lt|lv|ee|lu|mt|cy))/i;
+      const phonePattern =
+        /(\+?\d{1,4}[\s\-]?)?(\(?\d{1,4}\)?[\s\-]?)?\d{1,4}[\s\-]?\d{1,4}[\s\-]?\d{1,9}/;
+
+      if (urlPattern.test(description) || phonePattern.test(description)) {
+        errors.description =
+          "Description must not contain URLs or phone numbers";
+      }
+    }
+  }
+
+  return Object.keys(errors).length > 0 ? errors : null;
+};
+
 // GET /api/products - ดูสินค้าทั้งหมด
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
@@ -19,14 +82,30 @@ export const getAllProducts = async (req: Request, res: Response) => {
     const products = await productRepo.find({
       order: { createdAt: "DESC" },
       relations: ["seller"],
+      select: [
+        "id",
+        "name",
+        "description",
+        "price",
+        "status",
+        "imageUrl",
+        "createdAt",
+        "seller",
+      ],
     });
 
     const sanitized = products.map((p) => ({
-      ...p,
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      status: p.status,
+      imageUrl: p.imageUrl ? createAbsoluteImageUrl(req, p.imageUrl) : null,
+      createdAt: p.createdAt,
       seller: sanitizeSeller((p as any).seller),
     }));
 
-    return res.json(listResponse(sanitized));
+    return res.json({ data: sanitized });
   } catch (error) {
     console.error("Error getting products:", error);
     return res.status(500).json({
@@ -41,7 +120,7 @@ export const getProductById = async (req: Request, res: Response) => {
     const productRepo = AppDataSource.getRepository(Product);
     const product = await productRepo.findOne({
       where: { id: parseInt(id) },
-      relations: ["seller"],
+      relations: ["seller", "images"],
     });
 
     if (!product) {
@@ -51,7 +130,15 @@ export const getProductById = async (req: Request, res: Response) => {
     return res.json(
       createResponse("Product retrieved successfully", {
         product: {
-          ...product,
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          status: product.status,
+          imageUrl: product.imageUrl
+            ? createAbsoluteImageUrl(req, product.imageUrl)
+            : null,
+          createdAt: product.createdAt,
           seller: sanitizeSeller((product as any).seller),
         },
       })
@@ -65,38 +152,64 @@ export const getProductById = async (req: Request, res: Response) => {
   }
 };
 
-// POST /api/products - เพิ่มสินค้าใหม่
+// POST /api/products - เพิ่มสินค้าใหม่ (รองรับการอัปโหลดรูปภาพ)
 export const createProduct = async (
   req: AuthenticatedRequest,
   res: Response
 ) => {
   try {
-    const { name, price, description, imageUrl } = req.body;
+    const { name, price, description } = req.body;
     const user = req.user!;
+    const imageFile = req.file; // รูปที่อัปโหลดมา
 
-    if (!name || !price) {
+    // Validate input
+    const validationErrors = validateProduct(name, price, description);
+    if (validationErrors) {
       return res.status(400).json({
         success: false,
-        message: "Name and price are required",
+        message: "Validation failed",
+        errors: validationErrors,
       });
     }
 
     const productRepo = AppDataSource.getRepository(Product);
+    let imageUrl: string | undefined = undefined;
+
+    // Handle image upload if provided
+    if (imageFile) {
+      imageUrl = `/uploads/${imageFile.filename}`;
+    }
+
+    // Create product
     const product = productRepo.create({
-      name,
+      name: name.trim(),
       price: parseFloat(price),
-      description,
+      description: description?.trim(),
       imageUrl,
       seller: user,
     });
 
-    await productRepo.save(product);
+    const savedProduct = await productRepo.save(product);
 
-    return res.status(201).json(
-      createResponse("Product created successfully", {
-        product: { ...product, seller: sanitizeSeller(user) },
-      })
-    );
+    // Return response according to API contract
+    const productData = {
+      id: savedProduct.id,
+      name: savedProduct.name,
+      description: savedProduct.description,
+      price: savedProduct.price,
+      status: savedProduct.status,
+      imageUrl: savedProduct.imageUrl
+        ? createAbsoluteImageUrl(req, savedProduct.imageUrl)
+        : null,
+      createdAt: savedProduct.createdAt,
+      seller: sanitizeSeller(user),
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      data: { product: productData },
+    });
   } catch (error) {
     console.error("Error creating product:", error);
     return res.status(500).json({

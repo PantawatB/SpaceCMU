@@ -16,6 +16,7 @@ const Chat_1 = require("./entities/Chat");
 const Message_1 = require("./entities/Message");
 const ChatParticipant_1 = require("./entities/ChatParticipant");
 const Product_1 = require("./entities/Product");
+const ProductImage_1 = require("./entities/ProductImage");
 const Actor_1 = require("./entities/Actor");
 // Load environment variables from .env file
 dotenv_1.default.config();
@@ -39,6 +40,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
         Message_1.Message,
         ChatParticipant_1.ChatParticipant,
         Product_1.Product,
+        ProductImage_1.ProductImage,
         Actor_1.Actor,
     ],
     ssl: process.env.DB_SSL === "true",

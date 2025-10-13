@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticateToken } from "../middleware/auth";
+import { upload } from "../middleware/upload";
 import * as productController from "../controllers/productController";
 
 const router = Router();
@@ -9,7 +10,12 @@ router.get("/", productController.getAllProducts);
 router.get("/:id", productController.getProductById);
 
 // Protected routes (require authentication)
-router.post("/", authenticateToken, productController.createProduct);
+router.post(
+  "/",
+  authenticateToken,
+  upload.single("image"),
+  productController.createProduct
+);
 router.delete("/:id", authenticateToken, productController.deleteProduct);
 router.patch(
   "/:id/status",

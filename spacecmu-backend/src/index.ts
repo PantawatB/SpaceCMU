@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import express from "express";
+import path from "path";
 import { AppDataSource } from "./ormconfig";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -28,10 +29,10 @@ async function bootstrap() {
 
     app.use(
       cors({
-        origin: "http://localhost:3001", // Frontend รันที่ port 3001
+        origin: "http://localhost:3000", // Frontend รันที่ port 3000
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"],
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         exposedHeaders: ["Authorization"],
       })
     );
@@ -49,6 +50,23 @@ async function bootstrap() {
     });
 
     app.use(express.json());
+
+    // Serve static files from public directory
+    const baseDir = path.resolve(__dirname, "..");
+    app.use(express.static(path.join(baseDir, "public")));
+    app.use("/uploads", express.static(path.join(baseDir, "public/uploads")));
+
+    console.log("📁 Static files configured:");
+    console.log("   - Public root:", path.join(process.cwd(), "public"));
+    console.log(
+      "   - Uploads path:",
+      path.join(process.cwd(), "public/uploads")
+    );
+
+    // Serve image test page
+    app.get("/image-test", (req, res) => {
+      res.sendFile(path.join(__dirname, "..", "image-test.html"));
+    });
 
     // Mount API routes under /api
     app.use("/api/users", userRoutes);
