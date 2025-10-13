@@ -192,6 +192,10 @@ export default function FriendsMainPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeProfile, setActiveProfile] = useState<number>(0);
   const [peopleYouMayKnow, setPeopleYouMayKnow] = useState<FriendCardProps[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FriendCardProps[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
 
   // Listen for active profile changes
   useEffect(() => {
@@ -223,6 +227,68 @@ export default function FriendsMainPage() {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
+
+  const performSearch = async (query: string) => {
+    if (!query) return;
+    setIsSearching(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError("Authentication required for search");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/users/search?name=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Search failed with status: ${res.status}`);
+      }
+
+      const responseData: { items: { id: string; name?: string; profileImg?: string | null; bio?: string | null; actorId?: string }[] } = await res.json();
+      
+      const currentFriendIds = new Set(friends.map(f => f.id));
+
+      const transformedResults: FriendCardProps[] = responseData.items.map(u => ({
+        id: u.actorId ?? u.id,
+        name: u.name ?? 'Unknown User',
+        bio: u.bio ?? 'No bio available',
+        followed: false, 
+        avatarUrl: u.profileImg ?? null,
+        isFriend: currentFriendIds.has(u.actorId ?? u.id),
+        readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
+        onFollow: () => sendFriendRequest(u.actorId),
+        onRemove: () => unfriend(u.actorId),
+        onMessage: () => {},
+      }));
+
+      setSearchResults(transformedResults);
+
+    } catch (err) {
+      console.error("Error performing search:", err);
+      setSearchResults([]); 
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      performSearch(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
 
   // Function to fetch friend requests
   const fetchFriendRequests = async () => {
@@ -768,26 +834,36 @@ export default function FriendsMainPage() {
             </span>
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search for friends..."
               className="w-full pl-10 pr-3 py-2 rounded-full bg-white text-sm placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
         <div className="flex flex-col">
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="text-gray-500">Loading friend requests...</div>
-            </div>
-          ) : error ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="text-red-500">Error: {error}</div>
-            </div>
+          {searchQuery.trim() ? (
+            isSearching ? (
+              <div className="text-center text-gray-500">Searching...</div>
+            ) : (
+              <HorizontalScrollSection title="Search Results" items={searchResults} />
+            )
           ) : (
-            <>
-              <HorizontalScrollSection title="Friends" items={friends} />
-              <HorizontalScrollSection title="Friend Requests" items={friendRequests} />
-              <HorizontalScrollSection title="People you may know" items={peopleYouMayKnow} />
-            </>
+            loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-gray-500">Loading...</div>
+              </div>
+            ) : error ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-red-500">Error: {error}</div>
+              </div>
+            ) : (
+              <>
+                <HorizontalScrollSection title="Friends" items={friends} />
+                <HorizontalScrollSection title="Friend Requests" items={friendRequests} />
+                <HorizontalScrollSection title="People you may know" items={peopleYouMayKnow} />
+              </>
+            )
           )}
         </div>
       </main>
