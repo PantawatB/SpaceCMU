@@ -23,7 +23,7 @@ export class AddProductImageTable1760400000000 implements MigrationInterface {
           {
             name: "filename",
             type: "varchar",
-            length: "255",
+            length: "256",
           },
           {
             name: "originalName",
