@@ -516,12 +516,23 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Should receive friend request from User A's actor\", function () {",
+											"pm.test(\"Should receive friend request from User A in User's inbox\", function () {",
 											"    const response = pm.response.json();",
-											"    const requestFromA = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
-											"    pm.expect(requestFromA).to.not.be.undefined;",
-											"    pm.collectionVariables.set(\"friendRequestId\", requestFromA.id);",
-											"    console.log('✅ Friend Request ID stored for acceptance.');",
+											"    ",
+											"    // Check that the incoming array exists",
+											"    pm.expect(response.incoming).to.be.an('array');",
+											"",
+											"    // Find the request from User A's main actor profile",
+											"    const requestFromA = response.incoming.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
+											"    ",
+											"    // Assert that the request was found",
+											"    pm.expect(requestFromA, \"Friend request from User A should be in the user's incoming list\").to.not.be.undefined;",
+											"    ",
+											"    // Store the request ID for the next step (accepting the request)",
+											"    if (requestFromA) {",
+											"        pm.collectionVariables.set(\"friendRequestId\", requestFromA.id);",
+											"        console.log('✅ User Friend Request ID stored for acceptance.');",
+											"    }",
 											"});"
 										],
 										"type": "text/javascript"
@@ -542,14 +553,15 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/api/friends/requests",
+									"raw": "{{baseUrl}}/api/friends/requests/{{user2ActorId}}",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"api",
 										"friends",
-										"requests"
+										"requests",
+										"{{user2ActorId}}"
 									]
 								}
 							},
@@ -630,6 +642,81 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Anonymous B Receives Request Flow",
+							"item": [
+								{
+									"name": "[A -> Anonymous B] Send Friend Request",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{ "key": "token", "value": "{{user1Token}}", "type": "string" }
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"fromActorId\": \"{{user1ActorId}}\",\n    \"toActorId\": \"{{user2PersonaActorId}}\"\n}",
+											"options": { "raw": { "language": "json" } }
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/friends/request",
+											"host": [ "{{baseUrl}}" ],
+											"path": [ "api", "friends", "request" ]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "[B] List Persona Requests & Verify",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Should receive friend request from User A in Persona's inbox\", function () {",
+													"    const response = pm.response.json();",
+													"    pm.expect(response.incoming).to.be.an('array');",
+													"    const requestFromA = response.incoming.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
+													"    pm.expect(requestFromA, \"Friend request from User A should be in the persona's incoming list\").to.not.be.undefined;",
+													"    if (requestFromA) {",
+													"        pm.collectionVariables.set(\"personaFriendRequestId\", requestFromA.id);",
+													"        console.log('✅ Persona Friend Request ID stored.');",
+													"    }",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{ "key": "token", "value": "{{user2Token}}", "type": "string" }
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/friends/requests/{{user2PersonaActorId}}",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"friends",
+												"requests",
+												"{{user2PersonaActorId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							]
 						}
 					]
 				},
@@ -684,7 +771,7 @@
 										"exec": [
 											"pm.test(\"Should find the outgoing request from Persona A\", function () {",
 											"    const response = pm.response.json();",
-											"    const outgoingRequest = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1PersonaActorId\"));",
+											"    const outgoingRequest = response.outgoing.find(req => req.from.actorId === pm.collectionVariables.get(\"user1PersonaActorId\"));",
 											"    pm.expect(outgoingRequest).to.not.be.undefined;",
 											"    pm.collectionVariables.set(\"friendRequestId\", outgoingRequest.id);",
 											"    console.log('✅ Friend Request ID stored for cancellation.');",
@@ -698,25 +785,15 @@
 								"auth": {
 									"type": "bearer",
 									"bearer": [
-										{
-											"key": "token",
-											"value": "{{user1Token}}",
-											"type": "string"
-										}
+										{ "key": "token", "value": "{{user1Token}}", "type": "string" }
 									]
 								},
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/api/friends/requests",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"friends",
-										"requests"
-									]
+									"raw": "{{baseUrl}}/api/friends/requests/{{user1PersonaActorId}}",
+									"host": [ "{{baseUrl}}" ],
+									"path": [ "api", "friends", "requests", "{{user1PersonaActorId}}" ]
 								}
 							},
 							"response": []
@@ -805,7 +882,7 @@
 											"script": {
 												"exec": [
 													"const response = pm.response.json();",
-													"const requestFromA = response.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
+													"const requestFromA = response.incoming.find(req => req.from.actorId === pm.collectionVariables.get(\"user1ActorId\"));",
 													"pm.collectionVariables.set(\"friendRequestId\", requestFromA.id);"
 												],
 												"type": "text/javascript"
@@ -816,25 +893,15 @@
 										"auth": {
 											"type": "bearer",
 											"bearer": [
-												{
-													"key": "token",
-													"value": "{{user2Token}}",
-													"type": "string"
-												}
+												{ "key": "token", "value": "{{user2Token}}", "type": "string" }
 											]
 										},
 										"method": "GET",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/api/friends/requests",
-											"host": [
-												"{{baseUrl}}"
-											],
-											"path": [
-												"api",
-												"friends",
-												"requests"
-											]
+											"raw": "{{baseUrl}}/api/friends/requests/{{user2ActorId}}",
+											"host": [ "{{baseUrl}}" ],
+											"path": [ "api", "friends", "requests", "{{user2ActorId}}" ]
 										}
 									},
 									"response": []
