@@ -12,6 +12,7 @@ interface FriendRequestActor {
   name: string;
   type: string;
   actorId: string;
+  profileImg?: string | null;
 }
 
 interface FriendRequestResponse {
@@ -19,6 +20,11 @@ interface FriendRequestResponse {
   from: FriendRequestActor;
   to: FriendRequestActor;
   status: string;
+}
+
+interface FriendRequestsApiResponse {
+  incoming: FriendRequestResponse[];
+  outgoing: FriendRequestResponse[];
 }
 
 // Friend card component
@@ -164,11 +170,43 @@ export default function FriendsMainPage() {
   const [friends, setFriends] = useState<FriendCardProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeProfile, setActiveProfile] = useState<number>(0);
+
+  // Listen for active profile changes
+  useEffect(() => {
+    // Get initial value from localStorage
+    const storedProfile = localStorage.getItem('activeProfile');
+    if (storedProfile) {
+      setActiveProfile(parseInt(storedProfile, 10) || 0);
+    }
+
+    // Listen for changes
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') {
+        setActiveProfile(detail);
+      }
+    };
+    window.addEventListener('activeProfileChanged', handler as EventListener);
+    
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'activeProfile') {
+        const v = e.newValue;
+        setActiveProfile(v ? parseInt(v, 10) : 0);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      window.removeEventListener('activeProfileChanged', handler as EventListener);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   // Function to fetch friend requests
   const fetchFriendRequests = async () => {
     try {
-      const token = localStorage.getItem('token'); // Assuming token is stored in localStorage
+      const token = localStorage.getItem('token');
       
       if (!token) {
         setError('No authentication token found');
@@ -176,7 +214,31 @@ export default function FriendsMainPage() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/friends/requests`, {
+      // First get current user's actorId or persona.actorId
+      const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!meRes.ok) {
+        throw new Error(`Failed to fetch current user: ${meRes.status}`);
+      }
+
+      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
+      
+      // Determine which actorId to use based on active profile
+      const actorId = activeProfile === 1 && meData.persona?.actorId 
+        ? meData.persona.actorId 
+        : meData.actorId;
+
+      if (!actorId) {
+        throw new Error('No actorId found for current user');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/friends/requests/${actorId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -188,14 +250,15 @@ export default function FriendsMainPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: FriendRequestResponse[] = await response.json();
+      const data: FriendRequestsApiResponse = await response.json();
       
-      // Transform API data to match FriendCardProps interface
-      const transformedRequests: FriendCardProps[] = data.map((request) => ({
+      // Transform incoming friend requests to match FriendCardProps interface
+      const transformedRequests: FriendCardProps[] = data.incoming.map((request) => ({
         id: request.id,
         name: request.from?.name ?? 'Unknown',
         bio: 'No bio available',
         followed: request.status === 'pending',
+        avatarUrl: request.from?.profileImg || null,
         onFollow: () => handleAcceptRequest(request.id),
         onRemove: () => handleRejectRequest(request.id),
         onMessage: () => {},
@@ -216,7 +279,7 @@ export default function FriendsMainPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      // First get current user's actorId
+      // First get current user's actorId or persona.actorId
       const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
         method: 'GET',
         headers: {
@@ -230,8 +293,13 @@ export default function FriendsMainPage() {
         return;
       }
 
-      const meData: { actorId?: string } = await meRes.json();
-      const actorId = meData.actorId;
+      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
+      
+      // Determine which actorId to use based on active profile
+      const actorId = activeProfile === 1 && meData.persona?.actorId 
+        ? meData.persona.actorId 
+        : meData.actorId;
+
       if (!actorId) {
         console.warn('No actorId found for current user');
         return;
@@ -313,11 +381,11 @@ export default function FriendsMainPage() {
     }
   };
 
-  // Fetch friend requests and friends on component mount
+  // Fetch friend requests and friends on component mount and when activeProfile changes
   useEffect(() => {
     fetchFriendRequests();
     fetchFriends();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mock data for "People you may know" section
   const peopleYouMayKnow: FriendCardProps[] = [
