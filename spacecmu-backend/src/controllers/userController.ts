@@ -4,13 +4,9 @@ import jwt from "jsonwebtoken";
 import { User } from "../entities/User";
 import { Persona } from "../entities/Persona";
 import { Actor } from "../entities/Actor";
+import { Post } from "../entities/Post"; // Import Post entity
 import { hashPassword, comparePassword } from "../utils/hash";
-import {
-  sanitizeUser,
-  sanitizeUserProfile,
-  createResponse,
-  listResponse,
-} from "../utils/serialize";
+import { sanitizeUserProfile, createResponse } from "../utils/serialize";
 import { generateRandomPersonaName } from "../utils/personaGenerator";
 
 /**
@@ -169,25 +165,11 @@ export async function updateUser(
     const { name, password, bio, profileImg, bannerImg } = req.body;
     const userRepo = AppDataSource.getRepository(User);
 
-    if (name) {
-      user.name = name;
-    }
-
-    if (password) {
-      user.passwordHash = await hashPassword(password);
-    }
-
-    if (typeof profileImg !== "undefined") {
-      user.profileImg = profileImg;
-    }
-
-    if (typeof bannerImg !== "undefined") {
-      user.bannerImg = bannerImg;
-    }
-
-    if (typeof bio === "string") {
-      user.bio = bio;
-    }
+    if (name) user.name = name;
+    if (password) user.passwordHash = await hashPassword(password);
+    if (typeof profileImg !== "undefined") user.profileImg = profileImg;
+    if (typeof bannerImg !== "undefined") user.bannerImg = bannerImg;
+    if (typeof bio === "string") user.bio = bio;
 
     await userRepo.save(user);
 
@@ -261,7 +243,7 @@ export async function searchUsers(
 }
 
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost (พร้อมค้นหาจากชื่อคนโพส)
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost
  */
 export async function getMyReposts(
   req: Request & { user?: User },
@@ -271,55 +253,26 @@ export async function getMyReposts(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const { authorName } = req.query;
+    const actorIds: string[] = [];
+    if (user.actor?.id) actorIds.push(user.actor.id);
+    if (user.persona?.actor?.id) actorIds.push(user.persona.actor.id);
 
-    const userRepo = AppDataSource.getRepository(User);
-    const userWithReposts = await userRepo.findOne({
-      where: { id: user.id },
-      relations: [
-        "repostedPosts",
-        "repostedPosts.actor",
-        "repostedPosts.actor.user",
-        "repostedPosts.actor.persona",
-      ],
-    });
-
-    if (!userWithReposts) {
-      return res.status(404).json({ message: "User not found" });
+    if (actorIds.length === 0) {
+      return res.json({ data: [] });
     }
 
-    let repostedPosts = userWithReposts.repostedPosts || [];
+    const postRepo = AppDataSource.getRepository(Post);
+    const repostedPosts = await postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "author_actor")
+      .leftJoinAndSelect("author_actor.user", "author_user")
+      .leftJoinAndSelect("author_actor.persona", "author_persona")
+      .innerJoin("post.repostedBy", "reposting_actor")
+      .where("reposting_actor.id IN (:...actorIds)", { actorIds })
+      .orderBy("post.createdAt", "DESC")
+      .getMany();
 
-    if (authorName && typeof authorName === "string") {
-      const searchTerm = authorName.toLowerCase();
-      repostedPosts = repostedPosts.filter((post) => {
-        const authorIsUser =
-          post.actor.user &&
-          post.actor.user.name.toLowerCase().includes(searchTerm);
-        const authorIsPersona =
-          post.actor.persona &&
-          post.actor.persona.displayName.toLowerCase().includes(searchTerm);
-        return authorIsUser || authorIsPersona;
-      });
-    }
-
-    // Sanitize posts to create a consistent author object
-    const sanitized = repostedPosts.map((post) => {
-      const { actor, ...restOfPost } = post;
-      const author = actor.user
-        ? {
-            type: "user",
-            name: actor.user.name,
-            profileImg: actor.user.profileImg,
-          }
-        : {
-            type: "persona",
-            name: actor.persona!.displayName,
-            avatarUrl: actor.persona!.avatarUrl,
-          };
-      return { ...restOfPost, author };
-    });
-    return res.json(listResponse(sanitized));
+    return res.json({ data: repostedPosts });
   } catch (err) {
     console.error("getMyReposts error:", err);
     return res.status(500).json({ message: "Failed to fetch reposts" });
@@ -327,7 +280,7 @@ export async function getMyReposts(
 }
 
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like (พร้อมค้นหาจากชื่อคนโพส)
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like
  */
 export async function getMyLikedPosts(
   req: Request & { user?: User },
@@ -337,54 +290,26 @@ export async function getMyLikedPosts(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const { authorName } = req.query;
+    const actorIds: string[] = [];
+    if (user.actor?.id) actorIds.push(user.actor.id);
+    if (user.persona?.actor?.id) actorIds.push(user.persona.actor.id);
 
-    const userRepo = AppDataSource.getRepository(User);
-    const userWithLikes = await userRepo.findOne({
-      where: { id: user.id },
-      relations: [
-        "likedPosts",
-        "likedPosts.actor",
-        "likedPosts.actor.user",
-        "likedPosts.actor.persona",
-      ],
-    });
-
-    if (!userWithLikes) {
-      return res.status(404).json({ message: "User not found" });
+    if (actorIds.length === 0) {
+      return res.json({ data: [] });
     }
 
-    let likedPosts = userWithLikes.likedPosts || [];
+    const postRepo = AppDataSource.getRepository(Post);
+    const likedPosts = await postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "author_actor")
+      .leftJoinAndSelect("author_actor.user", "author_user")
+      .leftJoinAndSelect("author_actor.persona", "author_persona")
+      .innerJoin("post.likedBy", "liking_actor")
+      .where("liking_actor.id IN (:...actorIds)", { actorIds })
+      .orderBy("post.createdAt", "DESC")
+      .getMany();
 
-    if (authorName && typeof authorName === "string") {
-      const searchTerm = authorName.toLowerCase();
-      likedPosts = likedPosts.filter((post) => {
-        const authorIsUser =
-          post.actor.user &&
-          post.actor.user.name.toLowerCase().includes(searchTerm);
-        const authorIsPersona =
-          post.actor.persona &&
-          post.actor.persona.displayName.toLowerCase().includes(searchTerm);
-        return authorIsUser || authorIsPersona;
-      });
-    }
-
-    const sanitized = likedPosts.map((post) => {
-      const { actor, ...restOfPost } = post;
-      const author = actor.user
-        ? {
-            type: "user",
-            name: actor.user.name,
-            profileImg: actor.user.profileImg,
-          }
-        : {
-            type: "persona",
-            name: actor.persona!.displayName,
-            avatarUrl: actor.persona!.avatarUrl,
-          };
-      return { ...restOfPost, author };
-    });
-    return res.json(listResponse(sanitized));
+    return res.json({ data: likedPosts });
   } catch (err) {
     console.error("getMyLikedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch liked posts" });
@@ -392,7 +317,7 @@ export async function getMyLikedPosts(
 }
 
 /**
- * Get current user's actor information (User Actor and Persona Actor)
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save
  */
 export async function getCurrentUserActor(
   req: Request & { user?: User },
@@ -449,54 +374,26 @@ export async function getMySavedPosts(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const { authorName } = req.query;
+    const actorIds: string[] = [];
+    if (user.actor?.id) actorIds.push(user.actor.id);
+    if (user.persona?.actor?.id) actorIds.push(user.persona.actor.id);
 
-    const userRepo = AppDataSource.getRepository(User);
-    const userWithSaves = await userRepo.findOne({
-      where: { id: user.id },
-      relations: [
-        "savedPosts",
-        "savedPosts.actor",
-        "savedPosts.actor.user",
-        "savedPosts.actor.persona",
-      ],
-    });
-
-    if (!userWithSaves) {
-      return res.status(404).json({ message: "User not found" });
+    if (actorIds.length === 0) {
+      return res.json({ data: [] });
     }
 
-    let savedPosts = userWithSaves.savedPosts || [];
+    const postRepo = AppDataSource.getRepository(Post);
+    const savedPosts = await postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "author_actor")
+      .leftJoinAndSelect("author_actor.user", "author_user")
+      .leftJoinAndSelect("author_actor.persona", "author_persona")
+      .innerJoin("post.savedBy", "saving_actor")
+      .where("saving_actor.id IN (:...actorIds)", { actorIds })
+      .orderBy("post.createdAt", "DESC")
+      .getMany();
 
-    if (authorName && typeof authorName === "string") {
-      const searchTerm = authorName.toLowerCase();
-      savedPosts = savedPosts.filter((post) => {
-        const authorIsUser =
-          post.actor.user &&
-          post.actor.user.name.toLowerCase().includes(searchTerm);
-        const authorIsPersona =
-          post.actor.persona &&
-          post.actor.persona.displayName.toLowerCase().includes(searchTerm);
-        return authorIsUser || authorIsPersona;
-      });
-    }
-
-    const sanitized = savedPosts.map((post) => {
-      const { actor, ...restOfPost } = post;
-      const author = actor.user
-        ? {
-            type: "user",
-            name: actor.user.name,
-            profileImg: actor.user.profileImg,
-          }
-        : {
-            type: "persona",
-            name: actor.persona!.displayName,
-            avatarUrl: actor.persona!.avatarUrl,
-          };
-      return { ...restOfPost, author };
-    });
-    return res.json(listResponse(sanitized));
+    return res.json({ data: savedPosts });
   } catch (err) {
     console.error("getMySavedPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch saved posts" });

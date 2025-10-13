@@ -7,7 +7,6 @@ import {
   OneToMany,
   JoinTable,
 } from "typeorm";
-import { User } from "./User";
 import { Report } from "./Report";
 import { Comment } from "./Comment";
 import { Actor } from "./Actor";
@@ -46,9 +45,9 @@ export class Post {
   })
   visibility!: "public" | "friends";
 
-  @ManyToMany(() => User, (user) => user.likedPosts, { eager: true })
+  @ManyToMany(() => Actor, (actor) => actor.likedPosts)
   @JoinTable({ name: "post_likes" })
-  likedBy!: User[];
+  likedBy!: Actor[];
 
   /**
    * Comments on this post.
@@ -59,16 +58,15 @@ export class Post {
   /**
    * Users who have reposted this post.
    */
-  @ManyToMany(() => User, (user) => user.repostedPosts)
+  @ManyToMany(() => Actor, (actor) => actor.repostedPosts)
   @JoinTable({ name: "post_reposts" })
-  repostedBy!: User[];
-
+  repostedBy!: Actor[];
   /**
    * Users who have saved this post.
    */
-  @ManyToMany(() => User, (user) => user.savedPosts)
+  @ManyToMany(() => Actor, (actor) => actor.savedPosts)
   @JoinTable({ name: "post_saves" })
-  savedBy!: User[];
+  savedBy!: Actor[];
 
   @OneToMany(() => Report, (report) => report.post)
   reports!: Report[];

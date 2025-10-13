@@ -109,26 +109,6 @@ export class User {
   /**
    * Posts liked by this user.
    */
-  @ManyToMany(() => Post, (post) => post.likedBy)
-  likedPosts!: Post[];
-
-  /**
-   * Comments made by this user.
-   */
-  @OneToMany(() => Comment, (comment) => comment.user)
-  comments!: Comment[];
-
-  /**
-   * Posts reposted by this user.
-   */
-  @ManyToMany(() => Post, (post) => post.repostedBy)
-  repostedPosts!: Post[];
-
-  /**
-   * Posts saved by this user.
-   */
-  @ManyToMany(() => Post, (post) => post.savedBy)
-  savedPosts!: Post[];
 
   // Note: Conversations are handled through ChatParticipant entity
   // @ManyToMany(() => Conversation, (conversation) => conversation.participants)

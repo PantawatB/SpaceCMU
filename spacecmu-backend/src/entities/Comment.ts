@@ -6,8 +6,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { User } from "./User";
 import { Post } from "./Post";
+import { Actor } from "./Actor";
 
 @Entity()
 export class Comment {
@@ -17,8 +17,8 @@ export class Comment {
   /**
    * The user who wrote the comment.
    */
-  @ManyToOne(() => User, (user) => user.comments, { onDelete: "CASCADE" })
-  user!: User;
+  @ManyToOne(() => Actor, (actor) => actor.comments, { onDelete: "CASCADE" })
+  actor!: Actor;
 
   /**
    * The post this comment belongs to.
