@@ -182,6 +182,7 @@ export default function ProfileMainPage() {
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [editingBio, setEditingBio] = useState(false);
+  const [activeTab, setActiveTab] = useState<'posts' | 'market' | 'reposts' | 'likes' | 'saved'>('posts');
 
   // hover states
   const [hoverBanner, setHoverBanner] = useState(false);
@@ -669,16 +670,105 @@ export default function ProfileMainPage() {
             </div>
             {/* Tabs */}
             <div className="flex justify-center mt-6 border-b border-gray-200">
-              <button className="px-6 py-3 font-medium text-gray-700 bg-gray-100 rounded-t-xl">
+              <button 
+                onClick={() => setActiveTab('posts')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'posts' 
+                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Your Posts
+              </button>
+              <button 
+                onClick={() => setActiveTab('market')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'market' 
+                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Your Market Items
+              </button>
+              <button 
+                onClick={() => setActiveTab('reposts')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'reposts' 
+                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
                 Reposts
               </button>
-              <button className="px-6 py-3 font-medium text-gray-700">Friends</button>
-              <button className="px-6 py-3 font-medium text-gray-700">
+              <button 
+                onClick={() => setActiveTab('likes')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'likes' 
+                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
                 Likes
               </button>
-              <button className="px-6 py-3 font-medium text-gray-700">
+              <button 
+                onClick={() => setActiveTab('saved')}
+                className={`px-6 py-3 font-medium transition-colors ${
+                  activeTab === 'saved' 
+                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
                 Saved
               </button>
+            </div>
+            
+            {/* Tab Content */}
+            <div className="p-8">
+              {activeTab === 'posts' && (
+                <div className="text-center text-gray-500 py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <p className="text-lg font-medium">No posts yet</p>
+                  <p className="text-sm mt-1">Your posts will appear here</p>
+                </div>
+              )}
+              {activeTab === 'market' && (
+                <div className="text-center text-gray-500 py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+                  </svg>
+                  <p className="text-lg font-medium">No items listed yet</p>
+                  <p className="text-sm mt-1">Your market items will appear here</p>
+                </div>
+              )}
+              {activeTab === 'reposts' && (
+                <div className="text-center text-gray-500 py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+                  </svg>
+                  <p className="text-lg font-medium">No reposts yet</p>
+                  <p className="text-sm mt-1">Your reposts will appear here</p>
+                </div>
+              )}
+              {activeTab === 'likes' && (
+                <div className="text-center text-gray-500 py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                  <p className="text-lg font-medium">No liked posts yet</p>
+                  <p className="text-sm mt-1">Posts you like will appear here</p>
+                </div>
+              )}
+              {activeTab === 'saved' && (
+                <div className="text-center text-gray-500 py-12">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  </svg>
+                  <p className="text-lg font-medium">No saved posts yet</p>
+                  <p className="text-sm mt-1">Posts you save will appear here</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -712,6 +802,7 @@ export default function ProfileMainPage() {
                 <p className="text-sm text-gray-500 mb-2">New</p>
                 <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
                   {newBannerPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={newBannerPreview}
                       alt="new banner preview"
@@ -771,6 +862,7 @@ export default function ProfileMainPage() {
                 <p className="text-sm text-gray-500 mb-2">New</p>
                 <div className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center mx-auto overflow-hidden">
                   {newAvatarPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={newAvatarPreview}
                       alt="new avatar preview"
