@@ -37,6 +37,9 @@ export class Persona {
   @Column({ nullable: true })
   avatarUrl?: string;
 
+  @Column({ nullable: true })
+  bannerImg?: string;
+
   @Column({ type: "text", nullable: true })
   bio?: string;
 

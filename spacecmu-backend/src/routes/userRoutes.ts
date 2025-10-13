@@ -9,6 +9,7 @@ import {
   getMyReposts,
   getMyLikedPosts,
   getMySavedPosts,
+  listAllUsers,
 } from "../controllers/userController";
 import { authenticateToken } from "../middleware/auth";
 
@@ -36,5 +37,8 @@ router.get("/me/likes", authenticateToken, getMyLikedPosts);
 
 // GET /api/users/me/saved
 router.get("/me/saved", authenticateToken, getMySavedPosts);
+
+// GET /api/users/all
+router.get("/all", authenticateToken, listAllUsers);
 
 export default router;
