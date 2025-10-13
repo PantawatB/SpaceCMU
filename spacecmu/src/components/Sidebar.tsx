@@ -17,8 +17,8 @@ interface SidebarProps {
 }
 
 // profiles will be derived from current user (public and anonymous persona)
-type Persona = { id?: string; displayName?: string; avatarUrl?: string };
-type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; persona?: Persona } | null;
+type Persona = { id?: string; displayName?: string; avatarUrl?: string; bannerImg?: string };
+type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bannerImg?: string; persona?: Persona } | null;
 
 export default function Sidebar({ menuItems }: SidebarProps) {
   const pathname = usePathname();
@@ -114,14 +114,16 @@ export default function Sidebar({ menuItems }: SidebarProps) {
       type: "Public",
       name: currentUser?.name ?? "Kamado Tanjiro",
       username: currentUser?.studentId ? `@${currentUser.studentId}` : "@6506xxxxx",
-      avatar: currentUser?.profileImg ?? "/tanjiro.jpg",
+      // keep avatar null when profileImg is null so UI can show a gray placeholder
+      avatar: currentUser?.profileImg ?? null,
       bg: "bg-gradient-to-tr from-purple-400 via-cyan-300 to-yellow-300",
     },
     {
       type: "Anonymous",
       name: currentUser?.persona?.displayName ?? "Noobcat",
       username: "@anonymous",
-      avatar: currentUser?.persona?.avatarUrl ?? "/noobcat.png",
+      // keep avatar null when persona has no avatarUrl so UI can show a gray placeholder
+      avatar: currentUser?.persona?.avatarUrl ?? null,
       bg: "bg-gray-400",
     },
   ];
@@ -188,27 +190,32 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                   className={`cursor-pointer flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && isActive ? '' : 'opacity-50 grayscale'}`}
                 >
                   <div className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}>
-                    {typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
-                      // external image: use Next/Image with a simple loader and unoptimized to avoid hostname config
-                      <Image
-                        loader={({ src }) => src}
-                        src={profile.avatar}
-                        alt={profile.name}
-                        width={48}
-                        height={48}
-                        unoptimized
-                        className="w-12 h-12 rounded-full object-cover border-2 border-white"
-                        priority
-                      />
+                    {profile.avatar ? (
+                      // if avatar provided (external or local), render with Image
+                      typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
+                        <Image
+                          loader={({ src }) => src}
+                          src={profile.avatar}
+                          alt={profile.name}
+                          width={48}
+                          height={48}
+                          unoptimized
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                          priority
+                        />
+                      ) : (
+                        <Image
+                          src={profile.avatar}
+                          alt={profile.name}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                          priority
+                        />
+                      )
                     ) : (
-                      <Image
-                        src={profile.avatar}
-                        alt={profile.name}
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-white"
-                        priority
-                      />
+                      // no profile image: show neutral gray placeholder circle
+                      <div className="w-12 h-12 rounded-full bg-gray-300 border-2 border-white" aria-hidden="true" />
                     )}
                     {hydrated && isActive && (
                       <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
