@@ -12,7 +12,7 @@ export default function FeedsMainPage() {
   const [feedMode, setFeedMode] = useState("Global");
   const [showShareBar, setShowShareBar] = useState(true);
   const [postText, setPostText] = useState("");
-  const [postMode, setPostMode] = useState<'public'|'anonymous'>('public');
+  const [postMode, setPostMode] = useState<'public'|'friends'>('public');
   const [posting, setPosting] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -23,10 +23,10 @@ export default function FeedsMainPage() {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentPostId, setCommentPostId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<{postId: number, text: string, author: string, time: string}[]>([
-    { postId: 0, text: "This is amazing!", author: "Nezuko", time: "2h ago" },
-    { postId: 0, text: "Love this post!", author: "Zenitsu", time: "3h ago" },
-    { postId: 1, text: "So cute!", author: "Inosuke", time: "1h ago" },
+  const [comments, setComments] = useState<{postId: number, text: string, author: string}[]>([
+    { postId: 0, text: "This is amazing!", author: "Nezuko"},
+    { postId: 0, text: "Love this post!", author: "Zenitsu" },
+    { postId: 1, text: "So cute!", author: "Inosuke" },
   ]);
   
   // Chat is handled by the shared ChatWindow component (imported below)
@@ -578,10 +578,10 @@ export default function FeedsMainPage() {
               <div className="flex items-center justify-between pt-2">
                 <div className="flex gap-6 items-center">
                   <div className="relative">
-                    <select value={postMode} onChange={(e) => setPostMode(e.target.value as 'public'|'anonymous')}
+                    <select value={postMode} onChange={(e) => setPostMode(e.target.value as 'public'|'friends')}
                       className="px-3 py-2 border rounded-md bg-white text-sm">
                       <option value="public">Public</option>
-                      <option value="anonymous">Anonymous</option>
+                      <option value="friends">Friends</option>
                     </select>
                   </div>
                 </div>
@@ -603,21 +603,21 @@ export default function FeedsMainPage() {
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
               <div>
                 <div className="font-medium">People 1</div>
-                <div className="text-xs text-gray-400">Active now</div>
+                {/* <div className="text-xs text-gray-400">Active now</div> */}
               </div>
             </li>
             <li className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
               <div>
                 <div className="font-medium">People 2</div>
-                <div className="text-xs text-gray-400">Active 2m ago</div>
+                {/* <div className="text-xs text-gray-400">Active 2m ago</div> */}
               </div>
             </li>
             <li className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
               <div>
                 <div className="font-medium">People 3</div>
-                <div className="text-xs text-gray-400">Active 5m ago</div>
+                {/* <div className="text-xs text-gray-400">Active 5m ago</div> */}
               </div>
             </li>
           </ul>
@@ -717,7 +717,7 @@ export default function FeedsMainPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-sm">{comment.author}</span>
-                        <span className="text-xs text-gray-400">{comment.time}</span>
+                       
                       </div>
                       <p className="text-sm text-gray-700">{comment.text}</p>
                     </div>
