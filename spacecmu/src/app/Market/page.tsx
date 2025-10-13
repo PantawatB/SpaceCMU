@@ -66,6 +66,27 @@ export default function MarketMainPage() {
     image: "/noobcat.png" // default preview image
   });
 
+  // image file handling for upload
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setSelectedImageFile(file);
+
+    // read preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string | null;
+      if (result) setFormData(prev => ({ ...prev, image: result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // helper to trigger file picker
+  const openFilePicker = () => fileInputRef.current?.click();
+
   // Display limits (match modal limits)
   const MAX_TITLE_LENGTH = 60;
   const MAX_DESC_LENGTH = 240;
@@ -113,11 +134,43 @@ export default function MarketMainPage() {
   };
 
   const handleSubmit = async () => {
-    // TODO: API call to create product
-    console.log("Product data:", formData);
-    // After successful API call:
-    // setIsModalOpen(false);
-    // setFormData({ name: "", description: "", price: "", image: "/noobcat.png" });
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+      const payload = new FormData();
+      payload.append('name', formData.name);
+      payload.append('description', formData.description);
+      payload.append('price', String(formData.price || '0'));
+      if (selectedImageFile) payload.append('image', selectedImageFile);
+
+      const res = await fetch(`${API_BASE_URL}/api/products`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: payload,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Upload failed', res.status, text);
+        alert('Failed to add product');
+        return;
+      }
+
+      // success
+      const json = await res.json();
+      console.log('Product created', json);
+      // reset form
+      setIsModalOpen(false);
+      setFormData({ name: '', description: '', price: '', image: '/noobcat.png' });
+      setSelectedImageFile(null);
+      // refresh list
+      // simple approach: re-fetch products by calling the fetch effect — toggle isModalOpen already triggers no fetch, so reload page or implement a refresh; for now reload items by calling window.location.reload()
+      // better: implement a refetch function; but to keep change small, just reload
+      window.location.reload();
+    } catch (err) {
+      console.error('Error submitting product', err);
+      alert('Error submitting product');
+    }
   };
 
   // prevent page layout shift and stop body scrolling when modal is open
@@ -593,22 +646,25 @@ export default function MarketMainPage() {
                       Product Image
                     </label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-10 h-10 mx-auto mb-2 text-gray-400"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                        />
-                      </svg>
-                      <p className="text-sm text-gray-500">Click to upload image</p>
-                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP up to 10MB</p>
+                      <div onClick={openFilePicker} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') openFilePicker(); }}>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-10 h-10 mx-auto mb-2 text-gray-400"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                          />
+                        </svg>
+                        <p className="text-sm text-gray-500">Click to upload image</p>
+                        <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP up to 10MB</p>
+                      </div>
+                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                     </div>
                   </div>
 
