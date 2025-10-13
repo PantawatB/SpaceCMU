@@ -3,6 +3,7 @@ import {
   register,
   login,
   getMe,
+  getCurrentUserActor,
   updateUser,
   searchUsers,
   getMyReposts,
@@ -22,6 +23,7 @@ router.get("/search", authenticateToken, searchUsers);
 
 // Protected routes
 router.get("/me", authenticateToken, getMe);
+router.get("/me/actor", authenticateToken, getCurrentUserActor);
 
 // PUT /api/users/me
 router.put("/me", authenticateToken, updateUser);

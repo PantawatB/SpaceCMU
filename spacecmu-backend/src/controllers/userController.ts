@@ -340,6 +340,53 @@ export async function getMyLikedPosts(
 }
 
 /**
+ * Get current user's actor information (User Actor and Persona Actor)
+ */
+export async function getCurrentUserActor(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const userWithActor = await userRepo.findOne({
+      where: { id: user.id },
+      relations: ["actor", "persona", "persona.actor"],
+    });
+
+    if (!userWithActor) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json(
+      createResponse("Actor information retrieved", {
+        userId: userWithActor.id,
+        userName: userWithActor.name,
+        userActor: userWithActor.actor
+          ? {
+              id: userWithActor.actor.id,
+            }
+          : null,
+        personaActor: userWithActor.persona?.actor
+          ? {
+              id: userWithActor.persona.actor.id,
+              personaId: userWithActor.persona.id,
+              displayName: userWithActor.persona.displayName,
+            }
+          : null,
+      })
+    );
+  } catch (err) {
+    console.error("getCurrentUserActor error:", err);
+    return res.status(500).json({ message: "Failed to get actor information" });
+  }
+}
+
+/**
  * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save (พร้อมค้นหาจากชื่อคนโพส)
  */
 export async function getMySavedPosts(
