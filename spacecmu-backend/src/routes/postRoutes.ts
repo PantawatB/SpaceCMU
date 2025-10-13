@@ -29,7 +29,7 @@ router.get("/", listPosts);
 
 // 📌 Protected endpoints (ต้อง login)
 // Feed ของเพื่อน
-router.get("/feed/friends", authenticateToken, getFriendFeed);
+router.get("/feed/friends/:actorId", authenticateToken, getFriendFeed);
 
 // 📌 Get single post (must be after specific routes)
 router.get("/:id", getPost);

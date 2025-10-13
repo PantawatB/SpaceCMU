@@ -1292,6 +1292,23 @@
 					"item": [
 						{
                             "name": "Like Post",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response should contain the new like count\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response).to.have.property('newLikeCount');",
+											"    pm.expect(response.newLikeCount).to.be.a('number');",
+											"    console.log(`✅ New like count is: ${response.newLikeCount}`);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
                             "request": {
                                 "auth": {
                                     "type": "bearer",
@@ -2054,7 +2071,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"visibility\": \"public\",\n    \"visibility\": \"friends\"\n}",
+							"raw": "{\n    \"content\": \"This post is for my friends only!\",\n    \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"visibility\": \"friends\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2075,94 +2092,28 @@
 					"response": []
 				},
 				{
-					"name": "4.3.1 [A] Get Friend Feed (First Page with Cursor)",
+					"name": "4.3 [A] Get All Friend Feed",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Request was successful and has correct cursor structure\", function () {",
+									"pm.test(\"Request was successful and has correct data structure\", function () {",
 									"    pm.response.to.have.status(200);",
 									"    const response = pm.response.json();",
 									"",
-									"    pm.expect(response).to.have.property('items');",
-									"    pm.expect(response).to.have.property('nextCursor');",
-									"    pm.expect(response).to.have.property('hasNextPage');",
-									"    pm.expect(response.items).to.be.an('array');",
+									"    pm.expect(response).to.have.property('data');",
+									"    pm.expect(response.data).to.be.an('array');",
 									"});",
 									"",
 									"pm.test(\"Friend feed should contain own and friend's posts\", function () {",
 									"    const response = pm.response.json();",
-									"    const ownPost = response.items.find(p => p.content === \"This post is for my friends only!\");",
-									"    const friendPost = response.items.find(p => p.content.includes(\"This is a public post from User B\"));",
+									"    const ownPost = response.data.find(p => p.content === \"This post is for my friends only!\");",
+									"    const friendPost = response.data.find(p => p.content.includes(\"This is a public post from User B\"));",
 									"",
 									"    pm.expect(ownPost, \"Should see own friends-only post\").to.not.be.undefined;",
 									"    pm.expect(friendPost, \"Should see friend's public post\").to.not.be.undefined;",
 									"    console.log('✅ Friend Feed content verified successfully.');",
-									"});",
-									"",
-									"// Store the cursor for the next page request",
-									"const response = pm.response.json();",
-									"if (response.nextCursor) {",
-									"    pm.collectionVariables.set(\"friendFeed_nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
-									"    pm.collectionVariables.set(\"friendFeed_nextCursor_lastId\", response.nextCursor.lastId);",
-									"    console.log('✅ Friend Feed cursor for next page has been stored.');",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{user1Token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/posts/feed/friends",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"posts",
-								"feed",
-								"friends"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "4.3.2 [A] Get Friend Feed (Next Page)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Request for the next page of friend feed was successful\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response contains the next set of items\", function () {",
-									"    const response = pm.response.json();",
-									"    pm.expect(response.items).to.be.an('array');",
-									"    console.log(`✅ Received ${response.items.length} more items from friend feed.`);",
-									"",
-									"    // Optionally update the cursor again for the next page",
-									"    if (response.nextCursor) {",
-									"        pm.collectionVariables.set(\"friendFeed_nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
-									"        pm.collectionVariables.set(\"friendFeed_nextCursor_lastId\", response.nextCursor.lastId);",
-									"        console.log('✅ Friend Feed cursor updated for the page after this.');",
-									"    }",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2183,7 +2134,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/posts/feed/friends?lastCreatedAt={{friendFeed_nextCursor_createdAt}}&lastId={{friendFeed_nextCursor_lastId}}",
+							"raw": "{{baseUrl}}/api/posts/feed/friends/{{user1ActorId}}",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -2191,17 +2142,8 @@
 								"api",
 								"posts",
 								"feed",
-								"friends"
-							],
-							"query": [
-								{
-									"key": "lastCreatedAt",
-									"value": "{{friendFeed_nextCursor_createdAt}}"
-								},
-								{
-									"key": "lastId",
-									"value": "{{friendFeed_nextCursor_lastId}}"
-								}
+								"friends",
+								"{{user1ActorId}}"
 							]
 						}
 					},
@@ -2278,30 +2220,28 @@
 					"response": []
 				},
 				{
-					"name": "4.6.1 Get Public Feed (First Page with Cursor)",
+					"name": "4.6 Get All Public Feed",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Request was successful\", function () {",
+									"pm.test(\"Request was successful and has correct data structure\", function () {",
 									"    pm.response.to.have.status(200);",
+									"    const response = pm.response.json();",
+									"",
+									"    pm.expect(response).to.have.property('data');",
+									"    pm.expect(response.data).to.be.an('array');",
+									"    console.log(`✅ Received ${response.data.length} posts in the public feed.`);",
 									"});",
 									"",
-									"pm.test(\"Response is a valid cursor-based result\", function () {",
+									"pm.test(\"Each post item should have interaction counts\", function () {",
 									"    const response = pm.response.json();",
-									"    pm.expect(response).to.have.property('items');",
-									"    pm.expect(response).to.have.property('nextCursor');",
-									"    pm.expect(response).to.have.property('hasNextPage');",
-									"    pm.expect(response.items).to.be.an('array');",
-									"",
-									"    // Store the cursor for the next request",
-									"    if (response.nextCursor) {",
-									"        pm.collectionVariables.set(\"nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
-									"        pm.collectionVariables.set(\"nextCursor_lastId\", response.nextCursor.lastId);",
-									"        console.log('✅ Cursor for next page has been stored.');",
-									"    } else {",
-									"        console.log('ℹ️ No next page, cursor not stored.');",
+									"    if (response.data && response.data.length > 0) {",
+									"        const firstPost = response.data[0];",
+									"        pm.expect(firstPost, 'Post should have likeCount').to.have.property('likeCount');",
+									"        pm.expect(firstPost, 'Post should have repostCount').to.have.property('repostCount');",
+									"        pm.expect(firstPost, 'Post should have saveCount').to.have.property('saveCount');",
 									"    }",
 									"});"
 								],
@@ -2322,62 +2262,6 @@
 								"posts",
 								"feed",
 								"public"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "4.6.2 Get Public Feed (Next Page using Cursor)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Request for the next page was successful\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response contains the next set of items\", function () {",
-									"    const response = pm.response.json();",
-									"    pm.expect(response.items).to.be.an('array');",
-									"    console.log(`✅ Received ${response.items.length} more items.`);",
-									"",
-									"    // You can optionally update the cursor again here if you want to test a third page",
-									"    if (response.nextCursor) {",
-									"        pm.collectionVariables.set(\"nextCursor_createdAt\", response.nextCursor.lastCreatedAt);",
-									"        pm.collectionVariables.set(\"nextCursor_lastId\", response.nextCursor.lastId);",
-									"        console.log('✅ Cursor updated for the page after this.');",
-									"    }",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/posts/feed/public?lastCreatedAt={{nextCursor_createdAt}}&lastId={{nextCursor_lastId}}",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"posts",
-								"feed",
-								"public"
-							],
-							"query": [
-								{
-									"key": "lastCreatedAt",
-									"value": "{{nextCursor_createdAt}}"
-								},
-								{
-									"key": "lastId",
-									"value": "{{nextCursor_lastId}}"
-								}
 							]
 						}
 					},
