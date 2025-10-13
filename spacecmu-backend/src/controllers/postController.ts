@@ -3,7 +3,7 @@ import { AppDataSource } from "../ormconfig";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
 import { Actor } from "../entities/Actor";
-import { createResponse } from "../utils/serialize";
+import { createResponse, listResponse } from "../utils/serialize";
 
 /**
  * 📌 สร้างโพสต์ใหม่ (เวอร์ชันใหม่ อ้างอิงจาก Actor)
@@ -70,6 +70,9 @@ export async function createPost(
         type: post.actor.persona ? "persona" : "user",
         name: post.actor.persona ? post.actor.persona.displayName : user.name,
       },
+      likeCount: 0,
+      repostCount: 0,
+      saveCount: 0,
     };
 
     return res
@@ -165,11 +168,20 @@ export async function deletePost(
 export async function listPosts(req: Request, res: Response) {
   try {
     const postRepo = AppDataSource.getRepository(Post);
-    const posts = await postRepo.find({
-      relations: ["actor", "actor.user", "actor.persona"],
-      order: { createdAt: "DESC" },
-      take: 50,
-    });
+
+    // 👇 เปลี่ยนจาก .find() มาใช้ .createQueryBuilder()
+    const posts = await postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "actor")
+      .leftJoinAndSelect("actor.user", "user")
+      .leftJoinAndSelect("actor.persona", "persona")
+      // ✨ เพิ่ม 3 บรรทัดนี้เข้ามาเพื่อนับจำนวน ✨
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .orderBy("post.createdAt", "DESC")
+      .take(50)
+      .getMany();
 
     return res.json({ data: posts });
   } catch (err) {
@@ -205,46 +217,19 @@ export async function getPost(req: Request, res: Response) {
  */
 export async function getPublicFeed(req: Request, res: Response) {
   try {
-    const limit = parseInt(req.query.limit as string) || 20;
-    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
-    const lastId = req.query.lastId as string | undefined;
-
     const postRepo = AppDataSource.getRepository(Post);
-    const qb = postRepo
+    const posts = await postRepo
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
-      .where("post.visibility = :visibility", { visibility: "public" });
-
-    if (lastCreatedAt && lastId) {
-      qb.andWhere(
-        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
-        {
-          lastCreatedAt: new Date(lastCreatedAt),
-          lastId,
-        }
-      );
-    }
-
-    qb.orderBy("post.createdAt", "DESC")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .where("post.visibility = :visibility", { visibility: "public" })
+      .orderBy("post.createdAt", "DESC")
       .addOrderBy("post.id", "DESC")
-      .take(limit + 1);
-
-    const posts = await qb.getMany();
-
-    const hasNextPage = posts.length > limit;
-    if (hasNextPage) {
-      posts.pop();
-    }
-
-    const nextCursor =
-      posts.length > 0
-        ? {
-            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
-            lastId: posts[posts.length - 1].id,
-          }
-        : null;
+      .getMany();
 
     const items = posts.map((post) => {
       const author = post.actor.persona
@@ -261,11 +246,7 @@ export async function getPublicFeed(req: Request, res: Response) {
       return { ...restOfPost, author, actorId: actor.id };
     });
 
-    return res.json({
-      items,
-      nextCursor,
-      hasNextPage,
-    });
+    return res.json(listResponse(items));
   } catch (err) {
     console.error("getPublicFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch public feed" });
@@ -280,68 +261,62 @@ export async function getFriendFeed(
   res: Response
 ) {
   try {
-    const user = req.user;
-    if (!user || !user.actor)
-      return res
-        .status(401)
-        .json({ message: "Unauthorized or user actor not found" });
+    const currentUser = req.user;
+    const { actorId } = req.params;
 
-    const limit = parseInt(req.query.limit as string) || 20;
-    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
-    const lastId = req.query.lastId as string | undefined;
-
-    const myActorIds = [user.actor.id];
-    if (user.persona?.actor) {
-      myActorIds.push(user.persona.actor.id);
+    if (!currentUser || !currentUser.actor) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-    const friendActorIds = user.actor.friends?.map((f) => f.id) || [];
-    const visibleActorIds = [...myActorIds, ...friendActorIds];
+    if (!actorId) {
+      return res.status(400).json({ message: "Actor ID is required" });
+    }
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const targetActor = await actorRepo.findOne({
+      where: { id: actorId },
+      relations: ["friends"],
+    });
+
+    if (!targetActor) {
+      return res.status(404).json({ message: "Target actor not found" });
+    }
+    const isOwner =
+      currentUser.actor.id === targetActor.id ||
+      currentUser.persona?.actor?.id === targetActor.id;
+    const isFriend = currentUser.actor.friends?.some(
+      (friend) => friend.id === targetActor.id
+    );
+
+    if (!isOwner && !isFriend) {
+      return res
+        .status(403)
+        .json({
+          message: "You can only view the feed of your friends or your own.",
+        });
+    }
+    const targetActorIds = [targetActor.id];
+    const friendActorIds = targetActor.friends?.map((f) => f.id) || [];
+    const visibleActorIds = [...targetActorIds, ...friendActorIds];
 
     if (visibleActorIds.length === 0) {
-      return res.json({ items: [], nextCursor: null, hasNextPage: false });
+      return res.json(listResponse([]));
     }
 
     const postRepo = AppDataSource.getRepository(Post);
-    const qb = postRepo
+    const posts = await postRepo
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
       .where("actor.id IN (:...visibleActorIds)", { visibleActorIds })
       .andWhere(
-        " (post.visibility = 'public' OR (post.visibility = 'friends' AND actor.id IN (:...myActorIds))) ",
-        { myActorIds: [...myActorIds, ...friendActorIds] } // Friends can see friends posts, I can see my own friends posts
-      );
-
-    if (lastCreatedAt && lastId) {
-      qb.andWhere(
-        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
-        {
-          lastCreatedAt: new Date(lastCreatedAt),
-          lastId,
-        }
-      );
-    }
-
-    qb.orderBy("post.createdAt", "DESC")
-      .addOrderBy("post.id", "DESC")
-      .take(limit + 1);
-
-    const posts = await qb.getMany();
-
-    const hasNextPage = posts.length > limit;
-    if (hasNextPage) {
-      posts.pop();
-    }
-
-    const nextCursor =
-      posts.length > 0
-        ? {
-            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
-            lastId: posts[posts.length - 1].id,
-          }
-        : null;
-
+        " (post.visibility = 'public' OR (post.visibility = 'friends' AND actor.id IN (:...friendActorIdsWithTarget))) ",
+        { friendActorIdsWithTarget: visibleActorIds }
+      )
+      .orderBy("post.createdAt", "DESC")
+      .getMany();
     const items = posts.map((post) => {
       const author = post.actor.persona
         ? {
@@ -357,11 +332,7 @@ export async function getFriendFeed(
       return { ...restOfPost, author, actorId: actor.id };
     });
 
-    return res.json({
-      items,
-      nextCursor,
-      hasNextPage,
-    });
+    return res.json(listResponse(items));
   } catch (err) {
     console.error("getFriendFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch friend feed" });
@@ -778,11 +749,9 @@ export async function getPostSavers(
       post.actor.user?.id === user.id ||
       post.actor.persona?.user.id === user.id;
     if (!isOwner) {
-      return res
-        .status(403)
-        .json({
-          message: "You are not authorized to see who saved this post.",
-        });
+      return res.status(403).json({
+        message: "You are not authorized to see who saved this post.",
+      });
     }
 
     const sanitizedSavers = sanitizeActorList(post.savedBy);
