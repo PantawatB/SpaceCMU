@@ -29,6 +29,32 @@ export default function FeedsMainPage() {
     { postId: 1, text: "So cute!", author: "Inosuke" },
   ]);
   
+  // Active profile mode: 0 = public, 1 = anonymous
+  const [activeProfile, setActiveProfile] = useState<number>(0);
+
+  // Sync activeProfile from localStorage on mount and listen for changes
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('activeProfile');
+      if (v) {
+        const parsed = parseInt(v, 10);
+        if (!Number.isNaN(parsed)) setActiveProfile(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Listen for activeProfile changes from Sidebar
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') setActiveProfile(detail);
+    };
+    window.addEventListener('activeProfileChanged', handler as EventListener);
+    return () => window.removeEventListener('activeProfileChanged', handler as EventListener);
+  }, []);
+  
   // Chat is handled by the shared ChatWindow component (imported below)
 
   // Current logged-in user (fetched from API)
@@ -58,6 +84,29 @@ export default function FeedsMainPage() {
   } | null;
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
 
+  // Post type from API
+  type Post = {
+    id: number;
+    content: string;
+    imageUrl?: string | null;
+    visibility: 'public' | 'friends';
+    location?: string | null;
+    author: {
+      name?: string;
+      profileImg?: string | null;
+      avatarUrl?: string | null;
+      displayName?: string;
+    };
+    actorId: string;
+    likeCount?: number;
+    repostCount?: number;
+    saveCount?: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState<boolean>(false);
+
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
@@ -78,6 +127,41 @@ export default function FeedsMainPage() {
     };
 
     fetchMe();
+  }, []);
+
+  // Fetch posts from API
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
+
+    const fetchPosts = async () => {
+      setPostsLoading(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/posts`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error('Failed to fetch posts');
+        const response = await res.json();
+        // API returns { data: [...] }, extract the array
+        const data = response.data || response;
+        // Ensure data is an array
+        if (Array.isArray(data)) {
+          setPosts(data);
+        } else {
+          console.error('Posts data is not an array:', data);
+          setPosts([]);
+        }
+      } catch (err) {
+        console.error('Error fetching posts:', err);
+        setPosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    fetchPosts();
   }, []);
 
   // Close dropdown when clicking outside
@@ -264,19 +348,46 @@ export default function FeedsMainPage() {
     setPosting(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        alert('Please login to post');
+        setPosting(false);
+        return;
+      }
+
       const headers: Record<string,string> = { 'Content-Type': 'application/json' };
-      if (token) headers.Authorization = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
+
+      // Prepare post data with isAnonymous flag based on active profile
+      const postData = {
+        content: postText,
+        imageUrl: "", // Backend doesn't support image yet
+        isAnonymous: activeProfile === 1, // true if anonymous mode
+        visibility: postMode,
+      };
 
       const res = await fetch(`${API_BASE_URL}/api/posts`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ content: postText, visibility: postMode, location: "" })
+        body: JSON.stringify(postData)
       });
-      if (!res.ok) throw new Error('Post failed');
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || 'Post failed');
+      }
+
+      // Clear the input
       setPostText('');
-      // TODO: refresh posts
+      
+      // Reload the page to show new post
+      window.location.reload();
     } catch (err: unknown) {
-      console.error(err);
+      console.error('Error creating post:', err);
+      if (err instanceof Error) {
+        alert(`Failed to create post: ${err.message}`);
+      } else {
+        alert('Failed to create post');
+      }
     }
     setPosting(false);
   };
@@ -329,7 +440,9 @@ export default function FeedsMainPage() {
     const newComment = {
       postId: commentPostId,
       text: commentText,
-      author: currentUser?.name ?? "Anonymous",
+      author: activeProfile === 0 
+        ? (currentUser?.name ?? "Anonymous")
+        : (currentUser?.persona?.displayName ?? "Anonymous"),
       time: "Just now"
     };
     setComments([newComment, ...comments]);
@@ -409,10 +522,131 @@ export default function FeedsMainPage() {
         </div>
         {/* Feeds Section: scrollable only for posts */}
         <section className="flex-1 overflow-y-auto p-8 flex flex-col gap-6">
-          {/* โพสต์ตัวอย่าง 10 โพสต์ */}
+          {postsLoading && (
+            <div className="text-center py-8 text-gray-400">
+              Loading posts...
+            </div>
+          )}
+          
+          {/* API Posts - Show first (newest on top) */}
+          {Array.isArray(posts) && posts.map((post) => {
+            // API returns author object with either name+profileImg (public) or displayName+avatarUrl (anonymous)
+            const isPublicPost = !!post.author?.name;
+            const authorName = isPublicPost ? post.author.name : post.author.displayName;
+            const authorAvatar = isPublicPost ? post.author.profileImg : post.author.avatarUrl;
+            const fallbackAvatar = isPublicPost ? "/tanjiro.jpg" : "/noobcat.png";
+            
+            return (
+              <div
+                key={`api-${post.id}`}
+                className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <Image
+                    src={authorAvatar ?? fallbackAvatar}
+                    alt={authorName ?? "avatar"}
+                    width={40}
+                    height={40}
+                    className="rounded-full object-cover"
+                  />
+                  <div>
+                    <div className="font-bold">
+                      {authorName ?? (isPublicPost ? "User" : "Anonymous")}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {new Date(post.createdAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-2 mt-2 text-base font-semibold">
+                  {post.content}
+                </div>
+                {post.imageUrl && (
+                  <div className="flex gap-3 mb-2">
+                    <Image
+                      src={post.imageUrl}
+                      alt="post image"
+                      width={480}
+                      height={40}
+                      className="object-cover rounded-lg"
+                    />
+                  </div>
+                )}
+
+                {/* Post actions */}
+                <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
+                  <div className="flex gap-6">
+                    <button 
+                      onClick={() => toggleLike(post.id)}
+                      className={`flex items-center gap-1.5 hover:text-pink-500 transition ${likedPosts.has(post.id) ? 'text-pink-500' : ''}`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill={likedPosts.has(post.id) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                      </svg>
+                      Like
+                    </button>
+                    <button 
+                      onClick={() => handleCommentClick(post.id)}
+                      className="flex items-center gap-1.5 hover:text-blue-500 transition"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
+                      </svg>
+                      Comment
+                    </button>
+                    <button className="flex items-center gap-1.5 hover:text-green-500 transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+                      </svg>
+                      Repost
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => toggleSave(post.id)}
+                    className={`flex items-center gap-1.5 hover:text-yellow-500 transition ${savedPosts.has(post.id) ? 'text-yellow-500' : ''}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill={savedPosts.has(post.id) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                    </svg>
+                    Save
+                  </button>
+                </div>
+                
+                {/* Dropdown menu */}
+                <div className="absolute top-6 right-6 dropdown-container">
+                  <button 
+                    onClick={() => setOpenDropdownId(openDropdownId === post.id ? null : post.id)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                  >
+                    ⋮
+                  </button>
+                  {openDropdownId === post.id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                      <button
+                        onClick={() => handleReportClick(post.id)}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l1.664 1.664M21 21l-1.5-1.5m-5.485-1.242L12 17.25 4.5 21V8.742m.164-4.078a2.15 2.15 0 011.743-1.342 48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185V19.5M4.664 4.664L19.5 19.5" />
+                        </svg>
+                        Report Post
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Mock Posts - Show after API posts */}
           {[...Array(10)].map((_, i) => (
             <div
-              key={i}
+              key={`mock-${i}`}
               className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
             >
               <div className="flex items-center gap-3 mb-2">
@@ -560,7 +794,10 @@ export default function FeedsMainPage() {
             <div className="bg-gray-50 rounded-xl shadow-lg px-8 py-5 flex flex-col gap-3 w-full max-w-3xl">
               <div className="flex items-center gap-3">
                 <Image
-                  src="/tanjiro.jpg"
+                  src={activeProfile === 0 
+                    ? (currentUser?.profileImg ?? "/tanjiro.jpg")
+                    : (currentUser?.persona?.avatarUrl ?? "/noobcat.png")
+                  }
                   alt="avatar"
                   width={40}
                   height={40}
@@ -734,7 +971,10 @@ export default function FeedsMainPage() {
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-start gap-3">
                 <Image
-                  src={currentUser?.profileImg ?? "/tanjiro.jpg"}
+                  src={activeProfile === 0 
+                    ? (currentUser?.profileImg ?? "/tanjiro.jpg")
+                    : (currentUser?.persona?.avatarUrl ?? "/noobcat.png")
+                  }
                   alt="avatar"
                   width={40}
                   height={40}
