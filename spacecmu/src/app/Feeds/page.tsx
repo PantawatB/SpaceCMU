@@ -14,6 +14,20 @@ export default function FeedsMainPage() {
   const [postText, setPostText] = useState("");
   const [postMode, setPostMode] = useState<'public'|'anonymous'>('public');
   const [posting, setPosting] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportText, setReportText] = useState("");
+  const [reportPostId, setReportPostId] = useState<number | null>(null);
+  const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
+  const [savedPosts, setSavedPosts] = useState<Set<number>>(new Set());
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentPostId, setCommentPostId] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [comments, setComments] = useState<{postId: number, text: string, author: string, time: string}[]>([
+    { postId: 0, text: "This is amazing!", author: "Nezuko", time: "2h ago" },
+    { postId: 0, text: "Love this post!", author: "Zenitsu", time: "3h ago" },
+    { postId: 1, text: "So cute!", author: "Inosuke", time: "1h ago" },
+  ]);
   
   // Chat is handled by the shared ChatWindow component (imported below)
 
@@ -65,6 +79,24 @@ export default function FeedsMainPage() {
 
     fetchMe();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-container')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    if (openDropdownId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdownId]);
 
   const menuItems = [
     {
@@ -249,6 +281,63 @@ export default function FeedsMainPage() {
     setPosting(false);
   };
 
+  const toggleLike = (postId: number) => {
+    setLikedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSave = (postId: number) => {
+    setSavedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleReportClick = (postId: number) => {
+    setReportPostId(postId);
+    setShowReportModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleReportSubmit = () => {
+    // TODO: Send report to API
+    console.log(`Reporting post ${reportPostId} with feedback: ${reportText}`);
+    setShowReportModal(false);
+    setReportText("");
+    setReportPostId(null);
+  };
+
+  const handleCommentClick = (postId: number) => {
+    setCommentPostId(postId);
+    setShowCommentModal(true);
+  };
+
+  const handleCommentSubmit = () => {
+    if (!commentText.trim() || commentPostId === null) return;
+    const newComment = {
+      postId: commentPostId,
+      text: commentText,
+      author: currentUser?.name ?? "Anonymous",
+      time: "Just now"
+    };
+    setComments([newComment, ...comments]);
+    setCommentText("");
+    setShowCommentModal(false);
+    setCommentPostId(null);
+  };
+
   return (
     <div className="flex h-screen bg-white text-gray-800">
       {/* Sidebar (Left) */}
@@ -324,7 +413,7 @@ export default function FeedsMainPage() {
           {[...Array(10)].map((_, i) => (
             <div
               key={i}
-              className={"bg-gray-50 rounded-2xl p-6 shadow  relative"}
+              className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
             >
               <div className="flex items-center gap-3 mb-2">
                 <Image
@@ -344,13 +433,13 @@ export default function FeedsMainPage() {
                       ? (currentUser?.name ?? "Kamado Tanjiro")
                       : (currentUser?.persona?.displayName ?? "Noobcat")}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  {/* <div className="text-xs text-gray-400">
                     {i % 2 === 0 ? "65,Engineering" : "Anonymous"}
-                  </div>
-                  <div className="text-xs text-gray-400">{i + 1} hours ago</div>
+                  </div> */}
+                  {/* <div className="text-xs text-gray-400">{i + 1} hours ago</div> */}
                 </div>
               </div>
-              <div className="mb-2 text-base font-semibold">
+              <div className="mb-2 mt-2 text-base font-semibold">
                 {i % 2 === 0
                   ? "I love my family so much!"
                   : "Just chilling and enjoying life."}
@@ -368,14 +457,66 @@ export default function FeedsMainPage() {
               </div>
 
               {/* Post actions */}
-              <div className="flex gap-6 text-gray-500 text-base mt-6">
-                <span className="text-pink-500 font-semibold">Like</span>
-                <span>Comment</span>
-                <span>Share</span>
+              <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
+                <div className="flex gap-6">
+                  <button 
+                    onClick={() => toggleLike(i)}
+                    className={`flex items-center gap-1.5 hover:text-pink-500 transition ${likedPosts.has(i) ? 'text-pink-500' : ''}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill={likedPosts.has(i) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                    Like
+                  </button>
+                  <button 
+                    onClick={() => handleCommentClick(i)}
+                    className="flex items-center gap-1.5 hover:text-blue-500 transition"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
+                    </svg>
+                    Comment
+                  </button>
+                  <button className="flex items-center gap-1.5 hover:text-green-500 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+                    </svg>
+                    Repost
+                  </button>
+                </div>
+                <button 
+                  onClick={() => toggleSave(i)}
+                  className={`flex items-center gap-1.5 hover:text-yellow-500 transition ${savedPosts.has(i) ? 'text-yellow-500' : ''}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill={savedPosts.has(i) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  </svg>
+                  Save
+                </button>
               </div>
-              <button className="absolute top-6 right-6 text-gray-400 text-2xl">
-                ⋮
-              </button>
+              
+              {/* Dropdown menu */}
+              <div className="absolute top-6 right-6 dropdown-container">
+                <button 
+                  onClick={() => setOpenDropdownId(openDropdownId === i ? null : i)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ⋮
+                </button>
+                {openDropdownId === i && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                    <button
+                      onClick={() => handleReportClick(i)}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l1.664 1.664M21 21l-1.5-1.5m-5.485-1.242L12 17.25 4.5 21V8.742m.164-4.078a2.15 2.15 0 011.743-1.342 48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185V19.5M4.664 4.664L19.5 19.5" />
+                      </svg>
+                      Report Post
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </section>
@@ -453,10 +594,10 @@ export default function FeedsMainPage() {
           )}
         </div>
       </main>
-      {/* Right Section: Recent Active Friends (no border) */}
+      {/* Right Section: Friends (no border) */}
       <aside className="w-80 p-8 bg-white flex flex-col gap-6">
         <div>
-          <h2 className="text-lg font-bold mb-4">Recent Active Friends</h2>
+          <h2 className="text-lg font-bold mb-4">Friends</h2>
           <ul className="space-y-4">
             <li className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-200 rounded-full" />
@@ -485,6 +626,143 @@ export default function FeedsMainPage() {
 
       {/* Chat Window */}
       <ChatWindow />
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowReportModal(false);
+              setReportText("");
+            }
+          }}
+        >
+          <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl relative">
+            <button
+              onClick={() => {
+                setShowReportModal(false);
+                setReportText("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-gray-700 mb-6">Report Post</h2>
+            <textarea
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="What's Your Feedback?"
+              className="w-full h-40 p-4 border border-gray-200 rounded-2xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none mb-6"
+            />
+            <div className="flex items-center justify-between">
+              <div className="flex gap-3">
+                <button
+                  className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition"
+                >
+                  <span className="text-2xl">😃</span>
+                </button>
+                <button
+                  className="w-12 h-12 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition"
+                >
+                  <span className="text-2xl">🥲</span>
+                </button>
+              </div>
+              <button
+                onClick={handleReportSubmit}
+                className="bg-blue-500 hover:bg-blue-600 text-white pl-6 pr-4 py-3 rounded-full flex items-center gap-2 transition"
+              >
+                <span className="font-semibold">Send</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comment Modal */}
+      {showCommentModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0, 0, 0, 0.3)' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCommentModal(false);
+              setCommentText("");
+            }
+          }}
+        >
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl relative max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => {
+                setShowCommentModal(false);
+                setCommentText("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl z-10"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-gray-700 mb-6">Comments</h2>
+            
+            {/* Comments List - Scrollable */}
+            <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+              {comments
+                .filter(comment => comment.postId === commentPostId)
+                .map((comment, idx) => (
+                  <div key={idx} className="flex gap-3 p-4 bg-gray-50 rounded-xl">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm">{comment.author}</span>
+                        <span className="text-xs text-gray-400">{comment.time}</span>
+                      </div>
+                      <p className="text-sm text-gray-700">{comment.text}</p>
+                    </div>
+                  </div>
+                ))}
+              {comments.filter(comment => comment.postId === commentPostId).length === 0 && (
+                <div className="text-center text-gray-400 py-8">
+                  No comments yet. Be the first to comment!
+                </div>
+              )}
+            </div>
+
+            {/* Write Comment Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-start gap-3">
+                <Image
+                  src={currentUser?.profileImg ?? "/tanjiro.jpg"}
+                  alt="avatar"
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                    rows={3}
+                  />
+                  <div className="flex justify-end mt-3">
+                    <button
+                      onClick={handleCommentSubmit}
+                      disabled={!commentText.trim()}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-full font-semibold text-sm transition"
+                    >
+                      Post Comment
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
