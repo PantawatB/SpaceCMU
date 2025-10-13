@@ -27,9 +27,9 @@ router.post("/request", sendFriendRequest);
 // DELETE /api/friends/request/:requestId
 router.delete("/request/:requestId", cancelFriendRequest);
 
-// ดูคำขอเป็นเพื่อนทั้งหมดที่เกี่ยวกับ User ที่ login อยู่
-// GET /api/friends/requests
-router.get("/requests", listFriendRequests);
+// ดูคำขอเป็นเพื่อนของ Actor ID ที่ระบุ
+// GET /api/friends/requests/:actorId
+router.get("/requests/:actorId", listFriendRequests);
 
 // ตอบรับคำขอเป็นเพื่อน
 // POST /api/friends/accept/:requestId
