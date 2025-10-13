@@ -3,6 +3,7 @@ import { AppDataSource } from "../ormconfig";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
 import { Comment } from "../entities/Comment";
+import { Actor } from "../entities/Actor";
 import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 
 /**
@@ -14,31 +15,44 @@ export async function createCommentOnPost(
 ) {
   try {
     const { postId } = req.params;
-    const { content } = req.body;
+    const { content, actorId } = req.body;
     const user = req.user;
 
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     if (!content)
       return res.status(400).json({ message: "Content is required" });
+    if (!actorId)
+      return res.status(400).json({ message: "actorId is required" });
+
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to comment with this actor" });
+    }
 
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOneBy({ id: postId });
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const actor = await actorRepo.findOneBy({ id: actorId });
+    if (!actor) return res.status(404).json({ message: "Actor not found" });
+
     const commentRepo = AppDataSource.getRepository(Comment);
     const newComment = commentRepo.create({
       content,
-      user,
+      actor,
       post,
     });
 
     await commentRepo.save(newComment);
 
-    const toReturn = { ...newComment, user: sanitizeUser(newComment.user) };
     return res
       .status(201)
-      .json(createResponse("Comment created", { comment: toReturn }));
+      .json(createResponse("Comment created", { comment: newComment }));
   } catch (err) {
     console.error("createCommentOnPost error:", err);
     return res.status(500).json({ message: "Failed to create comment" });
@@ -63,15 +77,17 @@ export async function updateComment(
     const commentRepo = AppDataSource.getRepository(Comment);
     const comment = await commentRepo.findOne({
       where: { id: commentId },
-      relations: ["user"],
+      relations: ["actor"],
     });
 
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
     }
 
-    // อนุญาตให้แก้ไขได้เฉพาะเจ้าของคอมเมนต์เท่านั้น
-    if (comment.user.id !== user.id) {
+    const isOwnerOfActor =
+      user.actor?.id === comment.actor.id ||
+      user.persona?.actor?.id === comment.actor.id;
+    if (!isOwnerOfActor) {
       return res
         .status(403)
         .json({ message: "Not authorized to edit this comment" });
@@ -86,6 +102,7 @@ export async function updateComment(
     return res.status(500).json({ message: "Failed to update comment" });
   }
 }
+
 /**
  * 📌 ดึงคอมเมนต์ทั้งหมดของโพสต์
  */
@@ -96,14 +113,28 @@ export async function listCommentsForPost(req: Request, res: Response) {
 
     const comments = await commentRepo.find({
       where: { post: { id: postId } },
-      relations: ["user"],
+      relations: ["actor", "actor.user", "actor.persona"],
       order: { createdAt: "ASC" },
     });
 
-    const sanitized = comments.map((c) => ({
-      ...c,
-      user: sanitizeUser(c.user),
-    }));
+    const sanitized = comments.map((comment) => {
+      const { actor, ...restOfComment } = comment;
+      const author = actor.user
+        ? {
+            type: "user",
+            actorId: actor.id,
+            name: actor.user.name,
+            profileImg: actor.user.profileImg,
+          }
+        : {
+            type: "persona",
+            actorId: actor.id,
+            name: actor.persona!.displayName,
+            avatarUrl: actor.persona!.avatarUrl,
+          };
+      return { ...restOfComment, author };
+    });
+
     return res.json(listResponse(sanitized));
   } catch (err) {
     console.error("listCommentsForPost error:", err);
@@ -126,12 +157,15 @@ export async function deleteComment(
     const commentRepo = AppDataSource.getRepository(Comment);
     const comment = await commentRepo.findOne({
       where: { id: commentId },
-      relations: ["user"],
+      relations: ["actor"],
     });
 
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
-    if (comment.user.id !== user.id && !user.isAdmin) {
+    const isOwnerOfActor =
+      user.actor?.id === comment.actor.id ||
+      user.persona?.actor?.id === comment.actor.id;
+    if (!isOwnerOfActor && !user.isAdmin) {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this comment" });

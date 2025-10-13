@@ -1237,7 +1237,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n     \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"location\": \"Online\"\n}",
+							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n     \"imageUrl\": \"http://example.com/Post-IMG2.jpg\",\n    \"location\": \"Online\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1291,22 +1291,120 @@
 					"name": "3.2 Interaction Cycle",
 					"item": [
 						{
-							"name": "Like Post",
+                            "name": "Like Post",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/like",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "like"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "List Liked Posts",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/users/me/likes",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "users",
+                                        "me",
+                                        "likes"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Undo Like",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/like",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "like"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+						{
+							"name": "Get Likers",
 							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{user1Token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
+								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/like",
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/likers",
 									"host": [
 										"{{baseUrl}}"
 									],
@@ -1314,21 +1412,307 @@
 										"api",
 										"posts",
 										"{{post1Id}}",
-										"like"
+										"likers"
 									]
 								}
 							},
 							"response": []
 						},
 						{
-							"name": "List Liked Posts",
+                            "name": "Repost Post",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/repost",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "repost"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "List Reposted Posts",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/users/me/reposts",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "users",
+                                        "me",
+                                        "reposts"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Undo Repost",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/repost",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "repost"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+						{
+							"name": "Get Reposters",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/reposters",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"reposters"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+                            "name": "Save Post",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Post saved successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    const response = pm.response.json();",
+                                            "    pm.expect(response.message).to.eql(\"Post saved\");",
+                                            "});"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/save",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "save"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "List My Saved Posts",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Successfully retrieved saved posts\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "});",
+                                            "",
+                                            "pm.test(\"Saved posts list should contain the saved post\", function () {",
+                                            "    const savedPosts = pm.response.json().data;",
+                                            "    const savedPost = savedPosts.find(post => post.id === pm.collectionVariables.get(\"post1Id\"));",
+                                            "    pm.expect(savedPost, \"The post with ID \" + pm.collectionVariables.get(\"post1Id\") + \" should be in the saved list\").to.not.be.undefined;",
+                                            "    console.log(\"✅ Verification successful: Found the saved post in the list.\");",
+                                            "});"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/users/me/saved",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "users",
+                                        "me",
+                                        "saved"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Unsave Post",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Post unsaved successfully\", function () {",
+                                            "    pm.response.to.have.status(200);",
+                                            "    const response = pm.response.json();",
+                                            "    pm.expect(response.message).to.eql(\"Post unsaved\");",
+                                            "});"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/save",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "save"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+						{
+							"name": "Get Savers (by Post Owner)",
 							"request": {
 								"auth": {
 									"type": "bearer",
 									"bearer": [
 										{
 											"key": "token",
-											"value": "{{user1Token}}",
+											"value": "{{user2Token}}",
 											"type": "string"
 										}
 									]
@@ -1336,37 +1720,7 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/api/users/me/likes",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"me",
-										"likes"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Undo Like",
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{user1Token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/like",
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/savers",
 									"host": [
 										"{{baseUrl}}"
 									],
@@ -1374,207 +1728,7 @@
 										"api",
 										"posts",
 										"{{post1Id}}",
-										"like"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Repost Post",
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{user1Token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/repost",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post1Id}}",
-										"repost"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "List Reposted Posts",
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{user1Token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/users/me/reposts",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"me",
-										"reposts"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Undo Repost",
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{user1Token}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/repost",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post1Id}}",
-										"repost"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Save Post",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Post saved successfully\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    const response = pm.response.json();",
-											"    pm.expect(response.message).to.eql(\"Post saved\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/save",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post1Id}}",
-										"save"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "List My Saved Posts",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Successfully retrieved saved posts\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Saved posts list should contain the saved post\", function () {",
-											"    const savedPosts = pm.response.json();",
-											"    const savedPost = savedPosts.find(post => post.id === pm.collectionVariables.get(\"post1Id\"));",
-											"    pm.expect(savedPost, \"The post with ID \" + pm.collectionVariables.get(\"post1Id\") + \" should be in the saved list\").to.not.be.undefined;",
-											"    console.log(\"✅ Verification successful: Found the saved post in the list.\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/users/me/saved",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"me",
-										"saved"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Unsave Post",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Post unsaved successfully\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    const response = pm.response.json();",
-											"    pm.expect(response.message).to.eql(\"Post unsaved\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/save",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post1Id}}",
-										"save"
+										"savers"
 									]
 								}
 							},
@@ -1586,23 +1740,67 @@
 					"name": "3.3 Comment Cycle",
 					"item": [
 						{
-							"name": "Create Comment",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Comment created successfully\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    const response = pm.response.json();",
-											"    pm.collectionVariables.set(\"commentId\", response.id);",
-											"    console.log('Comment ID stored.');",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
+                            "name": "Create Comment",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "pm.test(\"Comment created successfully and ID stored\", function () {",
+                                            "    pm.response.to.have.status(201);",
+                                            "    const response = pm.response.json();",
+                                            "",
+                                            "    // The comment ID is nested inside response.data.comment.id",
+                                            "    const commentId = response.data.comment.id;",
+                                            "",
+                                            "    pm.expect(commentId).to.not.be.null;",
+                                            "    pm.collectionVariables.set(\"commentId\", commentId);",
+                                            "    console.log('✅ Comment ID Stored: ' + commentId);",
+                                            "});"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{user1Token}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n    \"content\": \"This is a comment from User A!\",\n    \"actorId\": \"{{user1ActorId}}\"\n}",
+                                    "options": {
+                                        "raw": {
+                                            "language": "json"
+                                        }
+                                    }
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/posts/{{post1Id}}/comments",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "posts",
+                                        "{{post1Id}}",
+                                        "comments"
+                                    ]
+                                }
+                            },
+                            "response": []
+                        },
+						{
+							"name": "Edit Comment",
 							"request": {
 								"auth": {
 									"type": "bearer",
@@ -1614,60 +1812,11 @@
 										}
 									]
 								},
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"content\": \"This is a comment from User A!\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/comments",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post1Id}}",
-										"comments"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Edit Comment",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Comment updated successfully\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response body contains the updated content\", function () {",
-											"    const response = pm.response.json();",
-											"    const requestBody = JSON.parse(pm.request.body.raw);",
-											"    pm.expect(response.content).to.eql(requestBody.content);",
-											"    console.log(`✅ Verification successful: Comment content is now '${response.content}'`);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
 								"method": "PUT",
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"content\": \"This is an edited comment!\"\n}",
+									"raw": "{\n    \"content\": \"This is the edited comment!\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1716,6 +1865,50 @@
 										"{{post1Id}}",
 										"comments",
 										"{{commentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "List Comments for Post",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Successfully fetched comments\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    const response = pm.response.json();",
+											"    pm.expect(response.data).to.be.an('array');",
+											"    console.log(`Found ${response.data.length} comment(s).`);",
+											"});",
+											"",
+											"pm.test(\"Comment content and author are correct\", function () {",
+											"    const response = pm.response.json();",
+											"    const myComment = response.data.find(c => c.id === pm.collectionVariables.get('commentId'));",
+											"    pm.expect(myComment).to.not.be.undefined;",
+											"    pm.expect(myComment.content).to.eql(\"This is a great post!\");",
+											"    pm.expect(myComment.author.actorId).to.eql(pm.collectionVariables.get('user1ActorId'));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/posts/{{post1Id}}/comments",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"posts",
+										"{{post1Id}}",
+										"comments"
 									]
 								}
 							},

@@ -15,6 +15,9 @@ import {
   getPublicFeed,
   getFriendFeed,
   searchPostsByAuthor,
+  getPostLikers,
+  getPostReposters,
+  getPostSavers,
 } from "../controllers/postController";
 
 const router = Router();
@@ -43,5 +46,14 @@ router.post("/:id/repost", authenticateToken, repostPost);
 router.delete("/:id/repost", authenticateToken, undoRepost);
 router.post("/:id/save", authenticateToken, savePost);
 router.delete("/:id/save", authenticateToken, unsavePost);
+
+// GET /api/posts/:id/likers - ดูรายชื่อคนไลค์
+router.get("/:id/likers", getPostLikers);
+
+// GET /api/posts/:id/reposters - ดูรายชื่อคนรีโพสต์
+router.get("/:id/reposters", getPostReposters);
+
+// GET /api/posts/:id/savers - ดูรายชื่อคนเซฟ (ต้องเป็นเจ้าของโพสต์)
+router.get("/:id/savers", authenticateToken, getPostSavers);
 
 export default router;
