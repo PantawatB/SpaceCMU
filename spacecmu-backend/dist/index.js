@@ -16,6 +16,7 @@ require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
 const ormconfig_1 = require("./ormconfig");
 const dotenv_1 = __importDefault(require("dotenv"));
+const cors_1 = __importDefault(require("cors"));
 // Import routes
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const personaRoutes_1 = __importDefault(require("./routes/personaRoutes"));
@@ -35,6 +36,18 @@ function bootstrap() {
             yield ormconfig_1.AppDataSource.initialize();
             console.log("Data Source has been initialized!");
             const app = (0, express_1.default)();
+            app.use((0, cors_1.default)({
+                origin: "http://localhost:3001", // Frontend รันที่ port 3001
+                credentials: true,
+                allowedHeaders: ["Content-Type", "Authorization"],
+                methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                exposedHeaders: ["Authorization"],
+            }));
+            // Debug: log incoming Authorization header
+            app.use((req, res, next) => {
+                console.log("Incoming request", req.method, req.url, "Authorization:", req.headers["authorization"]);
+                next();
+            });
             app.use(express_1.default.json());
             // Mount API routes under /api
             app.use("/api/users", userRoutes_1.default);
@@ -42,13 +55,31 @@ function bootstrap() {
             app.use("/api/posts", postRoutes_1.default);
             app.use("/api/friends", friendRoutes_1.default);
             app.use("/api/admin", adminRoutes_1.default);
-            app.use("/api/posts", commentRoutes_1.default);
+            app.use("/api/posts", commentRoutes_1.default); // Comments are sub-routes of posts
             app.use("/api/chats", chatRoutes_1.default);
             app.use("/api/uploads", uploadRoutes_1.default);
             app.use("/api/products", productRoutes_1.default);
-            const port = process.env.PORT;
-            app.listen(port, () => {
-                console.log(`Server listening on port ${port}`);
+            const port = parseInt(process.env.PORT || "3001");
+            // Use 0.0.0.0 for Docker compatibility - allows external connections
+            const host = "0.0.0.0";
+            const server = app.listen(port, host, () => {
+                const addr = server.address();
+                console.log(`Server listening on ${host}:${port}`);
+                try {
+                    console.log("server.address():", addr);
+                }
+                catch (e) {
+                    console.error("failed to read server.address():", e);
+                }
+            });
+            server.on("error", (err) => {
+                console.error("HTTP server error:", err);
+            });
+            process.on("uncaughtException", (err) => {
+                console.error("uncaughtException:", err);
+            });
+            process.on("unhandledRejection", (reason) => {
+                console.error("unhandledRejection:", reason);
             });
         }
         catch (err) {

@@ -29,14 +29,16 @@ exports.getPublicFeed = getPublicFeed;
 exports.getFriendFeed = getFriendFeed;
 exports.getPostById = getPostById;
 exports.likePost = likePost;
-exports.unlikePost = unlikePost;
+exports.undoLikePost = undoLikePost;
 exports.repostPost = repostPost;
 exports.undoRepost = undoRepost;
 exports.savePost = savePost;
 exports.unsavePost = unsavePost;
+exports.searchPostsByAuthor = searchPostsByAuthor;
 const ormconfig_1 = require("../ormconfig");
 const typeorm_1 = require("typeorm");
 const Post_1 = require("../entities/Post");
+const serialize_1 = require("../utils/serialize");
 /**
  * 📌 สร้างโพสต์ใหม่
  */
@@ -60,7 +62,7 @@ function createPost(req, res) {
                         message: "You must create a persona before posting anonymously",
                     });
                 }
-                const friendCount = user.friends ? user.friends.length : 0;
+                const friendCount = user.actor && user.actor.friends ? user.actor.friends.length : 0;
                 const MIN_FRIENDS_TO_POST_ANON = 10;
                 if (friendCount < MIN_FRIENDS_TO_POST_ANON) {
                     return res.status(403).json({
@@ -80,7 +82,11 @@ function createPost(req, res) {
                 location,
             });
             yield postRepo.save(post);
-            return res.status(201).json({ message: "Post created", post });
+            // sanitize author before returning
+            const postToReturn = Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+            return res
+                .status(201)
+                .json((0, serialize_1.createResponse)("Post created", { post: postToReturn }));
         }
         catch (err) {
             console.error("createPost error:", err);
@@ -115,7 +121,8 @@ function updatePost(req, res) {
                 post.location = location;
             }
             yield postRepo.save(post);
-            return res.json({ message: "Post updated", post });
+            const postToReturn = Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+            return res.json((0, serialize_1.createResponse)("Post updated", { post: postToReturn }));
         }
         catch (err) {
             console.error("updatePost error:", err);
@@ -142,7 +149,7 @@ function deletePost(req, res) {
                 return res.status(403).json({ message: "Not authorized" });
             }
             yield postRepo.remove(post);
-            return res.json({ message: "Post deleted" });
+            return res.json((0, serialize_1.createResponse)("Post deleted", null));
         }
         catch (err) {
             console.error("deletePost error:", err);
@@ -162,7 +169,13 @@ function listPosts(req, res) {
                 order: { createdAt: "DESC" },
                 take: 50,
             });
-            return res.json(posts);
+            // sanitize user for each post unless anonymous
+            const sanitized = posts.map((p) => {
+                if (p.isAnonymous && p.persona)
+                    return p;
+                return Object.assign(Object.assign({}, p), { user: (0, serialize_1.sanitizeUser)(p.user) });
+            });
+            return res.json((0, serialize_1.listResponse)(sanitized));
         }
         catch (err) {
             console.error("listPosts error:", err);
@@ -184,7 +197,8 @@ function getPost(req, res) {
             });
             if (!post)
                 return res.status(404).json({ message: "Post not found" });
-            return res.json(post);
+            const postToReturn = Object.assign(Object.assign({}, post), { user: post.isAnonymous && post.persona ? undefined : (0, serialize_1.sanitizeUser)(post.user) });
+            return res.json((0, serialize_1.createResponse)("Post fetched", { post: postToReturn }));
         }
         catch (err) {
             console.error("getPost error:", err);
@@ -220,7 +234,7 @@ function getPublicFeed(req, res) {
                 return Object.assign(Object.assign({}, restOfPost), { author });
             });
             const totalPages = Math.ceil(totalItems / limit);
-            return res.json({
+            return res.json((0, serialize_1.createResponse)("Public feed fetched", {
                 items: items,
                 meta: {
                     totalItems,
@@ -229,7 +243,7 @@ function getPublicFeed(req, res) {
                     totalPages,
                     currentPage: page,
                 },
-            });
+            }));
         }
         catch (err) {
             console.error("getPublicFeed error:", err);
@@ -249,7 +263,9 @@ function getFriendFeed(req, res) {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 20;
             const skip = (page - 1) * limit;
-            const friendIds = user.friends ? user.friends.map((f) => f.id) : [];
+            const friendIds = user.actor && user.actor.friends
+                ? user.actor.friends.map((f) => f.id)
+                : [];
             const ids = [...friendIds, user.id];
             const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
             const [posts, totalItems] = yield postRepo.findAndCount({
@@ -270,7 +286,7 @@ function getFriendFeed(req, res) {
                 return Object.assign(Object.assign({}, restOfPost), { author });
             });
             const totalPages = Math.ceil(totalItems / limit);
-            return res.json({
+            return res.json((0, serialize_1.createResponse)("Friend feed fetched", {
                 items: items,
                 meta: {
                     totalItems,
@@ -279,7 +295,7 @@ function getFriendFeed(req, res) {
                     totalPages,
                     currentPage: page,
                 },
-            });
+            }));
         }
         catch (err) {
             console.error("getFriendFeed error:", err);
@@ -301,7 +317,8 @@ function getPostById(req, res) {
             });
             if (!post)
                 return res.status(404).json({ message: "Post not found" });
-            return res.json(post);
+            const postToReturn = Object.assign(Object.assign({}, post), { user: post.isAnonymous && post.persona ? undefined : (0, serialize_1.sanitizeUser)(post.user) });
+            return res.json((0, serialize_1.createResponse)("Post fetched", { post: postToReturn }));
         }
         catch (err) {
             console.error("getPostById error:", err);
@@ -342,9 +359,9 @@ function likePost(req, res) {
     });
 }
 /**
- * 📌 ถอน like โพสต์
+ * 📌 ยกเลิก Like โพสต์
  */
-function unlikePost(req, res) {
+function undoLikePost(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const { postId } = req.params;
@@ -360,11 +377,11 @@ function unlikePost(req, res) {
                 return res.status(404).json({ message: "Post not found" });
             post.likedBy = post.likedBy.filter((u) => u.id !== user.id);
             yield postRepo.save(post);
-            return res.json({ message: "Post unliked" });
+            return res.json({ message: "Like undone" });
         }
         catch (err) {
-            console.error("unlikePost error:", err);
-            return res.status(500).json({ message: "Failed to unlike post" });
+            console.error("undoLikePost error:", err);
+            return res.status(500).json({ message: "Failed to undo like" });
         }
     });
 }
@@ -486,6 +503,46 @@ function unsavePost(req, res) {
         catch (err) {
             console.error("unsavePost error:", err);
             return res.status(500).json({ message: "Failed to unsave post" });
+        }
+    });
+}
+/**
+ * 📌 ค้นหาโพสต์จากชื่อผู้เขียน (Author)
+ */
+function searchPostsByAuthor(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { authorName } = req.query;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 20;
+            const skip = (page - 1) * limit;
+            if (!authorName || typeof authorName !== "string") {
+                return res.status(400).json({ message: "authorName query is required" });
+            }
+            const postRepo = ormconfig_1.AppDataSource.getRepository(Post_1.Post);
+            const [posts, totalItems] = yield postRepo
+                .createQueryBuilder("post")
+                .innerJoinAndSelect("post.user", "author") // 1. เชื่อมตาราง post กับ user
+                .where("author.name ILIKE :name", { name: `%${authorName}%` }) // 2. ค้นหาแบบไม่สนตัวพิมพ์เล็ก/ใหญ่
+                .orderBy("post.createdAt", "DESC")
+                .skip(skip)
+                .take(limit)
+                .getManyAndCount(); // 3. ดึงข้อมูลพร้อมนับจำนวนทั้งหมด
+            const totalPages = Math.ceil(totalItems / limit);
+            return res.json({
+                items: posts,
+                meta: {
+                    totalItems,
+                    itemCount: posts.length,
+                    itemsPerPage: limit,
+                    totalPages,
+                    currentPage: page,
+                },
+            });
+        }
+        catch (err) {
+            console.error("searchPostsByAuthor error:", err);
+            return res.status(500).json({ message: "Failed to search posts" });
         }
     });
 }

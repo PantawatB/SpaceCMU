@@ -13,6 +13,7 @@ exports.Persona = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const Report_1 = require("./Report");
+const Actor_1 = require("./Actor");
 /**
  * Persona = ตัวตนเสมือน/นามแฝงของ user
  * ใช้สำหรับโพสต์ anonymous
@@ -36,6 +37,14 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Persona.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Persona.prototype, "bannerImg", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], Persona.prototype, "bio", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)
@@ -68,6 +77,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Report_1.Report, (report) => report.persona),
     __metadata("design:type", Array)
 ], Persona.prototype, "reports", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => Actor_1.Actor, (actor) => actor.persona, { cascade: true }),
+    __metadata("design:type", Actor_1.Actor)
+], Persona.prototype, "actor", void 0);
 exports.Persona = Persona = __decorate([
     (0, typeorm_1.Entity)()
 ], Persona);
