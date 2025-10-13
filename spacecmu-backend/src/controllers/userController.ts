@@ -113,6 +113,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // คำนวณ friendCount ของ User หลัก (เหมือนเดิม)
     const friendCount =
       user.actor && user.actor.friends ? user.actor.friends.length : 0;
 
@@ -125,7 +126,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       isAdmin: user.isAdmin,
       profileImg: user.profileImg,
       bannerImg: user.bannerImg,
-      friendCount,
+      friendCount, // friendCount ของ User หลัก
       actorId: user.actor ? user.actor.id : null,
       persona: user.persona
         ? {
@@ -135,6 +136,10 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
             bannerImg: user.persona.bannerImg,
             bio: user.persona.bio,
             changeCount: user.persona.changeCount,
+            friendCount:
+              user.persona.actor && user.persona.actor.friends
+                ? user.persona.actor.friends.length
+                : 0,
             lastChangedAt: user.persona.lastChangedAt,
             isBanned: user.persona.isBanned,
             actorId: user.persona.actor ? user.persona.actor.id : null,
