@@ -1,3 +1,5 @@
+// src/entities/Actor.ts
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,6 +12,9 @@ import {
 import { User } from "./User";
 import { Persona } from "./Persona";
 import { FriendRequest } from "./FriendRequest";
+import { Post } from "./Post";
+import { Comment } from "./Comment";
+0;
 
 @Entity()
 export class Actor {
@@ -37,4 +42,16 @@ export class Actor {
 
   @OneToMany(() => FriendRequest, (fr) => fr.toActor)
   receivedFriendRequests!: FriendRequest[];
+
+  @ManyToMany(() => Post, (post) => post.likedBy)
+  likedPosts!: Post[];
+
+  @ManyToMany(() => Post, (post) => post.repostedBy)
+  repostedPosts!: Post[];
+
+  @ManyToMany(() => Post, (post) => post.savedBy)
+  savedPosts!: Post[];
+
+  @OneToMany(() => Comment, (comment) => comment.actor)
+  comments!: Comment[];
 }

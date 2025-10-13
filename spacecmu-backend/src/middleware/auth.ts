@@ -35,7 +35,13 @@ export async function authenticateToken(
     const userRepo = AppDataSource.getRepository(User);
     const user = await userRepo.findOne({
       where: { id: payload.userId },
-      relations: ["persona", "persona.actor", "actor", "actor.friends"],
+      relations: [
+        "persona",
+        "persona.actor",
+        "persona.actor.friends",
+        "actor",
+        "actor.friends",
+      ],
     });
 
     if (!user) {

@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
-import { In } from "typeorm";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
 import { Actor } from "../entities/Actor";
-import { createResponse } from "../utils/serialize";
+import { createResponse, listResponse } from "../utils/serialize";
 
 /**
  * 📌 สร้างโพสต์ใหม่ (เวอร์ชันใหม่ อ้างอิงจาก Actor)
@@ -71,6 +70,9 @@ export async function createPost(
         type: post.actor.persona ? "persona" : "user",
         name: post.actor.persona ? post.actor.persona.displayName : user.name,
       },
+      likeCount: 0,
+      repostCount: 0,
+      saveCount: 0,
     };
 
     return res
@@ -166,11 +168,20 @@ export async function deletePost(
 export async function listPosts(req: Request, res: Response) {
   try {
     const postRepo = AppDataSource.getRepository(Post);
-    const posts = await postRepo.find({
-      relations: ["actor", "actor.user", "actor.persona"],
-      order: { createdAt: "DESC" },
-      take: 50,
-    });
+
+    // 👇 เปลี่ยนจาก .find() มาใช้ .createQueryBuilder()
+    const posts = await postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "actor")
+      .leftJoinAndSelect("actor.user", "user")
+      .leftJoinAndSelect("actor.persona", "persona")
+      // ✨ เพิ่ม 3 บรรทัดนี้เข้ามาเพื่อนับจำนวน ✨
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .orderBy("post.createdAt", "DESC")
+      .take(50)
+      .getMany();
 
     return res.json({ data: posts });
   } catch (err) {
@@ -206,46 +217,19 @@ export async function getPost(req: Request, res: Response) {
  */
 export async function getPublicFeed(req: Request, res: Response) {
   try {
-    const limit = parseInt(req.query.limit as string) || 20;
-    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
-    const lastId = req.query.lastId as string | undefined;
-
     const postRepo = AppDataSource.getRepository(Post);
-    const qb = postRepo
+    const posts = await postRepo
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
-      .where("post.visibility = :visibility", { visibility: "public" });
-
-    if (lastCreatedAt && lastId) {
-      qb.andWhere(
-        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
-        {
-          lastCreatedAt: new Date(lastCreatedAt),
-          lastId,
-        }
-      );
-    }
-
-    qb.orderBy("post.createdAt", "DESC")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .where("post.visibility = :visibility", { visibility: "public" })
+      .orderBy("post.createdAt", "DESC")
       .addOrderBy("post.id", "DESC")
-      .take(limit + 1);
-
-    const posts = await qb.getMany();
-
-    const hasNextPage = posts.length > limit;
-    if (hasNextPage) {
-      posts.pop();
-    }
-
-    const nextCursor =
-      posts.length > 0
-        ? {
-            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
-            lastId: posts[posts.length - 1].id,
-          }
-        : null;
+      .getMany();
 
     const items = posts.map((post) => {
       const author = post.actor.persona
@@ -262,11 +246,7 @@ export async function getPublicFeed(req: Request, res: Response) {
       return { ...restOfPost, author, actorId: actor.id };
     });
 
-    return res.json({
-      items,
-      nextCursor,
-      hasNextPage,
-    });
+    return res.json(listResponse(items));
   } catch (err) {
     console.error("getPublicFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch public feed" });
@@ -281,68 +261,62 @@ export async function getFriendFeed(
   res: Response
 ) {
   try {
-    const user = req.user;
-    if (!user || !user.actor)
-      return res
-        .status(401)
-        .json({ message: "Unauthorized or user actor not found" });
+    const currentUser = req.user;
+    const { actorId } = req.params;
 
-    const limit = parseInt(req.query.limit as string) || 20;
-    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
-    const lastId = req.query.lastId as string | undefined;
-
-    const myActorIds = [user.actor.id];
-    if (user.persona?.actor) {
-      myActorIds.push(user.persona.actor.id);
+    if (!currentUser || !currentUser.actor) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
-    const friendActorIds = user.actor.friends?.map((f) => f.id) || [];
-    const visibleActorIds = [...myActorIds, ...friendActorIds];
+    if (!actorId) {
+      return res.status(400).json({ message: "Actor ID is required" });
+    }
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const targetActor = await actorRepo.findOne({
+      where: { id: actorId },
+      relations: ["friends"],
+    });
+
+    if (!targetActor) {
+      return res.status(404).json({ message: "Target actor not found" });
+    }
+    const isOwner =
+      currentUser.actor.id === targetActor.id ||
+      currentUser.persona?.actor?.id === targetActor.id;
+    const isFriend = currentUser.actor.friends?.some(
+      (friend) => friend.id === targetActor.id
+    );
+
+    if (!isOwner && !isFriend) {
+      return res
+        .status(403)
+        .json({
+          message: "You can only view the feed of your friends or your own.",
+        });
+    }
+    const targetActorIds = [targetActor.id];
+    const friendActorIds = targetActor.friends?.map((f) => f.id) || [];
+    const visibleActorIds = [...targetActorIds, ...friendActorIds];
 
     if (visibleActorIds.length === 0) {
-      return res.json({ items: [], nextCursor: null, hasNextPage: false });
+      return res.json(listResponse([]));
     }
 
     const postRepo = AppDataSource.getRepository(Post);
-    const qb = postRepo
+    const posts = await postRepo
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
       .where("actor.id IN (:...visibleActorIds)", { visibleActorIds })
       .andWhere(
-        " (post.visibility = 'public' OR (post.visibility = 'friends' AND actor.id IN (:...myActorIds))) ",
-        { myActorIds: [...myActorIds, ...friendActorIds] } // Friends can see friends posts, I can see my own friends posts
-      );
-
-    if (lastCreatedAt && lastId) {
-      qb.andWhere(
-        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
-        {
-          lastCreatedAt: new Date(lastCreatedAt),
-          lastId,
-        }
-      );
-    }
-
-    qb.orderBy("post.createdAt", "DESC")
-      .addOrderBy("post.id", "DESC")
-      .take(limit + 1);
-
-    const posts = await qb.getMany();
-
-    const hasNextPage = posts.length > limit;
-    if (hasNextPage) {
-      posts.pop();
-    }
-
-    const nextCursor =
-      posts.length > 0
-        ? {
-            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
-            lastId: posts[posts.length - 1].id,
-          }
-        : null;
-
+        " (post.visibility = 'public' OR (post.visibility = 'friends' AND actor.id IN (:...friendActorIdsWithTarget))) ",
+        { friendActorIdsWithTarget: visibleActorIds }
+      )
+      .orderBy("post.createdAt", "DESC")
+      .getMany();
     const items = posts.map((post) => {
       const author = post.actor.persona
         ? {
@@ -358,11 +332,7 @@ export async function getFriendFeed(
       return { ...restOfPost, author, actorId: actor.id };
     });
 
-    return res.json({
-      items,
-      nextCursor,
-      hasNextPage,
-    });
+    return res.json(listResponse(items));
   } catch (err) {
     console.error("getFriendFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch friend feed" });
@@ -375,10 +345,23 @@ export async function getFriendFeed(
 export async function likePost(req: Request & { user?: User }, res: Response) {
   try {
     const { id: postId } = req.params;
+    const { actorId } = req.body;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to perform action with this actor" });
+    }
 
     const postRepo = AppDataSource.getRepository(Post);
+    const actorRepo = AppDataSource.getRepository(Actor);
+
     const post = await postRepo.findOne({
       where: { id: postId },
       relations: ["likedBy"],
@@ -386,12 +369,17 @@ export async function likePost(req: Request & { user?: User }, res: Response) {
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
+    const actor = await actorRepo.findOneBy({ id: actorId });
+    if (!actor) return res.status(404).json({ message: "Actor not found" });
+
     if (!post.likedBy) post.likedBy = [];
-    if (post.likedBy.some((u) => u.id === user.id)) {
-      return res.status(400).json({ message: "You already liked this post" });
+    if (post.likedBy.some((act) => act.id === actorId)) {
+      return res
+        .status(400)
+        .json({ message: "You already liked this post with this actor" });
     }
 
-    post.likedBy.push(user);
+    post.likedBy.push(actor);
     await postRepo.save(post);
 
     return res.json({ message: "Post liked" });
@@ -410,9 +398,12 @@ export async function undoLikePost(
 ) {
   try {
     const { id: postId } = req.params;
+    const { actorId } = req.body;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
       where: { id: postId },
@@ -421,7 +412,7 @@ export async function undoLikePost(
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    post.likedBy = post.likedBy.filter((u) => u.id !== user.id);
+    post.likedBy = post.likedBy.filter((act) => act.id !== actorId);
     await postRepo.save(post);
 
     return res.json({ message: "Like undone" });
@@ -440,10 +431,24 @@ export async function repostPost(
 ) {
   try {
     const { id: postId } = req.params;
+    const { actorId } = req.body;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to perform action with this actor" });
+    }
+
     const postRepo = AppDataSource.getRepository(Post);
+    const actorRepo = AppDataSource.getRepository(Actor);
+
     const post = await postRepo.findOne({
       where: { id: postId },
       relations: ["repostedBy"],
@@ -451,15 +456,17 @@ export async function repostPost(
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
+    const actor = await actorRepo.findOneBy({ id: actorId });
+    if (!actor) return res.status(404).json({ message: "Actor not found" });
+
     if (!post.repostedBy) post.repostedBy = [];
-    // เช็คว่าเคย Repost ไปแล้วหรือยัง
-    if (post.repostedBy.some((u) => u.id === user.id)) {
+    if (post.repostedBy.some((act) => act.id === actorId)) {
       return res
         .status(400)
-        .json({ message: "You already reposted this post" });
+        .json({ message: "You already reposted this post with this actor" });
     }
 
-    post.repostedBy.push(user);
+    post.repostedBy.push(actor);
     await postRepo.save(post);
 
     return res.json({ message: "Post reposted" });
@@ -478,8 +485,12 @@ export async function undoRepost(
 ) {
   try {
     const { id: postId } = req.params;
+    const { actorId } = req.body;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
 
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
@@ -489,7 +500,7 @@ export async function undoRepost(
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    post.repostedBy = post.repostedBy.filter((u) => u.id !== user.id);
+    post.repostedBy = post.repostedBy.filter((act) => act.id !== actorId);
     await postRepo.save(post);
 
     return res.json({ message: "Repost undone" });
@@ -505,10 +516,23 @@ export async function undoRepost(
 export async function savePost(req: Request & { user?: User }, res: Response) {
   try {
     const { id: postId } = req.params;
+    const { actorId } = req.body;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to perform action with this actor" });
+    }
 
     const postRepo = AppDataSource.getRepository(Post);
+    const actorRepo = AppDataSource.getRepository(Actor);
+
     const post = await postRepo.findOne({
       where: { id: postId },
       relations: ["savedBy"],
@@ -516,12 +540,17 @@ export async function savePost(req: Request & { user?: User }, res: Response) {
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
+    const actor = await actorRepo.findOneBy({ id: actorId });
+    if (!actor) return res.status(404).json({ message: "Actor not found" });
+
     if (!post.savedBy) post.savedBy = [];
-    if (post.savedBy.some((u) => u.id === user.id)) {
-      return res.status(400).json({ message: "You already saved this post" });
+    if (post.savedBy.some((act) => act.id === actorId)) {
+      return res
+        .status(400)
+        .json({ message: "You already saved this post with this actor" });
     }
 
-    post.savedBy.push(user);
+    post.savedBy.push(actor);
     await postRepo.save(post);
 
     return res.json({ message: "Post saved" });
@@ -540,8 +569,12 @@ export async function unsavePost(
 ) {
   try {
     const { id: postId } = req.params;
+    const { actorId } = req.body;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
 
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
@@ -551,7 +584,7 @@ export async function unsavePost(
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    post.savedBy = post.savedBy.filter((u) => u.id !== user.id);
+    post.savedBy = post.savedBy.filter((act) => act.id !== actorId);
     await postRepo.save(post);
 
     return res.json({ message: "Post unsaved" });
@@ -605,5 +638,126 @@ export async function searchPostsByAuthor(req: Request, res: Response) {
   } catch (err) {
     console.error("searchPostsByAuthor error:", err);
     return res.status(500).json({ message: "Failed to search posts" });
+  }
+}
+
+const sanitizeActorList = (actors: Actor[]) => {
+  if (!actors) return [];
+  return actors
+    .map((actor) => {
+      if (actor.user) {
+        return {
+          actorId: actor.id,
+          type: "user",
+          name: actor.user.name,
+          profileImg: actor.user.profileImg,
+        };
+      }
+      if (actor.persona) {
+        return {
+          actorId: actor.id,
+          type: "persona",
+          name: actor.persona.displayName,
+          avatarUrl: actor.persona.avatarUrl,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+};
+
+/**
+ * 📌 Get a list of actors who liked a specific post.
+ */
+export async function getPostLikers(req: Request, res: Response) {
+  try {
+    const { id: postId } = req.params;
+    const postRepo = AppDataSource.getRepository(Post);
+
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: ["likedBy", "likedBy.user", "likedBy.persona"],
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const sanitizedLikers = sanitizeActorList(post.likedBy);
+    return res.json({ data: sanitizedLikers });
+  } catch (err) {
+    console.error("getPostLikers error:", err);
+    return res.status(500).json({ message: "Failed to get post likers" });
+  }
+}
+
+/**
+ * 📌 Get a list of actors who reposted a specific post.
+ */
+export async function getPostReposters(req: Request, res: Response) {
+  try {
+    const { id: postId } = req.params;
+    const postRepo = AppDataSource.getRepository(Post);
+
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: ["repostedBy", "repostedBy.user", "repostedBy.persona"],
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const sanitizedReposters = sanitizeActorList(post.repostedBy);
+    return res.json({ data: sanitizedReposters });
+  } catch (err) {
+    console.error("getPostReposters error:", err);
+    return res.status(500).json({ message: "Failed to get post reposters" });
+  }
+}
+
+/**
+ * 📌 Get a list of actors who saved a specific post.
+ */
+export async function getPostSavers(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { id: postId } = req.params;
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({
+      where: { id: postId },
+      relations: [
+        "savedBy",
+        "savedBy.user",
+        "savedBy.persona",
+        "actor",
+        "actor.user",
+        "actor.persona",
+      ],
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const isOwner =
+      post.actor.user?.id === user.id ||
+      post.actor.persona?.user.id === user.id;
+    if (!isOwner) {
+      return res.status(403).json({
+        message: "You are not authorized to see who saved this post.",
+      });
+    }
+
+    const sanitizedSavers = sanitizeActorList(post.savedBy);
+    return res.json({ data: sanitizedSavers });
+  } catch (err) {
+    console.error("getPostSavers error:", err);
+    return res.status(500).json({ message: "Failed to get post savers" });
   }
 }
