@@ -6,6 +6,7 @@ const router = Router();
 
 // Public routes
 router.get("/", productController.getAllProducts);
+router.get("/:id", productController.getProductById);
 
 // Protected routes (require authentication)
 router.post("/", authenticateToken, productController.createProduct);

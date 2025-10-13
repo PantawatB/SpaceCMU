@@ -34,6 +34,35 @@ export const getAllProducts = async (req: Request, res: Response) => {
       message: "Internal server error",
     });
   }
+}; // GET /api/products/:id - Get product by id
+export const getProductById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const productRepo = AppDataSource.getRepository(Product);
+    const product = await productRepo.findOne({
+      where: { id: parseInt(id) },
+      relations: ["seller"],
+    });
+
+    if (!product) {
+      return res.status(404).json(createResponse("Product not found", null));
+    }
+
+    return res.json(
+      createResponse("Product retrieved successfully", {
+        product: {
+          ...product,
+          seller: sanitizeSeller((product as any).seller),
+        },
+      })
+    );
+  } catch (error) {
+    console.error("Error getting product:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 };
 
 // POST /api/products - เพิ่มสินค้าใหม่

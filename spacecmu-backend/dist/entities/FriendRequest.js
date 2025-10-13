@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FriendRequest = void 0;
 const typeorm_1 = require("typeorm");
-const User_1 = require("./User");
+const Actor_1 = require("./Actor");
 /**
  * FriendRequest represents a pending request between two users.
  * When accepted the Friend entity is created; otherwise it is removed.
@@ -24,19 +24,19 @@ __decorate([
     __metadata("design:type", String)
 ], FriendRequest.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.sentFriendRequests, {
-        eager: true,
-        onDelete: "CASCADE", // ถ้าผู้ใช้ถูกลบ -> ลบคำขอด้วย
-    }),
-    __metadata("design:type", User_1.User)
-], FriendRequest.prototype, "fromUser", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.receivedFriendRequests, {
+    (0, typeorm_1.ManyToOne)(() => Actor_1.Actor, (actor) => actor.sentFriendRequests, {
         eager: true,
         onDelete: "CASCADE",
     }),
-    __metadata("design:type", User_1.User)
-], FriendRequest.prototype, "toUser", void 0);
+    __metadata("design:type", Actor_1.Actor)
+], FriendRequest.prototype, "fromActor", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => Actor_1.Actor, (actor) => actor.receivedFriendRequests, {
+        eager: true,
+        onDelete: "CASCADE",
+    }),
+    __metadata("design:type", Actor_1.Actor)
+], FriendRequest.prototype, "toActor", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: "enum",
@@ -62,5 +62,5 @@ __decorate([
 ], FriendRequest.prototype, "updatedAt", void 0);
 exports.FriendRequest = FriendRequest = __decorate([
     (0, typeorm_1.Entity)(),
-    (0, typeorm_1.Unique)(["fromUser", "toUser"]) // ป้องกันการส่ง request ซ้ำ
+    (0, typeorm_1.Unique)(["fromActor", "toActor"])
 ], FriendRequest);

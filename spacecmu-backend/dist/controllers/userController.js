@@ -16,13 +16,20 @@ exports.register = register;
 exports.login = login;
 exports.getMe = getMe;
 exports.updateUser = updateUser;
+exports.searchUsers = searchUsers;
 exports.getMyReposts = getMyReposts;
 exports.getMyLikedPosts = getMyLikedPosts;
+exports.getCurrentUserActor = getCurrentUserActor;
 exports.getMySavedPosts = getMySavedPosts;
+exports.listAllUsers = listAllUsers;
 const ormconfig_1 = require("../ormconfig");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = require("../entities/User");
+const Persona_1 = require("../entities/Persona");
+const Actor_1 = require("../entities/Actor");
 const hash_1 = require("../utils/hash");
+const serialize_1 = require("../utils/serialize");
+const personaGenerator_1 = require("../utils/personaGenerator");
 /**
  * Registers a new user. This function expects a CMU student ID, CMU email,
  * password and name. It ensures that both student ID and email are unique
@@ -44,13 +51,22 @@ function register(req, res) {
             if (existingByEmail) {
                 return res.status(409).json({ message: "Email already registered" });
             }
-            const hashed = yield (0, hash_1.hashPassword)(password);
+            const userActor = new Actor_1.Actor();
+            const personaActor = new Actor_1.Actor();
             const user = userRepo.create({
                 studentId,
                 email,
-                passwordHash: hashed,
+                passwordHash: yield (0, hash_1.hashPassword)(password),
                 name,
+                actor: userActor,
             });
+            const newPersona = new Persona_1.Persona();
+            newPersona.displayName = (0, personaGenerator_1.generateRandomPersonaName)();
+            newPersona.actor = personaActor;
+            user.persona = newPersona;
+            newPersona.user = user;
+            userActor.user = user;
+            personaActor.persona = newPersona;
             yield userRepo.save(user);
             return res.status(201).json({ message: "Registration successful" });
         }
@@ -74,7 +90,10 @@ function login(req, res) {
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             // Find user by email or studentId
             const whereCondition = email ? { email } : { studentId };
-            const user = yield userRepo.findOne({ where: whereCondition });
+            const user = yield userRepo.findOne({
+                where: whereCondition,
+                relations: ["persona"],
+            });
             if (!user) {
                 return res.status(401).json({ message: "Invalid credentials" });
             }
@@ -84,18 +103,10 @@ function login(req, res) {
             }
             const secret = process.env.JWT_SECRET || "changeme";
             const token = jsonwebtoken_1.default.sign({ userId: user.id }, secret, { expiresIn: "7d" });
-            return res.json({
-                message: "Login successful",
+            return res.json((0, serialize_1.createResponse)("Login successful", {
                 token,
-                user: {
-                    id: user.id,
-                    studentId: user.studentId,
-                    email: user.email,
-                    name: user.name,
-                    bio: user.bio,
-                    isAdmin: user.isAdmin,
-                },
-            });
+                user: (0, serialize_1.sanitizeUserProfile)(user), // Login gets full profile
+            }));
         }
         catch (err) {
             console.error("Login error:", err);
@@ -113,7 +124,7 @@ function getMe(req, res) {
             if (!user) {
                 return res.status(401).json({ message: "Unauthorized" });
             }
-            const friendCount = user.friends ? user.friends.length : 0;
+            const friendCount = user.actor && user.actor.friends ? user.actor.friends.length : 0;
             return res.json({
                 id: user.id,
                 studentId: user.studentId,
@@ -121,8 +132,23 @@ function getMe(req, res) {
                 name: user.name,
                 bio: user.bio,
                 isAdmin: user.isAdmin,
+                profileImg: user.profileImg,
+                bannerImg: user.bannerImg,
                 friendCount,
-                persona: user.persona || null,
+                actorId: user.actor ? user.actor.id : null,
+                persona: user.persona
+                    ? {
+                        id: user.persona.id,
+                        displayName: user.persona.displayName,
+                        avatarUrl: user.persona.avatarUrl,
+                        bannerImg: user.persona.bannerImg,
+                        bio: user.persona.bio,
+                        changeCount: user.persona.changeCount,
+                        lastChangedAt: user.persona.lastChangedAt,
+                        isBanned: user.persona.isBanned,
+                        actorId: user.persona.actor ? user.persona.actor.id : null,
+                    }
+                    : null,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
             });
@@ -143,7 +169,7 @@ function updateUser(req, res) {
             if (!user) {
                 return res.status(401).json({ message: "Unauthorized" });
             }
-            const { name, password, bio } = req.body;
+            const { name, password, bio, profileImg, bannerImg } = req.body;
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             if (name) {
                 user.name = name;
@@ -151,20 +177,19 @@ function updateUser(req, res) {
             if (password) {
                 user.passwordHash = yield (0, hash_1.hashPassword)(password);
             }
+            if (typeof profileImg !== "undefined") {
+                user.profileImg = profileImg;
+            }
+            if (typeof bannerImg !== "undefined") {
+                user.bannerImg = bannerImg;
+            }
             if (typeof bio === "string") {
                 user.bio = bio;
             }
             yield userRepo.save(user);
-            return res.json({
-                message: "User updated successfully",
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    studentId: user.studentId,
-                    bio: user.bio,
-                },
-            });
+            return res.json((0, serialize_1.createResponse)("User updated successfully", {
+                user: (0, serialize_1.sanitizeUserProfile)(user), // Updated profile gets full info
+            }));
         }
         catch (err) {
             console.error("UpdateUser error:", err);
@@ -173,7 +198,59 @@ function updateUser(req, res) {
     });
 }
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost
+ * 📌 ค้นหาผู้ใช้ทั้งหมดในระบบจากชื่อ (มี Pagination)
+ */
+function searchUsers(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const currentUser = req.user;
+            const { name } = req.query;
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 20;
+            const skip = (page - 1) * limit;
+            if (!name || typeof name !== "string" || name.trim() === "") {
+                return res
+                    .status(400)
+                    .json({ message: "Search 'name' query is required" });
+            }
+            const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
+            const [users, totalItems] = yield userRepo
+                .createQueryBuilder("user")
+                .where("user.name ILIKE :name", { name: `%${name}%` })
+                .leftJoinAndSelect("user.actor", "actor")
+                .orderBy("user.name", "ASC")
+                .skip(skip)
+                .take(limit)
+                .getManyAndCount();
+            const results = users
+                .filter((user) => user.id !== currentUser.id)
+                .map((user) => ({
+                id: user.id,
+                name: user.name,
+                profileImg: user.profileImg,
+                bio: user.bio,
+                actorId: user.actor ? user.actor.id : null,
+            }));
+            const totalPages = Math.ceil(totalItems / limit);
+            return res.json({
+                items: results,
+                meta: {
+                    totalItems,
+                    itemCount: results.length,
+                    itemsPerPage: limit,
+                    totalPages,
+                    currentPage: page,
+                },
+            });
+        }
+        catch (err) {
+            console.error("searchUsers error:", err);
+            return res.status(500).json({ message: "Failed to search for users" });
+        }
+    });
+}
+/**
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost (พร้อมค้นหาจากชื่อคนโพส)
  */
 function getMyReposts(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -181,6 +258,7 @@ function getMyReposts(req, res) {
             const user = req.user;
             if (!user)
                 return res.status(401).json({ message: "Unauthorized" });
+            const { authorName } = req.query;
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const userWithReposts = yield userRepo.findOne({
                 where: { id: user.id },
@@ -193,7 +271,18 @@ function getMyReposts(req, res) {
             if (!userWithReposts) {
                 return res.status(404).json({ message: "User not found" });
             }
-            return res.json(userWithReposts.repostedPosts || []);
+            let repostedPosts = userWithReposts.repostedPosts || [];
+            if (authorName && typeof authorName === "string") {
+                const searchTerm = authorName.toLowerCase();
+                repostedPosts = repostedPosts.filter((post) => post.user && post.user.name.toLowerCase().includes(searchTerm));
+            }
+            // sanitize post.user for safety
+            const sanitized = repostedPosts.map((post) => {
+                if (post.isAnonymous && post.persona)
+                    return post;
+                return Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+            });
+            return res.json((0, serialize_1.listResponse)(sanitized));
         }
         catch (err) {
             console.error("getMyReposts error:", err);
@@ -202,7 +291,7 @@ function getMyReposts(req, res) {
     });
 }
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like (พร้อมค้นหาจากชื่อคนโพส)
  */
 function getMyLikedPosts(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -210,6 +299,7 @@ function getMyLikedPosts(req, res) {
             const user = req.user;
             if (!user)
                 return res.status(401).json({ message: "Unauthorized" });
+            const { authorName } = req.query;
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const userWithLikes = yield userRepo.findOne({
                 where: { id: user.id },
@@ -218,7 +308,17 @@ function getMyLikedPosts(req, res) {
             if (!userWithLikes) {
                 return res.status(404).json({ message: "User not found" });
             }
-            return res.json(userWithLikes.likedPosts || []);
+            let likedPosts = userWithLikes.likedPosts || [];
+            if (authorName && typeof authorName === "string") {
+                const searchTerm = authorName.toLowerCase();
+                likedPosts = likedPosts.filter((post) => post.user && post.user.name.toLowerCase().includes(searchTerm));
+            }
+            const sanitized = likedPosts.map((post) => {
+                if (post.isAnonymous && post.persona)
+                    return post;
+                return Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+            });
+            return res.json((0, serialize_1.listResponse)(sanitized));
         }
         catch (err) {
             console.error("getMyLikedPosts error:", err);
@@ -227,7 +327,49 @@ function getMyLikedPosts(req, res) {
     });
 }
 /**
- * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save
+ * Get current user's actor information (User Actor and Persona Actor)
+ */
+function getCurrentUserActor(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            const user = req.user;
+            if (!user) {
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+            const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
+            const userWithActor = yield userRepo.findOne({
+                where: { id: user.id },
+                relations: ["actor", "persona", "persona.actor"],
+            });
+            if (!userWithActor) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            return res.json((0, serialize_1.createResponse)("Actor information retrieved", {
+                userId: userWithActor.id,
+                userName: userWithActor.name,
+                userActor: userWithActor.actor
+                    ? {
+                        id: userWithActor.actor.id,
+                    }
+                    : null,
+                personaActor: ((_a = userWithActor.persona) === null || _a === void 0 ? void 0 : _a.actor)
+                    ? {
+                        id: userWithActor.persona.actor.id,
+                        personaId: userWithActor.persona.id,
+                        displayName: userWithActor.persona.displayName,
+                    }
+                    : null,
+            }));
+        }
+        catch (err) {
+            console.error("getCurrentUserActor error:", err);
+            return res.status(500).json({ message: "Failed to get actor information" });
+        }
+    });
+}
+/**
+ * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save (พร้อมค้นหาจากชื่อคนโพส)
  */
 function getMySavedPosts(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -235,6 +377,7 @@ function getMySavedPosts(req, res) {
             const user = req.user;
             if (!user)
                 return res.status(401).json({ message: "Unauthorized" });
+            const { authorName } = req.query;
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const userWithSaves = yield userRepo.findOne({
                 where: { id: user.id },
@@ -243,11 +386,54 @@ function getMySavedPosts(req, res) {
             if (!userWithSaves) {
                 return res.status(404).json({ message: "User not found" });
             }
-            return res.json(userWithSaves.savedPosts || []);
+            let savedPosts = userWithSaves.savedPosts || [];
+            if (authorName && typeof authorName === "string") {
+                const searchTerm = authorName.toLowerCase();
+                savedPosts = savedPosts.filter((post) => post.user && post.user.name.toLowerCase().includes(searchTerm));
+            }
+            const sanitized = savedPosts.map((post) => {
+                if (post.isAnonymous && post.persona)
+                    return post;
+                return Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+            });
+            return res.json((0, serialize_1.listResponse)(sanitized));
         }
         catch (err) {
             console.error("getMySavedPosts error:", err);
             return res.status(500).json({ message: "Failed to fetch saved posts" });
+        }
+    });
+}
+/**
+ * 📌 ดึงรายชื่อผู้ใช้ทั้งหมดในระบบ
+ */
+function listAllUsers(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const currentUser = req.user;
+            const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
+            const users = yield userRepo
+                .createQueryBuilder("user")
+                .leftJoinAndSelect("user.actor", "actor")
+                .orderBy("user.name", "ASC")
+                // ❌ ไม่ต้องมี .skip() และ .take() แล้ว
+                .getMany();
+            // กรอง user ที่ login อยู่ปัจจุบันออกจากผลลัพธ์
+            const results = users
+                .filter((user) => user.id !== currentUser.id)
+                .map((user) => ({
+                id: user.id,
+                name: user.name,
+                profileImg: user.profileImg,
+                bio: user.bio,
+                actorId: user.actor ? user.actor.id : null,
+            }));
+            // ส่งข้อมูลกลับไปเป็น array ตรงๆ
+            return res.json(results);
+        }
+        catch (err) {
+            console.error("listAllUsers error:", err);
+            return res.status(500).json({ message: "Failed to fetch users" });
         }
     });
 }

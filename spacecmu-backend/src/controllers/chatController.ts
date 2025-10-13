@@ -109,32 +109,85 @@ export async function createDirectChat(
       name: otherUser.name,
     });
 
-    // Skip checking for existing chats for now - just create new one
-    console.log("🔄 Skipping existing chat check for simplicity");
+    // Check for existing direct chat between these two users
+    console.log("🔍 Checking for existing chat between users...");
+
+    const existingParticipations = await chatParticipantRepo.find({
+      where: { user: { id: currentUser.id } },
+      relations: ["chat", "user"],
+    });
+
+    let existingChat = null;
+    for (const participation of existingParticipations) {
+      const chat = participation.chat;
+      if (chat.type === ChatType.DIRECT) {
+        // Get all participants in this chat
+        const allParticipants = await chatParticipantRepo.find({
+          where: { chat: { id: chat.id } },
+          relations: ["user"],
+        });
+
+        // Check if this is a direct chat with the target user
+        if (allParticipants.length === 2) {
+          const otherParticipant = allParticipants.find(
+            (p: any) => p.user.id !== currentUser.id
+          );
+          if (otherParticipant && otherParticipant.user.id === otherUserId) {
+            existingChat = chat;
+            break;
+          }
+        }
+      }
+    }
+
+    if (existingChat) {
+      console.log("✅ Found existing chat:", existingChat.id);
+      const response = {
+        id: existingChat.id,
+        type: existingChat.type,
+        otherUser: {
+          id: otherUser.id,
+          name: otherUser.name,
+        },
+      };
+      return res.status(200).json(response);
+    }
 
     console.log("🆕 Creating new chat...");
 
-    // Create new direct chat
-    const newChat = chatRepo.create({
-      type: ChatType.DIRECT,
-      createdBy: currentUser,
-    });
+    // Use transaction to ensure atomicity
+    const savedChat = await AppDataSource.transaction(async (manager) => {
+      // Create new direct chat
+      const newChat = manager.create(Chat, {
+        type: ChatType.DIRECT,
+        createdBy: currentUser,
+      });
 
-    const savedChat = await chatRepo.save(newChat);
-    console.log("✅ Chat created with ID:", savedChat.id);
+      const savedChat = await manager.save(Chat, newChat);
+      console.log("✅ Chat created with ID:", savedChat.id);
 
-    // Add both users as participants
-    const participant1 = chatParticipantRepo.create({
-      chat: savedChat,
-      user: currentUser,
-    });
-    const participant2 = chatParticipantRepo.create({
-      chat: savedChat,
-      user: otherUser,
-    });
+      // Add both users as participants with error handling
+      try {
+        const participant1 = manager.create(ChatParticipant, {
+          chat: savedChat,
+          user: currentUser,
+        });
+        await manager.save(ChatParticipant, participant1);
+        console.log("✅ Participant 1 added");
 
-    await chatParticipantRepo.save([participant1, participant2]);
-    console.log("✅ Participants added successfully");
+        const participant2 = manager.create(ChatParticipant, {
+          chat: savedChat,
+          user: otherUser,
+        });
+        await manager.save(ChatParticipant, participant2);
+        console.log("✅ Participant 2 added");
+
+        return savedChat;
+      } catch (participantError) {
+        console.error("❌ Error adding participants:", participantError);
+        throw participantError;
+      }
+    });
 
     const response = {
       id: savedChat.id,
