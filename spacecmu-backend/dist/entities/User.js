@@ -93,10 +93,6 @@ __decorate([
     __metadata("design:type", Persona_1.Persona)
 ], User.prototype, "persona", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => Post_1.Post, (post) => post.user),
-    __metadata("design:type", Array)
-], User.prototype, "posts", void 0);
-__decorate([
     (0, typeorm_1.OneToMany)(() => Report_1.Report, (report) => report.reportingUser),
     __metadata("design:type", Array)
 ], User.prototype, "reports", void 0);

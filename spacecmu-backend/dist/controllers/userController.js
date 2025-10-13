@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -105,7 +116,7 @@ function login(req, res) {
             const token = jsonwebtoken_1.default.sign({ userId: user.id }, secret, { expiresIn: "7d" });
             return res.json((0, serialize_1.createResponse)("Login successful", {
                 token,
-                user: (0, serialize_1.sanitizeUserProfile)(user), // Login gets full profile
+                user: (0, serialize_1.sanitizeUserProfile)(user),
             }));
         }
         catch (err) {
@@ -188,7 +199,7 @@ function updateUser(req, res) {
             }
             yield userRepo.save(user);
             return res.json((0, serialize_1.createResponse)("User updated successfully", {
-                user: (0, serialize_1.sanitizeUserProfile)(user), // Updated profile gets full info
+                user: (0, serialize_1.sanitizeUserProfile)(user),
             }));
         }
         catch (err) {
@@ -264,8 +275,9 @@ function getMyReposts(req, res) {
                 where: { id: user.id },
                 relations: [
                     "repostedPosts",
-                    "repostedPosts.user",
-                    "repostedPosts.persona",
+                    "repostedPosts.actor",
+                    "repostedPosts.actor.user",
+                    "repostedPosts.actor.persona",
                 ],
             });
             if (!userWithReposts) {
@@ -274,13 +286,29 @@ function getMyReposts(req, res) {
             let repostedPosts = userWithReposts.repostedPosts || [];
             if (authorName && typeof authorName === "string") {
                 const searchTerm = authorName.toLowerCase();
-                repostedPosts = repostedPosts.filter((post) => post.user && post.user.name.toLowerCase().includes(searchTerm));
+                repostedPosts = repostedPosts.filter((post) => {
+                    const authorIsUser = post.actor.user &&
+                        post.actor.user.name.toLowerCase().includes(searchTerm);
+                    const authorIsPersona = post.actor.persona &&
+                        post.actor.persona.displayName.toLowerCase().includes(searchTerm);
+                    return authorIsUser || authorIsPersona;
+                });
             }
-            // sanitize post.user for safety
+            // Sanitize posts to create a consistent author object
             const sanitized = repostedPosts.map((post) => {
-                if (post.isAnonymous && post.persona)
-                    return post;
-                return Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+                const { actor } = post, restOfPost = __rest(post, ["actor"]);
+                const author = actor.user
+                    ? {
+                        type: "user",
+                        name: actor.user.name,
+                        profileImg: actor.user.profileImg,
+                    }
+                    : {
+                        type: "persona",
+                        name: actor.persona.displayName,
+                        avatarUrl: actor.persona.avatarUrl,
+                    };
+                return Object.assign(Object.assign({}, restOfPost), { author });
             });
             return res.json((0, serialize_1.listResponse)(sanitized));
         }
@@ -303,7 +331,12 @@ function getMyLikedPosts(req, res) {
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const userWithLikes = yield userRepo.findOne({
                 where: { id: user.id },
-                relations: ["likedPosts", "likedPosts.user", "likedPosts.persona"],
+                relations: [
+                    "likedPosts",
+                    "likedPosts.actor",
+                    "likedPosts.actor.user",
+                    "likedPosts.actor.persona",
+                ],
             });
             if (!userWithLikes) {
                 return res.status(404).json({ message: "User not found" });
@@ -311,12 +344,28 @@ function getMyLikedPosts(req, res) {
             let likedPosts = userWithLikes.likedPosts || [];
             if (authorName && typeof authorName === "string") {
                 const searchTerm = authorName.toLowerCase();
-                likedPosts = likedPosts.filter((post) => post.user && post.user.name.toLowerCase().includes(searchTerm));
+                likedPosts = likedPosts.filter((post) => {
+                    const authorIsUser = post.actor.user &&
+                        post.actor.user.name.toLowerCase().includes(searchTerm);
+                    const authorIsPersona = post.actor.persona &&
+                        post.actor.persona.displayName.toLowerCase().includes(searchTerm);
+                    return authorIsUser || authorIsPersona;
+                });
             }
             const sanitized = likedPosts.map((post) => {
-                if (post.isAnonymous && post.persona)
-                    return post;
-                return Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+                const { actor } = post, restOfPost = __rest(post, ["actor"]);
+                const author = actor.user
+                    ? {
+                        type: "user",
+                        name: actor.user.name,
+                        profileImg: actor.user.profileImg,
+                    }
+                    : {
+                        type: "persona",
+                        name: actor.persona.displayName,
+                        avatarUrl: actor.persona.avatarUrl,
+                    };
+                return Object.assign(Object.assign({}, restOfPost), { author });
             });
             return res.json((0, serialize_1.listResponse)(sanitized));
         }
@@ -381,7 +430,12 @@ function getMySavedPosts(req, res) {
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const userWithSaves = yield userRepo.findOne({
                 where: { id: user.id },
-                relations: ["savedPosts", "savedPosts.user", "savedPosts.persona"],
+                relations: [
+                    "savedPosts",
+                    "savedPosts.actor",
+                    "savedPosts.actor.user",
+                    "savedPosts.actor.persona",
+                ],
             });
             if (!userWithSaves) {
                 return res.status(404).json({ message: "User not found" });
@@ -389,12 +443,28 @@ function getMySavedPosts(req, res) {
             let savedPosts = userWithSaves.savedPosts || [];
             if (authorName && typeof authorName === "string") {
                 const searchTerm = authorName.toLowerCase();
-                savedPosts = savedPosts.filter((post) => post.user && post.user.name.toLowerCase().includes(searchTerm));
+                savedPosts = savedPosts.filter((post) => {
+                    const authorIsUser = post.actor.user &&
+                        post.actor.user.name.toLowerCase().includes(searchTerm);
+                    const authorIsPersona = post.actor.persona &&
+                        post.actor.persona.displayName.toLowerCase().includes(searchTerm);
+                    return authorIsUser || authorIsPersona;
+                });
             }
             const sanitized = savedPosts.map((post) => {
-                if (post.isAnonymous && post.persona)
-                    return post;
-                return Object.assign(Object.assign({}, post), { user: (0, serialize_1.sanitizeUser)(post.user) });
+                const { actor } = post, restOfPost = __rest(post, ["actor"]);
+                const author = actor.user
+                    ? {
+                        type: "user",
+                        name: actor.user.name,
+                        profileImg: actor.user.profileImg,
+                    }
+                    : {
+                        type: "persona",
+                        name: actor.persona.displayName,
+                        avatarUrl: actor.persona.avatarUrl,
+                    };
+                return Object.assign(Object.assign({}, restOfPost), { author });
             });
             return res.json((0, serialize_1.listResponse)(sanitized));
         }
@@ -416,9 +486,7 @@ function listAllUsers(req, res) {
                 .createQueryBuilder("user")
                 .leftJoinAndSelect("user.actor", "actor")
                 .orderBy("user.name", "ASC")
-                // ❌ ไม่ต้องมี .skip() และ .take() แล้ว
                 .getMany();
-            // กรอง user ที่ login อยู่ปัจจุบันออกจากผลลัพธ์
             const results = users
                 .filter((user) => user.id !== currentUser.id)
                 .map((user) => ({
@@ -428,7 +496,6 @@ function listAllUsers(req, res) {
                 bio: user.bio,
                 actorId: user.actor ? user.actor.id : null,
             }));
-            // ส่งข้อมูลกลับไปเป็น array ตรงๆ
             return res.json(results);
         }
         catch (err) {

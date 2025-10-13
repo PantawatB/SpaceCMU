@@ -55,6 +55,21 @@
       "key": "chatCBId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productWithImageId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productImageUrl",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -1246,6 +1261,72 @@
                   "path": ["api", "products"]
                 }
               }
+            },
+            {
+              "name": "POST Create Product with Image",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Create product with image successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('productWithImageId', responseJson.data ? responseJson.data.product.id : responseJson.id);",
+                      "    pm.collectionVariables.set('productImageUrl', responseJson.data ? responseJson.data.product.imageUrl : responseJson.imageUrl);",
+                      "    ",
+                      "    pm.test('Image URL is present', function () {",
+                      "        pm.expect(responseJson.data.product.imageUrl).to.not.be.null;",
+                      "        pm.expect(responseJson.data.product.imageUrl).to.include('/uploads/');",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Test Product with Image",
+                      "type": "text"
+                    },
+                    {
+                      "key": "description",
+                      "value": "This is a test product with image upload functionality",
+                      "type": "text"
+                    },
+                    {
+                      "key": "price",
+                      "value": "299.99",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "/path/to/your/test-image.png"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/products",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products"]
+                }
+              }
             }
           ]
         },
@@ -1406,6 +1487,34 @@
                   "raw": "{{baseUrl}}/api/products/{{productId}}",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "products", "{{productId}}"]
+                }
+              }
+            },
+            {
+              "name": "GET Access Uploaded Image",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Image accessible', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Content type is image', function () {",
+                      "    pm.expect(pm.response.headers.get('Content-Type')).to.include('image');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}{{productImageUrl}}",
+                  "host": ["{{baseUrl}}{{productImageUrl}}"]
                 }
               }
             }

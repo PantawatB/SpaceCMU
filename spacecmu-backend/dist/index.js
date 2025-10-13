@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
+const path_1 = __importDefault(require("path"));
 const ormconfig_1 = require("./ormconfig");
 const dotenv_1 = __importDefault(require("dotenv"));
 const cors_1 = __importDefault(require("cors"));
@@ -37,10 +38,10 @@ function bootstrap() {
             console.log("Data Source has been initialized!");
             const app = (0, express_1.default)();
             app.use((0, cors_1.default)({
-                origin: "http://localhost:3001", // Frontend รันที่ port 3001
+                origin: "http://localhost:3000", // Frontend รันที่ port 3000
                 credentials: true,
                 allowedHeaders: ["Content-Type", "Authorization"],
-                methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
                 exposedHeaders: ["Authorization"],
             }));
             // Debug: log incoming Authorization header
@@ -49,6 +50,17 @@ function bootstrap() {
                 next();
             });
             app.use(express_1.default.json());
+            // Serve static files from public directory
+            const baseDir = path_1.default.resolve(__dirname, "..");
+            app.use(express_1.default.static(path_1.default.join(baseDir, "public")));
+            app.use("/uploads", express_1.default.static(path_1.default.join(baseDir, "public/uploads")));
+            console.log("📁 Static files configured:");
+            console.log("   - Public root:", path_1.default.join(process.cwd(), "public"));
+            console.log("   - Uploads path:", path_1.default.join(process.cwd(), "public/uploads"));
+            // Serve image test page
+            app.get("/image-test", (req, res) => {
+                res.sendFile(path_1.default.join(__dirname, "..", "image-test.html"));
+            });
             // Mount API routes under /api
             app.use("/api/users", userRoutes_1.default);
             app.use("/api/personas", personaRoutes_1.default);

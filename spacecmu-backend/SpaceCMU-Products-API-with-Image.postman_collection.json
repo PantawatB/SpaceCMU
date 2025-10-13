@@ -1,0 +1,614 @@
+{
+  "info": {
+    "_postman_id": "spacecmu-products-with-image-2025",
+    "name": "SpaceCMU Products API with Image Upload",
+    "description": "Complete test collection for SpaceCMU Products API including image upload functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productWithImageId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productImageUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Setup - Authentication",
+      "item": [
+        {
+          "name": "POST Register User for Testing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Register successful or user exists', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"producttest@cmu.ac.th\",\n  \"password\": \"password123\",\n  \"name\": \"Product Test User\",\n  \"studentId\": \"650610999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "register"]
+            }
+          }
+        },
+        {
+          "name": "POST Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('userToken', responseJson.data.token);",
+                  "    pm.test('Token received', function () {",
+                  "        pm.expect(responseJson.data.token).to.not.be.empty;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"producttest@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛒 Products API Tests",
+      "item": [
+        {
+          "name": "GET All Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get products successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has data array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('data');",
+                  "    pm.expect(responseJson.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Products include images array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    if (responseJson.data.length > 0) {",
+                  "        responseJson.data.forEach(product => {",
+                  "            pm.expect(product).to.have.property('images');",
+                  "            pm.expect(product.images).to.be.an('array');",
+                  "        });",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "GET All Products with Images Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get all products successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('All products have images array structure', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('data');",
+                  "    pm.expect(responseJson.data).to.be.an('array');",
+                  "    ",
+                  "    responseJson.data.forEach(product => {",
+                  "        pm.expect(product).to.have.property('images');",
+                  "        pm.expect(product.images).to.be.an('array');",
+                  "        ",
+                  "        // If product has images, validate structure",
+                  "        product.images.forEach(image => {",
+                  "            pm.expect(image).to.have.property('id');",
+                  "            pm.expect(image).to.have.property('filename');",
+                  "            pm.expect(image).to.have.property('originalName');",
+                  "            pm.expect(image).to.have.property('mimeType');",
+                  "            pm.expect(image).to.have.property('fileSize');",
+                  "            pm.expect(image).to.have.property('publicUrl');",
+                  "            pm.expect(image).to.have.property('isActive');",
+                  "            pm.expect(image).to.have.property('productId');",
+                  "        });",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Products with imageUrl have corresponding images array', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    ",
+                  "    responseJson.data.forEach(product => {",
+                  "        if (product.imageUrl && product.imageUrl.startsWith('/uploads/')) {",
+                  "            pm.expect(product.images).to.have.lengthOf.above(0);",
+                  "            pm.expect(product.images[0].publicUrl).to.equal(product.imageUrl);",
+                  "        }",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Product (JSON only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create product successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('productId', responseJson.data.product.id);",
+                  "    ",
+                  "pm.test('Product created with correct data', function () {",
+                  "        pm.expect(responseJson.data.product.name).to.eql('Test Product without Image');",
+                  "        pm.expect(responseJson.data.product.price).to.eql(199.99);",
+                  "        pm.expect(responseJson.data.product.imageUrl).to.be.null;",
+                  "        pm.expect(responseJson.data.product.images).to.be.an('array').that.is.empty;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Product without Image\",\n  \"description\": \"This is a test product without image upload\",\n  \"price\": 199.99\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Product with Image Upload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create product with image successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('productWithImageId', responseJson.data.product.id);",
+                  "    pm.collectionVariables.set('productImageUrl', responseJson.data.product.imageUrl);",
+                  "    ",
+                  "    pm.test('Product created with image', function () {",
+                  "        pm.expect(responseJson.data.product.name).to.eql('Test Product with Image Upload');",
+                  "        pm.expect(responseJson.data.product.imageUrl).to.not.be.null;",
+                  "        pm.expect(responseJson.data.product.imageUrl).to.include('/uploads/');",
+                  "        pm.expect(responseJson.data.product.images).to.be.an('array').that.is.not.empty;",
+                  "    });",
+                  "    ",
+                  "    pm.test('Image URL format is correct', function () {",
+                  "        pm.expect(responseJson.data.product.imageUrl).to.match(/\\/uploads\\/image-\\d+-\\d+\\.\\w+/);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Image metadata stored in database', function () {",
+                  "        const images = responseJson.data.product.images;",
+                  "        pm.expect(images).to.have.lengthOf(1);",
+                  "        const image = images[0];",
+                  "        pm.expect(image).to.have.property('id');",
+                  "        pm.expect(image).to.have.property('filename');",
+                  "        pm.expect(image).to.have.property('originalName');",
+                  "        pm.expect(image).to.have.property('mimeType');",
+                  "        pm.expect(image).to.have.property('fileSize');",
+                  "        pm.expect(image).to.have.property('filePath');",
+                  "        pm.expect(image).to.have.property('publicUrl');",
+                  "        pm.expect(image).to.have.property('isActive');",
+                  "        pm.expect(image).to.have.property('productId');",
+                  "        pm.expect(image).to.have.property('createdAt');",
+                  "        pm.expect(image).to.have.property('updatedAt');",
+                  "        pm.expect(image.isActive).to.be.true;",
+                  "        pm.expect(image.mimeType).to.include('image');",
+                  "        pm.expect(image.fileSize).to.be.above(0);",
+                  "        pm.expect(image.publicUrl).to.equal(responseJson.data.product.imageUrl);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Test Product with Image Upload",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "This product demonstrates image upload functionality in the API",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "299.99",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/path/to/your/test-image.png",
+                  "description": "Select any image file (png, jpg, jpeg, gif) from your computer"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "GET Product by ID (with Image)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get product by ID successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Product has image URL and metadata', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.data.product.imageUrl).to.not.be.null;",
+                  "    pm.expect(responseJson.data.product.imageUrl).to.include('/uploads/');",
+                  "    pm.expect(responseJson.data.product.images).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Image database record complete and valid', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const images = responseJson.data.product.images;",
+                  "    pm.expect(images).to.have.lengthOf(1);",
+                  "    ",
+                  "    const image = images[0];",
+                  "    // Check all required properties exist",
+                  "    pm.expect(image).to.have.property('id').that.is.a('number');",
+                  "    pm.expect(image).to.have.property('filename').that.is.a('string');",
+                  "    pm.expect(image).to.have.property('originalName').that.is.a('string');",
+                  "    pm.expect(image).to.have.property('mimeType').that.includes('image');",
+                  "    pm.expect(image).to.have.property('fileSize').that.is.a('number').above(0);",
+                  "    pm.expect(image).to.have.property('filePath').that.is.a('string');",
+                  "    pm.expect(image).to.have.property('publicUrl').that.is.a('string');",
+                  "    pm.expect(image).to.have.property('isActive').that.is.true;",
+                  "    pm.expect(image).to.have.property('productId').that.is.a('number');",
+                  "    pm.expect(image).to.have.property('createdAt').that.is.a('string');",
+                  "    pm.expect(image).to.have.property('updatedAt').that.is.a('string');",
+                  "    ",
+                  "    // Verify relationships",
+                  "    pm.expect(image.publicUrl).to.equal(responseJson.data.product.imageUrl);",
+                  "    pm.expect(image.productId).to.equal(responseJson.data.product.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productWithImageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productWithImageId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🖼️ Image Access Tests",
+      "item": [
+        {
+          "name": "GET Product Images Metadata",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get product images metadata successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Product has images with metadata', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const product = responseJson.data.product;",
+                  "    pm.expect(product.images).to.be.an('array').that.is.not.empty;",
+                  "    ",
+                  "    const image = product.images[0];",
+                  "    pm.expect(image).to.have.property('id');",
+                  "    pm.expect(image).to.have.property('filename');",
+                  "    pm.expect(image).to.have.property('originalName');",
+                  "    pm.expect(image).to.have.property('mimeType');",
+                  "    pm.expect(image).to.have.property('fileSize');",
+                  "    pm.expect(image).to.have.property('publicUrl');",
+                  "    pm.expect(image).to.have.property('isActive');",
+                  "    pm.expect(image.isActive).to.be.true;",
+                  "    ",
+                  "    // Update collection variable with the actual image URL from database",
+                  "    pm.collectionVariables.set('productImageUrl', image.publicUrl);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productWithImageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productWithImageId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET Access Uploaded Image from Database URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Image accessible via database URL', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Content type matches database metadata', function () {",
+                  "    const contentType = pm.response.headers.get('Content-Type');",
+                  "    pm.expect(contentType).to.include('image');",
+                  "    // Content-Type should match what we stored in database",
+                  "});",
+                  "",
+                  "pm.test('Image has content and size is valid', function () {",
+                  "    pm.expect(pm.response.responseSize).to.be.above(0);",
+                  "    // File size should match database metadata (if available)",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{productImageUrl}}",
+              "host": ["{{baseUrl}}{{productImageUrl}}"]
+            }
+          }
+        },
+        {
+          "name": "GET Non-existent Image (404 Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Non-existent image returns 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/uploads/non-existent-image.png",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploads", "non-existent-image.png"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧪 Edge Cases & Error Handling",
+      "item": [
+        {
+          "name": "POST Create Product without Auth (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Unauthorized request returns 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Unauthorized Product\",\n  \"price\": 100\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Product Missing Required Fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Missing required fields returns 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions required fields', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.message).to.include('required');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Missing name and price\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

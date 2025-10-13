@@ -12,9 +12,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Post = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
-const Persona_1 = require("./Persona");
 const Report_1 = require("./Report");
 const Comment_1 = require("./Comment");
+const Actor_1 = require("./Actor");
 let Post = class Post {
 };
 exports.Post = Post;
@@ -23,13 +23,9 @@ __decorate([
     __metadata("design:type", String)
 ], Post.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.posts),
-    __metadata("design:type", User_1.User)
-], Post.prototype, "user", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => Persona_1.Persona, { nullable: true }),
-    __metadata("design:type", Object)
-], Post.prototype, "persona", void 0);
+    (0, typeorm_1.ManyToOne)(() => Actor_1.Actor, { eager: true, onDelete: "CASCADE" }),
+    __metadata("design:type", Actor_1.Actor)
+], Post.prototype, "actor", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "text" }),
     __metadata("design:type", String)
@@ -42,10 +38,6 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Post.prototype, "location", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ default: false }),
-    __metadata("design:type", Boolean)
-], Post.prototype, "isAnonymous", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: "enum",
