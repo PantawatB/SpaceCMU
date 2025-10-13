@@ -5,26 +5,32 @@ const auth_1 = require("../middleware/auth");
 const friendController_1 = require("../controllers/friendController");
 const updateLastActive_1 = require("../middleware/updateLastActive");
 const router = (0, express_1.Router)();
-// ทุก route เกี่ยวกับ friend ต้อง login ก่อน
+// Middleware ที่จะทำงานกับทุก Route ในไฟล์นี้
 router.use(auth_1.authenticateToken, updateLastActive_1.updateLastActive);
-// 📌 ส่งคำขอเป็นเพื่อน
+// --- ⚙️ Friend Requests ---
+// ส่งคำขอเป็นเพื่อน (ต้องระบุ fromActorId และ toActorId ใน body)
 // POST /api/friends/request
 router.post("/request", friendController_1.sendFriendRequest);
-// 📌 ยอมรับคำขอเป็นเพื่อน
-// POST /api/friends/accept/:friendId
+// ยกเลิกคำขอเป็นเพื่อนที่ส่งไป
+// DELETE /api/friends/request/:requestId
+router.delete("/request/:requestId", friendController_1.cancelFriendRequest);
+// ดูคำขอเป็นเพื่อนของ Actor ID ที่ระบุ
+// GET /api/friends/requests/:actorId
+router.get("/requests/:actorId", friendController_1.listFriendRequests);
+// ตอบรับคำขอเป็นเพื่อน
+// POST /api/friends/accept/:requestId
 router.post("/accept/:requestId", friendController_1.acceptFriendRequest);
-// 📌 ดูคำขอเป็นเพื่อนทั้งหมด
-router.get("/requests", friendController_1.listFriendRequests);
-// 📌 ปฏิเสธคำขอเป็นเพื่อน
+// ปฏิเสธคำขอเป็นเพื่อน
 // POST /api/friends/reject/:requestId
 router.post("/reject/:requestId", friendController_1.rejectFriendRequest);
-// 📌 ลบเพื่อน
-// DELETE /api/friends/:friendId
-router.delete("/:friendId", friendController_1.removeFriend);
-// 📌 ดูเพื่อนทั้งหมด
-// GET /api/friends
-router.get("/", friendController_1.listFriends);
-// 📌 ดูสถานะของเพื่อน
-// GET /api/friends/statuses
-router.get("/statuses", friendController_1.getFriendStatuses);
+// --- 🤝 Friends ---
+// ดึงรายชื่อเพื่อนของ Actor ที่ระบุ
+// GET /api/friends/:actorId
+router.get("/:actorId", friendController_1.listFriends);
+// ลบเพื่อน
+// DELETE /api/friends/:actorId/friends/:friendActorId
+router.delete("/:actorId/friends/:friendActorId", friendController_1.removeFriend);
+// ดึงสถานะออนไลน์ของเพื่อนของ Actor ที่ระบุ
+// GET /api/friends/:actorId/statuses
+router.get("/:actorId/statuses", friendController_1.getFriendStatuses);
 exports.default = router;

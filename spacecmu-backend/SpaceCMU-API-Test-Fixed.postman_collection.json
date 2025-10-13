@@ -1,0 +1,1417 @@
+{
+  "info": {
+    "_postman_id": "spacecmu-api-fixed-2025",
+    "name": "SpaceCMU Backend API (Fixed)",
+    "description": "Fixed API collection for SpaceCMU backend with correct endpoints and port",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "userAToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userCToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userAId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userBId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userCId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatABId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatCAId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatCBId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "POST Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Register successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@cmu.ac.th\",\n  \"password\": \"password123\",\n  \"name\": \"Test User\",\n  \"studentId\": \"650610001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "register"]
+            }
+          }
+        },
+        {
+          "name": "POST Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('userToken', responseJson.data ? responseJson.data.token : responseJson.token);",
+                  "    pm.collectionVariables.set('userId', responseJson.data ? responseJson.data.user.id : (responseJson.user && responseJson.user.id));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Actor Management",
+      "item": [
+        {
+          "name": "GET Get Current User Actor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get actor successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('actorId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/actor",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me", "actor"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Chat API",
+      "item": [
+        {
+          "name": "GET Get My Chats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get chats successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Direct Chat",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create chat successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('chatId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otherUserId\": \"{{targetUserId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/direct",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "direct"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Chat with Product Seller",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Create product chat successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/product",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "product"]
+            }
+          }
+        },
+        {
+          "name": "GET Get Chat Messages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get messages successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "POST Send Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Send message successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello! This is a test message\",\n  \"type\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chats", "{{chatId}}", "messages"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Multi-User Chat Testing",
+      "item": [
+        {
+          "name": "👤 User Registration & Login",
+          "item": [
+            {
+              "name": "POST Register User A",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Register User A successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('userAId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"usera@cmu.ac.th\",\n  \"password\": \"password123\",\n  \"name\": \"User A\",\n  \"studentId\": \"650610001\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "register"]
+                }
+              }
+            },
+            {
+              "name": "POST Login User A",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Login User A successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('userAToken', responseJson.data ? responseJson.data.token : responseJson.token);",
+                      "    pm.collectionVariables.set('userAId', responseJson.data ? responseJson.data.user.id : (responseJson.user && responseJson.user.id));",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"usera@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "login"]
+                }
+              }
+            },
+            {
+              "name": "POST Register User B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Register User B successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('userBId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"userb@cmu.ac.th\",\n  \"password\": \"password123\",\n  \"name\": \"User B\",\n  \"studentId\": \"650610002\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "register"]
+                }
+              }
+            },
+            {
+              "name": "POST Login User B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Login successful and token received\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set(\"user2Token\", responseJson.data ? responseJson.data.token : responseJson.token);",
+                      "    pm.collectionVariables.set(\"user2Id\", responseJson.data ? responseJson.data.user.id : (responseJson.user && responseJson.user.id));",
+                      "    console.log('User B Token & ID stored.');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"userb@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "login"]
+                }
+              }
+            },
+            {
+              "name": "POST Register User C",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Register User C successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('userCId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"userc@cmu.ac.th\",\n  \"password\": \"password123\",\n  \"name\": \"User C\",\n  \"studentId\": \"650610003\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "register"]
+                }
+              }
+            },
+            {
+              "name": "POST Login User C",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Login User C successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('userCToken', responseJson.data ? responseJson.data.token : responseJson.token);",
+                      "    pm.collectionVariables.set('userCId', responseJson.data ? responseJson.data.user.id : (responseJson.user && responseJson.user.id));",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"userc@cmu.ac.th\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "login"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "💬 Chat Creation",
+          "item": [
+            {
+              "name": "POST A -> Create Chat with B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('User A creates chat with B successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('chatABId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otherUserId\": \"{{userBId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/direct",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "direct"]
+                }
+              }
+            },
+            {
+              "name": "POST C -> Create Chat with A",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('User C creates chat with A successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('chatCAId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otherUserId\": \"{{userAId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/direct",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "direct"]
+                }
+              }
+            },
+            {
+              "name": "POST C -> Create Chat with B",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('User C creates chat with B successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('chatCBId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otherUserId\": \"{{userBId}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/direct",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "direct"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "📱 Multi-User Conversations",
+          "item": [
+            {
+              "name": "POST A -> B: สวัสดี เก่าเกินที่จำได้แล้ว?",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Message sent successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"สวัสดี เก่าเกินที่จำได้แล้ว?\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "POST B -> A: จอนนี่",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Message sent successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userBToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"จอนนี่\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "POST C -> A: เชิญเข้า study group",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Message sent successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"เชิญเข้า study group\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatCAId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatCAId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "POST C -> B: เชิญเข้า study session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Message sent successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"เชิญเข้า study session\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatCBId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatCBId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "POST A -> B: จองคิวกินอาหารกันมั้ย",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Message sent successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"จองคิวกินอาหารกันมั้ย\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "POST B -> A: จองกันได้เลย",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Message sent successfully', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userBToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"จองกันได้เลย\",\n  \"type\": \"text\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatABId}}", "messages"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "📋 View Chat Status",
+          "item": [
+            {
+              "name": "GET A: View My Chats",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get chats successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats"]
+                }
+              }
+            },
+            {
+              "name": "GET B: View My Chats",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get chats successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userBToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats"]
+                }
+              }
+            },
+            {
+              "name": "GET C: View My Chats",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get chats successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats"]
+                }
+              }
+            },
+            {
+              "name": "GET View A-B Chat Messages",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get messages successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userAToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatABId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatABId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "GET View C-A Chat Messages",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get messages successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatCAId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatCAId}}", "messages"]
+                }
+              }
+            },
+            {
+              "name": "GET View C-B Chat Messages",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get messages successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userCToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/chats/{{chatCBId}}/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "chats", "{{chatCBId}}", "messages"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🛒📱 Market API (Products)",
+      "item": [
+        {
+          "name": "🔒 Protected Endpoints (Require Auth)",
+          "item": [
+            {
+              "name": "GET Get All Products",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get products successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "🔐 Protected Endpoints",
+          "item": [
+            {
+              "name": "POST Create Product",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Create product successful', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 201) {",
+                      "    const responseJson = pm.response.json();",
+                      "    pm.collectionVariables.set('productId', responseJson.data ? responseJson.data.id : responseJson.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Test Product\",\n  \"description\": \"This is a test product for API testing\",\n  \"price\": 199.99,\n  \"category\": \"Electronics\",\n  \"condition\": \"New\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/products",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Product Actions",
+          "item": [
+            {
+              "name": "GET Get Product by ID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Get product by id successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "  const responseJson = pm.response.json();",
+                      "  pm.collectionVariables.set('productSellerId', responseJson.data ? responseJson.data.seller.id : (responseJson.seller && responseJson.seller.id));",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/{{productId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products", "{{productId}}"]
+                }
+              }
+            },
+            {
+              "name": "PUT Update Product Image",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Update image successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{userToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"imageUrl\": \"https://example.com/image.jpg\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/{{productId}}/image",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products", "{{productId}}", "image"]
+                }
+              }
+            },
+            {
+              "name": "PATCH Update Product Status - Sold",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status updated', function () { pm.response.to.have.status(200); });"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{userToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"sold\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/{{productId}}/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products", "{{productId}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "PATCH Update Product Status - Active",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status updated', function () { pm.response.to.have.status(200); });"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{userToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"active\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/{{productId}}/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products", "{{productId}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "DEL Delete Product",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Delete product successful', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{userToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/{{productId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "products", "{{productId}}"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

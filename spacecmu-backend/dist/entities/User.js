@@ -13,11 +13,10 @@ exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const Persona_1 = require("./Persona");
 const Post_1 = require("./Post");
-const Friend_1 = require("./Friend");
 const Report_1 = require("./Report");
 const Comment_1 = require("./Comment");
-const FriendRequest_1 = require("./FriendRequest");
 const Message_1 = require("./Message");
+const Actor_1 = require("./Actor");
 /**
  * The User entity represents a single CMU student in the system. A user has
  * exactly one account bound to a student ID and CMU email. Each user may
@@ -49,10 +48,22 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "name", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "profileImg", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "bannerImg", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: "text", nullable: true }) // ใช้ type: "text" สำหรับข้อความยาวๆ
     ,
     __metadata("design:type", String)
 ], User.prototype, "bio", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "title", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
@@ -86,27 +97,6 @@ __decorate([
     __metadata("design:type", Array)
 ], User.prototype, "posts", void 0);
 __decorate([
-    (0, typeorm_1.OneToMany)(() => Friend_1.Friend, (friend) => friend.user1),
-    __metadata("design:type", Array)
-], User.prototype, "friendships1", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => Friend_1.Friend, (friend) => friend.user2),
-    __metadata("design:type", Array)
-], User.prototype, "friendships2", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => FriendRequest_1.FriendRequest, (fr) => fr.fromUser),
-    __metadata("design:type", Array)
-], User.prototype, "sentFriendRequests", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => FriendRequest_1.FriendRequest, (fr) => fr.toUser),
-    __metadata("design:type", Array)
-], User.prototype, "receivedFriendRequests", void 0);
-__decorate([
-    (0, typeorm_1.ManyToMany)(() => User, (user) => user.friends),
-    (0, typeorm_1.JoinTable)({ name: "user_friends" }),
-    __metadata("design:type", Array)
-], User.prototype, "friends", void 0);
-__decorate([
     (0, typeorm_1.OneToMany)(() => Report_1.Report, (report) => report.reportingUser),
     __metadata("design:type", Array)
 ], User.prototype, "reports", void 0);
@@ -134,6 +124,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" }),
     __metadata("design:type", Date)
 ], User.prototype, "lastActiveAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => Actor_1.Actor, (actor) => actor.user, { cascade: true }),
+    __metadata("design:type", Actor_1.Actor)
+], User.prototype, "actor", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)()
 ], User);

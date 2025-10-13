@@ -10,8 +10,8 @@ router.use(auth_1.authenticateToken);
 // POST /api/personas
 router.post("/", personaController_1.createPersona);
 // 📌 แก้ persona
-// PUT /api/personas/:id
-router.put("/:id", personaController_1.updatePersona);
+// PUT /api/personas/me
+router.put("/me", personaController_1.updatePersona);
 // 📌 ลบ persona
 // DELETE /api/personas/:id
 router.delete("/:id", personaController_1.deletePersona);

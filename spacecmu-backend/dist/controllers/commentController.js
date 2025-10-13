@@ -10,11 +10,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createCommentOnPost = createCommentOnPost;
+exports.updateComment = updateComment;
 exports.listCommentsForPost = listCommentsForPost;
 exports.deleteComment = deleteComment;
 const ormconfig_1 = require("../ormconfig");
 const Post_1 = require("../entities/Post");
 const Comment_1 = require("../entities/Comment");
+const serialize_1 = require("../utils/serialize");
 /**
  * 📌 สร้างคอมเมนต์ใหม่ใต้โพสต์
  */
@@ -39,11 +41,51 @@ function createCommentOnPost(req, res) {
                 post,
             });
             yield commentRepo.save(newComment);
-            return res.status(201).json(newComment);
+            const toReturn = Object.assign(Object.assign({}, newComment), { user: (0, serialize_1.sanitizeUser)(newComment.user) });
+            return res
+                .status(201)
+                .json((0, serialize_1.createResponse)("Comment created", { comment: toReturn }));
         }
         catch (err) {
             console.error("createCommentOnPost error:", err);
             return res.status(500).json({ message: "Failed to create comment" });
+        }
+    });
+}
+/**
+ * 📌 แก้ไขคอมเมนต์
+ */
+function updateComment(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const { commentId } = req.params;
+            const { content } = req.body;
+            const user = req.user;
+            if (!user)
+                return res.status(401).json({ message: "Unauthorized" });
+            if (!content)
+                return res.status(400).json({ message: "Content is required" });
+            const commentRepo = ormconfig_1.AppDataSource.getRepository(Comment_1.Comment);
+            const comment = yield commentRepo.findOne({
+                where: { id: commentId },
+                relations: ["user"],
+            });
+            if (!comment) {
+                return res.status(404).json({ message: "Comment not found" });
+            }
+            // อนุญาตให้แก้ไขได้เฉพาะเจ้าของคอมเมนต์เท่านั้น
+            if (comment.user.id !== user.id) {
+                return res
+                    .status(403)
+                    .json({ message: "Not authorized to edit this comment" });
+            }
+            comment.content = content;
+            yield commentRepo.save(comment);
+            return res.json(comment);
+        }
+        catch (err) {
+            console.error("updateComment error:", err);
+            return res.status(500).json({ message: "Failed to update comment" });
         }
     });
 }
@@ -60,7 +102,8 @@ function listCommentsForPost(req, res) {
                 relations: ["user"],
                 order: { createdAt: "ASC" },
             });
-            return res.json(comments);
+            const sanitized = comments.map((c) => (Object.assign(Object.assign({}, c), { user: (0, serialize_1.sanitizeUser)(c.user) })));
+            return res.json((0, serialize_1.listResponse)(sanitized));
         }
         catch (err) {
             console.error("listCommentsForPost error:", err);
@@ -91,7 +134,7 @@ function deleteComment(req, res) {
                     .json({ message: "Not authorized to delete this comment" });
             }
             yield commentRepo.remove(comment);
-            return res.status(200).json({ message: "Comment deleted" });
+            return res.status(200).json((0, serialize_1.createResponse)("Comment deleted", null));
         }
         catch (err) {
             console.error("deleteComment error:", err);

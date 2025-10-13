@@ -83,7 +83,7 @@ function createPersona(req, res) {
             const user = req.user;
             if (!user)
                 return res.status(401).json({ message: "Unauthorized" });
-            const { displayName, avatarUrl } = req.body;
+            const { displayName, avatarUrl, bio } = req.body;
             if (!displayName) {
                 return res.status(400).json({ message: "displayName is required" });
             }
@@ -96,6 +96,7 @@ function createPersona(req, res) {
             const persona = personaRepo.create({
                 displayName,
                 avatarUrl,
+                bio,
                 changeCount: 1,
                 lastChangedAt: new Date(),
                 user,
@@ -122,13 +123,18 @@ function updatePersona(req, res) {
             if (!user || !user.persona) {
                 return res.status(404).json({ message: "Persona not found" });
             }
-            const { displayName, avatarUrl } = req.body;
+            const { displayName, avatarUrl, bio, bannerImg } = req.body;
             const personaRepo = ormconfig_1.AppDataSource.getRepository(Persona_1.Persona);
             const persona = user.persona;
             if (displayName)
                 persona.displayName = displayName;
             if (avatarUrl)
                 persona.avatarUrl = avatarUrl;
+            if (typeof bio !== "undefined")
+                persona.bio = bio;
+            if (typeof bannerImg !== "undefined") {
+                persona.bannerImg = bannerImg;
+            }
             persona.changeCount += 1;
             persona.lastChangedAt = new Date();
             yield personaRepo.save(persona);
