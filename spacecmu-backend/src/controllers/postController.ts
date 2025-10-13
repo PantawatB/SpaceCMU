@@ -3,6 +3,7 @@ import { AppDataSource } from "../ormconfig";
 import { In } from "typeorm";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
+import { Actor } from "../entities/Actor";
 import { Persona } from "../entities/Persona";
 import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 
@@ -194,22 +195,47 @@ export async function getPost(req: Request, res: Response) {
 }
 
 /**
- * 📌 Feed สาธารณะ (แบบมี Pagination)
+ * 📌 Feed สาธารณะ (แบบ Cursor-based Pagination)
  */
 export async function getPublicFeed(req: Request, res: Response) {
   try {
-    const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
-    const skip = (page - 1) * limit;
+    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
+    const lastId = req.query.lastId as string | undefined;
 
     const postRepo = AppDataSource.getRepository(Post);
-    const [posts, totalItems] = await postRepo.findAndCount({
-      where: { visibility: "public" },
-      relations: ["user", "persona"],
-      order: { createdAt: "DESC" },
-      take: limit,
-      skip: skip,
-    });
+    const qb = postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.user", "user")
+      .leftJoinAndSelect("post.persona", "persona")
+      .where("post.visibility = :visibility", { visibility: "public" });
+
+    if (lastCreatedAt && lastId) {
+      qb.andWhere(
+        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
+        {
+          lastCreatedAt: new Date(lastCreatedAt),
+          lastId,
+        }
+      );
+    }
+
+    qb.orderBy("post.createdAt", "DESC").addOrderBy("post.id", "DESC");
+
+    qb.take(limit + 1);
+
+    const posts = await qb.getMany();
+    const hasNextPage = posts.length > limit;
+    if (hasNextPage) {
+      posts.pop();
+    }
+    const nextCursor =
+      posts.length > 0
+        ? {
+            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
+            lastId: posts[posts.length - 1].id,
+          }
+        : null;
 
     const items = posts.map((post) => {
       const author =
@@ -218,25 +244,16 @@ export async function getPublicFeed(req: Request, res: Response) {
               name: post.persona.displayName,
               avatarUrl: post.persona.avatarUrl,
             }
-          : { name: post.user.name };
+          : { name: post.user.name, profileImg: post.user.profileImg }; // เพิ่ม profileImg
       const { user, persona, ...restOfPost } = post;
       return { ...restOfPost, author };
     });
 
-    const totalPages = Math.ceil(totalItems / limit);
-
-    return res.json(
-      createResponse("Public feed fetched", {
-        items: items,
-        meta: {
-          totalItems,
-          itemCount: items.length,
-          itemsPerPage: limit,
-          totalPages,
-          currentPage: page,
-        },
-      })
-    );
+    return res.json({
+      items,
+      nextCursor,
+      hasNextPage,
+    });
   } catch (err) {
     console.error("getPublicFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch public feed" });
@@ -244,7 +261,7 @@ export async function getPublicFeed(req: Request, res: Response) {
 }
 
 /**
- * 📌 Feed เพื่อน (แบบมี Pagination)
+ * 📌 Feed เพื่อน (แบบ Cursor-based Pagination)
  */
 export async function getFriendFeed(
   req: Request & { user?: User },
@@ -254,24 +271,59 @@ export async function getFriendFeed(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
-    const skip = (page - 1) * limit;
+    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
+    const lastId = req.query.lastId as string | undefined;
 
-    const friendIds =
-      user.actor && user.actor.friends
-        ? user.actor.friends.map((f) => f.id)
-        : [];
-    const ids = [...friendIds, user.id];
+    const friendActorIds = user.actor?.friends?.map((f) => f.id) || [];
+
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const friendActors = await actorRepo.find({
+      where: { id: In(friendActorIds) },
+      relations: ["user"],
+    });
+    const friendUserIds = friendActors
+      .map((actor) => actor.user?.id)
+      .filter(Boolean) as string[];
+
+    const ids = [...friendUserIds, user.id];
 
     const postRepo = AppDataSource.getRepository(Post);
-    const [posts, totalItems] = await postRepo.findAndCount({
-      where: { user: { id: In(ids) }, visibility: In(["public", "friends"]) },
-      relations: ["user", "persona"],
-      order: { createdAt: "DESC" },
-      take: limit,
-      skip: skip,
-    });
+    const qb = postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.user", "user")
+      .leftJoinAndSelect("post.persona", "persona")
+      .where("user.id IN (:...ids)", { ids })
+      .andWhere("post.visibility IN (:...vis)", { vis: ["public", "friends"] });
+
+    if (lastCreatedAt && lastId) {
+      qb.andWhere(
+        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
+        {
+          lastCreatedAt: new Date(lastCreatedAt),
+          lastId,
+        }
+      );
+    }
+
+    qb.orderBy("post.createdAt", "DESC")
+      .addOrderBy("post.id", "DESC")
+      .take(limit + 1);
+
+    const posts = await qb.getMany();
+
+    const hasNextPage = posts.length > limit;
+    if (hasNextPage) {
+      posts.pop();
+    }
+
+    const nextCursor =
+      posts.length > 0
+        ? {
+            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
+            lastId: posts[posts.length - 1].id,
+          }
+        : null;
 
     const items = posts.map((post) => {
       const author =
@@ -280,25 +332,16 @@ export async function getFriendFeed(
               name: post.persona.displayName,
               avatarUrl: post.persona.avatarUrl,
             }
-          : { name: post.user.name };
+          : { name: post.user.name, profileImg: post.user.profileImg };
       const { user, persona, ...restOfPost } = post;
       return { ...restOfPost, author };
     });
 
-    const totalPages = Math.ceil(totalItems / limit);
-
-    return res.json(
-      createResponse("Friend feed fetched", {
-        items: items,
-        meta: {
-          totalItems,
-          itemCount: items.length,
-          itemsPerPage: limit,
-          totalPages,
-          currentPage: page,
-        },
-      })
-    );
+    return res.json({
+      items,
+      nextCursor,
+      hasNextPage,
+    });
   } catch (err) {
     console.error("getFriendFeed error:", err);
     return res.status(500).json({ message: "Failed to fetch friend feed" });
