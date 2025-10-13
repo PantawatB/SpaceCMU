@@ -8,9 +8,9 @@ import {
   JoinTable,
 } from "typeorm";
 import { User } from "./User";
-import { Persona } from "./Persona";
 import { Report } from "./Report";
 import { Comment } from "./Comment";
+import { Actor } from "./Actor";
 
 @Entity()
 export class Post {
@@ -18,42 +18,26 @@ export class Post {
   id!: string;
 
   /**
-   * The user who authored the post. Even for anonymous posts the underlying
-   * user is always stored to allow accountability.
+   * The actor who authored the post. This can be either a User's main
+   * actor profile or their Persona's actor profile.
    */
-  @ManyToOne(() => User, (user) => user.posts)
-  user!: User;
-
-  /**
-   * The persona used to post anonymously. Null when the post is published as
-   * the real user. Only one of persona or userDisplayName/avatar is ever used.
-   */
-  @ManyToOne(() => Persona, { nullable: true })
-  persona?: Persona | null;
+  @ManyToOne(() => Actor, { eager: true, onDelete: "CASCADE" })
+  actor!: Actor;
 
   @Column({ type: "text" })
   content!: string;
 
   /**
-   * Optional URL of an image attached to the post. In a complete system the
-   * image would be uploaded to an object storage service and its URL saved.
+   * Optional URL of an image attached to the post.
    */
   @Column({ nullable: true })
   imageUrl?: string;
 
   /**
-   * 👇👇 เพิ่ม field นี้
    * Optional location string for the post.
    */
   @Column({ nullable: true })
   location?: string;
-
-  /**
-   * Whether the post is anonymous. This flag helps quickly identify if a post
-   * should display persona details on the client side.
-   */
-  @Column({ default: false })
-  isAnonymous!: boolean;
 
   @Column({
     type: "enum",

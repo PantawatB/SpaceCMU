@@ -101,12 +101,6 @@ export class User {
   persona?: Persona;
 
   /**
-   * Posts authored by the user (both anonymous and real).
-   */
-  @OneToMany(() => Post, (post) => post.user)
-  posts!: Post[];
-
-  /**
    * Reports created by this user.
    */
   @OneToMany(() => Report, (report) => report.reportingUser)

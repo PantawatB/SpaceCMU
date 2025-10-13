@@ -4,11 +4,10 @@ import { In } from "typeorm";
 import { Post } from "../entities/Post";
 import { User } from "../entities/User";
 import { Actor } from "../entities/Actor";
-import { Persona } from "../entities/Persona";
-import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
+import { createResponse } from "../utils/serialize";
 
 /**
- * 📌 สร้างโพสต์ใหม่
+ * 📌 สร้างโพสต์ใหม่ (เวอร์ชันใหม่ อ้างอิงจาก Actor)
  */
 export async function createPost(
   req: Request & { user?: User },
@@ -30,42 +29,50 @@ export async function createPost(
     const vis: "public" | "friends" =
       visibility === "friends" ? "friends" : "public";
 
-    let persona: Persona | null = null;
+    let authorActor: Actor;
+
     if (isAnonymous) {
-      if (!user.persona) {
+      if (!user.persona || !user.persona.actor) {
         return res.status(400).json({
-          message: "You must create a persona before posting anonymously",
+          message: "You must have a persona to post anonymously",
         });
       }
-
-      const friendCount =
-        user.actor && user.actor.friends ? user.actor.friends.length : 0;
+      const friendCount = user.actor?.friends?.length || 0;
       const MIN_FRIENDS_TO_POST_ANON = 10;
-
       if (friendCount < MIN_FRIENDS_TO_POST_ANON) {
         return res.status(403).json({
           message: `You need at least ${MIN_FRIENDS_TO_POST_ANON} friends to post anonymously`,
         });
       }
-
-      persona = user.persona;
+      authorActor = user.persona.actor;
+    } else {
+      if (!user.actor)
+        return res
+          .status(400)
+          .json({ message: "User actor profile not found" });
+      authorActor = user.actor;
     }
 
     const postRepo = AppDataSource.getRepository(Post);
     const post = postRepo.create({
-      user,
-      persona,
+      actor: authorActor,
       content,
       imageUrl,
-      isAnonymous: !!isAnonymous,
       visibility: vis,
       location,
     });
 
     await postRepo.save(post);
 
-    // sanitize author before returning
-    const postToReturn = { ...post, user: sanitizeUser(post.user) };
+    const postToReturn = {
+      ...post,
+      actor: {
+        id: post.actor.id,
+        type: post.actor.persona ? "persona" : "user",
+        name: post.actor.persona ? post.actor.persona.displayName : user.name,
+      },
+    };
+
     return res
       .status(201)
       .json(createResponse("Post created", { post: postToReturn }));
@@ -90,11 +97,16 @@ export async function updatePost(
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
       where: { id: postId },
-      relations: ["user"],
+      relations: ["actor"],
     });
 
     if (!post) return res.status(404).json({ message: "Post not found" });
-    if (!user || post.user.id !== user.id) {
+
+    const isOwner =
+      (user?.actor && post.actor.id === user.actor.id) ||
+      (user?.persona?.actor && post.actor.id === user.persona.actor.id);
+
+    if (!isOwner) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -106,8 +118,7 @@ export async function updatePost(
     }
 
     await postRepo.save(post);
-    const postToReturn = { ...post, user: sanitizeUser((post as any).user) };
-    return res.json(createResponse("Post updated", { post: postToReturn }));
+    return res.json(createResponse("Post updated", { post }));
   } catch (err) {
     console.error("updatePost error:", err);
     return res.status(500).json({ message: "Failed to update post" });
@@ -128,11 +139,16 @@ export async function deletePost(
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
       where: { id: postId },
-      relations: ["user"],
+      relations: ["actor"],
     });
 
     if (!post) return res.status(404).json({ message: "Post not found" });
-    if (!user || post.user.id !== user.id) {
+
+    const isOwner =
+      (user?.actor && post.actor.id === user.actor.id) ||
+      (user?.persona?.actor && post.actor.id === user.persona.actor.id);
+
+    if (!isOwner) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -151,16 +167,12 @@ export async function listPosts(req: Request, res: Response) {
   try {
     const postRepo = AppDataSource.getRepository(Post);
     const posts = await postRepo.find({
-      relations: ["user", "persona"],
+      relations: ["actor", "actor.user", "actor.persona"],
       order: { createdAt: "DESC" },
       take: 50,
     });
-    // sanitize user for each post unless anonymous
-    const sanitized = posts.map((p) => {
-      if (p.isAnonymous && p.persona) return p;
-      return { ...p, user: sanitizeUser(p.user) };
-    });
-    return res.json(listResponse(sanitized));
+
+    return res.json({ data: posts });
   } catch (err) {
     console.error("listPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch posts" });
@@ -168,26 +180,21 @@ export async function listPosts(req: Request, res: Response) {
 }
 
 /**
- * 📌 ดึงโพสต์เดียว (frontend เรียกใช้ getPost)
+ * 📌 ดึงโพสต์เดียว
  */
 export async function getPost(req: Request, res: Response) {
   try {
-    const { postId } = req.params;
+    const { id } = req.params;
     const postRepo = AppDataSource.getRepository(Post);
 
     const post = await postRepo.findOne({
-      where: { id: postId },
-      relations: ["user", "persona"],
+      where: { id },
+      relations: ["actor", "actor.user", "actor.persona"],
     });
 
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    const postToReturn = {
-      ...post,
-      user:
-        post.isAnonymous && post.persona ? undefined : sanitizeUser(post.user),
-    };
-    return res.json(createResponse("Post fetched", { post: postToReturn }));
+    return res.json(createResponse("Post fetched", { post }));
   } catch (err) {
     console.error("getPost error:", err);
     return res.status(500).json({ message: "Failed to fetch post" });
@@ -206,95 +213,10 @@ export async function getPublicFeed(req: Request, res: Response) {
     const postRepo = AppDataSource.getRepository(Post);
     const qb = postRepo
       .createQueryBuilder("post")
-      .leftJoinAndSelect("post.user", "user")
-      .leftJoinAndSelect("post.persona", "persona")
+      .leftJoinAndSelect("post.actor", "actor")
+      .leftJoinAndSelect("actor.user", "user")
+      .leftJoinAndSelect("actor.persona", "persona")
       .where("post.visibility = :visibility", { visibility: "public" });
-
-    if (lastCreatedAt && lastId) {
-      qb.andWhere(
-        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
-        {
-          lastCreatedAt: new Date(lastCreatedAt),
-          lastId,
-        }
-      );
-    }
-
-    qb.orderBy("post.createdAt", "DESC").addOrderBy("post.id", "DESC");
-
-    qb.take(limit + 1);
-
-    const posts = await qb.getMany();
-    const hasNextPage = posts.length > limit;
-    if (hasNextPage) {
-      posts.pop();
-    }
-    const nextCursor =
-      posts.length > 0
-        ? {
-            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
-            lastId: posts[posts.length - 1].id,
-          }
-        : null;
-
-    const items = posts.map((post) => {
-      const author =
-        post.isAnonymous && post.persona
-          ? {
-              name: post.persona.displayName,
-              avatarUrl: post.persona.avatarUrl,
-            }
-          : { name: post.user.name, profileImg: post.user.profileImg }; // เพิ่ม profileImg
-      const { user, persona, ...restOfPost } = post;
-      return { ...restOfPost, author };
-    });
-
-    return res.json({
-      items,
-      nextCursor,
-      hasNextPage,
-    });
-  } catch (err) {
-    console.error("getPublicFeed error:", err);
-    return res.status(500).json({ message: "Failed to fetch public feed" });
-  }
-}
-
-/**
- * 📌 Feed เพื่อน (แบบ Cursor-based Pagination)
- */
-export async function getFriendFeed(
-  req: Request & { user?: User },
-  res: Response
-) {
-  try {
-    const user = req.user;
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    const limit = parseInt(req.query.limit as string) || 20;
-    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
-    const lastId = req.query.lastId as string | undefined;
-
-    const friendActorIds = user.actor?.friends?.map((f) => f.id) || [];
-
-    const actorRepo = AppDataSource.getRepository(Actor);
-    const friendActors = await actorRepo.find({
-      where: { id: In(friendActorIds) },
-      relations: ["user"],
-    });
-    const friendUserIds = friendActors
-      .map((actor) => actor.user?.id)
-      .filter(Boolean) as string[];
-
-    const ids = [...friendUserIds, user.id];
-
-    const postRepo = AppDataSource.getRepository(Post);
-    const qb = postRepo
-      .createQueryBuilder("post")
-      .leftJoinAndSelect("post.user", "user")
-      .leftJoinAndSelect("post.persona", "persona")
-      .where("user.id IN (:...ids)", { ids })
-      .andWhere("post.visibility IN (:...vis)", { vis: ["public", "friends"] });
 
     if (lastCreatedAt && lastId) {
       qb.andWhere(
@@ -326,15 +248,114 @@ export async function getFriendFeed(
         : null;
 
     const items = posts.map((post) => {
-      const author =
-        post.isAnonymous && post.persona
-          ? {
-              name: post.persona.displayName,
-              avatarUrl: post.persona.avatarUrl,
-            }
-          : { name: post.user.name, profileImg: post.user.profileImg };
-      const { user, persona, ...restOfPost } = post;
-      return { ...restOfPost, author };
+      const author = post.actor.persona
+        ? {
+            name: post.actor.persona.displayName,
+            avatarUrl: post.actor.persona.avatarUrl,
+          }
+        : {
+            name: post.actor.user!.name,
+            profileImg: post.actor.user!.profileImg,
+          };
+
+      const { actor, ...restOfPost } = post;
+      return { ...restOfPost, author, actorId: actor.id };
+    });
+
+    return res.json({
+      items,
+      nextCursor,
+      hasNextPage,
+    });
+  } catch (err) {
+    console.error("getPublicFeed error:", err);
+    return res.status(500).json({ message: "Failed to fetch public feed" });
+  }
+}
+
+/**
+ * 📌 Feed เพื่อน (แบบ Cursor-based Pagination)
+ */
+export async function getFriendFeed(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user || !user.actor)
+      return res
+        .status(401)
+        .json({ message: "Unauthorized or user actor not found" });
+
+    const limit = parseInt(req.query.limit as string) || 20;
+    const lastCreatedAt = req.query.lastCreatedAt as string | undefined;
+    const lastId = req.query.lastId as string | undefined;
+
+    const myActorIds = [user.actor.id];
+    if (user.persona?.actor) {
+      myActorIds.push(user.persona.actor.id);
+    }
+    const friendActorIds = user.actor.friends?.map((f) => f.id) || [];
+    const visibleActorIds = [...myActorIds, ...friendActorIds];
+
+    if (visibleActorIds.length === 0) {
+      return res.json({ items: [], nextCursor: null, hasNextPage: false });
+    }
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const qb = postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "actor")
+      .leftJoinAndSelect("actor.user", "user")
+      .leftJoinAndSelect("actor.persona", "persona")
+      .where("actor.id IN (:...visibleActorIds)", { visibleActorIds })
+      .andWhere(
+        " (post.visibility = 'public' OR (post.visibility = 'friends' AND actor.id IN (:...myActorIds))) ",
+        { myActorIds: [...myActorIds, ...friendActorIds] } // Friends can see friends posts, I can see my own friends posts
+      );
+
+    if (lastCreatedAt && lastId) {
+      qb.andWhere(
+        "(post.createdAt < :lastCreatedAt OR (post.createdAt = :lastCreatedAt AND post.id < :lastId))",
+        {
+          lastCreatedAt: new Date(lastCreatedAt),
+          lastId,
+        }
+      );
+    }
+
+    qb.orderBy("post.createdAt", "DESC")
+      .addOrderBy("post.id", "DESC")
+      .take(limit + 1);
+
+    const posts = await qb.getMany();
+
+    const hasNextPage = posts.length > limit;
+    if (hasNextPage) {
+      posts.pop();
+    }
+
+    const nextCursor =
+      posts.length > 0
+        ? {
+            lastCreatedAt: posts[posts.length - 1].createdAt.toISOString(),
+            lastId: posts[posts.length - 1].id,
+          }
+        : null;
+
+    const items = posts.map((post) => {
+      const author = post.actor.persona
+        ? {
+            name: post.actor.persona.displayName,
+            avatarUrl: post.actor.persona.avatarUrl,
+          }
+        : {
+            name: post.actor.user!.name,
+            profileImg: post.actor.user!.profileImg,
+          };
+
+      const { actor, ...restOfPost } = post;
+      return { ...restOfPost, author, actorId: actor.id };
     });
 
     return res.json({
@@ -349,38 +370,11 @@ export async function getFriendFeed(
 }
 
 /**
- * 📌 ดึงโพสต์ตาม ID
- */
-export async function getPostById(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const postRepo = AppDataSource.getRepository(Post);
-
-    const post = await postRepo.findOne({
-      where: { id },
-      relations: ["user", "persona"],
-    });
-
-    if (!post) return res.status(404).json({ message: "Post not found" });
-
-    const postToReturn = {
-      ...post,
-      user:
-        post.isAnonymous && post.persona ? undefined : sanitizeUser(post.user),
-    };
-    return res.json(createResponse("Post fetched", { post: postToReturn }));
-  } catch (err) {
-    console.error("getPostById error:", err);
-    return res.status(500).json({ message: "Failed to fetch post" });
-  }
-}
-
-/**
  * 📌 กด like โพสต์
  */
 export async function likePost(req: Request & { user?: User }, res: Response) {
   try {
-    const { postId } = req.params;
+    const { id: postId } = req.params;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -415,7 +409,7 @@ export async function undoLikePost(
   res: Response
 ) {
   try {
-    const { postId } = req.params;
+    const { id: postId } = req.params;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -445,7 +439,7 @@ export async function repostPost(
   res: Response
 ) {
   try {
-    const { postId } = req.params;
+    const { id: postId } = req.params;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -483,7 +477,7 @@ export async function undoRepost(
   res: Response
 ) {
   try {
-    const { postId } = req.params;
+    const { id: postId } = req.params;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -510,7 +504,7 @@ export async function undoRepost(
  */
 export async function savePost(req: Request & { user?: User }, res: Response) {
   try {
-    const { postId } = req.params;
+    const { id: postId } = req.params;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -545,7 +539,7 @@ export async function unsavePost(
   res: Response
 ) {
   try {
-    const { postId } = req.params;
+    const { id: postId } = req.params;
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
@@ -584,12 +578,17 @@ export async function searchPostsByAuthor(req: Request, res: Response) {
     const postRepo = AppDataSource.getRepository(Post);
     const [posts, totalItems] = await postRepo
       .createQueryBuilder("post")
-      .innerJoinAndSelect("post.user", "author") // 1. เชื่อมตาราง post กับ user
-      .where("author.name ILIKE :name", { name: `%${authorName}%` }) // 2. ค้นหาแบบไม่สนตัวพิมพ์เล็ก/ใหญ่
+      .leftJoinAndSelect("post.actor", "actor")
+      .leftJoin("actor.user", "user_author")
+      .leftJoin("actor.persona", "persona_author")
+      .where(
+        "user_author.name ILIKE :name OR persona_author.displayName ILIKE :name",
+        { name: `%${authorName}%` }
+      )
       .orderBy("post.createdAt", "DESC")
       .skip(skip)
       .take(limit)
-      .getManyAndCount(); // 3. ดึงข้อมูลพร้อมนับจำนวนทั้งหมด
+      .getManyAndCount();
 
     const totalPages = Math.ceil(totalItems / limit);
 

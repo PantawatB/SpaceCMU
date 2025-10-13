@@ -35,6 +35,8 @@ export function sanitizeUserProfile(user: Partial<User> | null) {
     name: user.name,
     email: user.email,
     bio: user.bio ?? null,
+    profileImg: user.profileImg ?? null,
+    bannerImg: user.bannerImg ?? null,
     isAdmin: !!user.isAdmin,
     persona: user.persona
       ? {

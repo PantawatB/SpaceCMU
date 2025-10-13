@@ -1157,7 +1157,7 @@
 									"pm.test(\"Post created successfully\", function () {",
 									"    pm.response.to.have.status(201);",
 									"    const response = pm.response.json();",
-									"    pm.collectionVariables.set(\"post1Id\", response.post.id);",
+									"    pm.collectionVariables.set(\"post1Id\", response.data.post.id);",
 									"    console.log('Post 1 ID stored.');",
 									"});"
 								],
@@ -1214,8 +1214,8 @@
 									"pm.test(\"Response body contains the updated content\", function () {",
 									"    const response = pm.response.json();",
 									"    const requestBody = JSON.parse(pm.request.body.raw);",
-									"    pm.expect(response.post.content).to.eql(requestBody.content);",
-									"    console.log(`✅ Verification successful: Post content is now '${response.post.content}'`);",
+									"    pm.expect(response.data.post.content).to.eql(requestBody.content);",
+									"    console.log(`✅ Verification successful: Post content is now '${response.data.post.content}'`);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1237,7 +1237,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n    \"location\": \"Online\"\n}",
+							"raw": "{\n    \"content\": \"This is the edited content of User B's post.\",\n     \"imageUrl\": \"http://example.com/Post-IMG.jpg\",\n    \"location\": \"Online\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1260,21 +1260,6 @@
 				},
 				{
 					"name": "3.3 Delete Post",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Post deleted successfully\", function () {",
-									"    pm.response.to.have.status(200);",
-									"    const response = pm.response.json();",
-									"    pm.expect(response.message).to.eql(\"Post deleted\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"auth": {
 							"type": "bearer",

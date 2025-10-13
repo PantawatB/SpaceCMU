@@ -98,7 +98,7 @@ export async function login(req: Request, res: Response) {
     return res.json(
       createResponse("Login successful", {
         token,
-        user: sanitizeUserProfile(user), // Login gets full profile
+        user: sanitizeUserProfile(user),
       })
     );
   } catch (err) {
@@ -193,7 +193,7 @@ export async function updateUser(
 
     return res.json(
       createResponse("User updated successfully", {
-        user: sanitizeUserProfile(user), // Updated profile gets full info
+        user: sanitizeUserProfile(user),
       })
     );
   } catch (err) {
@@ -278,8 +278,9 @@ export async function getMyReposts(
       where: { id: user.id },
       relations: [
         "repostedPosts",
-        "repostedPosts.user",
-        "repostedPosts.persona",
+        "repostedPosts.actor",
+        "repostedPosts.actor.user",
+        "repostedPosts.actor.persona",
       ],
     });
 
@@ -291,15 +292,32 @@ export async function getMyReposts(
 
     if (authorName && typeof authorName === "string") {
       const searchTerm = authorName.toLowerCase();
-      repostedPosts = repostedPosts.filter(
-        (post) => post.user && post.user.name.toLowerCase().includes(searchTerm)
-      );
+      repostedPosts = repostedPosts.filter((post) => {
+        const authorIsUser =
+          post.actor.user &&
+          post.actor.user.name.toLowerCase().includes(searchTerm);
+        const authorIsPersona =
+          post.actor.persona &&
+          post.actor.persona.displayName.toLowerCase().includes(searchTerm);
+        return authorIsUser || authorIsPersona;
+      });
     }
 
-    // sanitize post.user for safety
-    const sanitized = repostedPosts.map((post: any) => {
-      if (post.isAnonymous && post.persona) return post;
-      return { ...post, user: sanitizeUser(post.user) };
+    // Sanitize posts to create a consistent author object
+    const sanitized = repostedPosts.map((post) => {
+      const { actor, ...restOfPost } = post;
+      const author = actor.user
+        ? {
+            type: "user",
+            name: actor.user.name,
+            profileImg: actor.user.profileImg,
+          }
+        : {
+            type: "persona",
+            name: actor.persona!.displayName,
+            avatarUrl: actor.persona!.avatarUrl,
+          };
+      return { ...restOfPost, author };
     });
     return res.json(listResponse(sanitized));
   } catch (err) {
@@ -324,7 +342,12 @@ export async function getMyLikedPosts(
     const userRepo = AppDataSource.getRepository(User);
     const userWithLikes = await userRepo.findOne({
       where: { id: user.id },
-      relations: ["likedPosts", "likedPosts.user", "likedPosts.persona"],
+      relations: [
+        "likedPosts",
+        "likedPosts.actor",
+        "likedPosts.actor.user",
+        "likedPosts.actor.persona",
+      ],
     });
 
     if (!userWithLikes) {
@@ -335,14 +358,31 @@ export async function getMyLikedPosts(
 
     if (authorName && typeof authorName === "string") {
       const searchTerm = authorName.toLowerCase();
-      likedPosts = likedPosts.filter(
-        (post) => post.user && post.user.name.toLowerCase().includes(searchTerm)
-      );
+      likedPosts = likedPosts.filter((post) => {
+        const authorIsUser =
+          post.actor.user &&
+          post.actor.user.name.toLowerCase().includes(searchTerm);
+        const authorIsPersona =
+          post.actor.persona &&
+          post.actor.persona.displayName.toLowerCase().includes(searchTerm);
+        return authorIsUser || authorIsPersona;
+      });
     }
 
-    const sanitized = likedPosts.map((post: any) => {
-      if (post.isAnonymous && post.persona) return post;
-      return { ...post, user: sanitizeUser(post.user) };
+    const sanitized = likedPosts.map((post) => {
+      const { actor, ...restOfPost } = post;
+      const author = actor.user
+        ? {
+            type: "user",
+            name: actor.user.name,
+            profileImg: actor.user.profileImg,
+          }
+        : {
+            type: "persona",
+            name: actor.persona!.displayName,
+            avatarUrl: actor.persona!.avatarUrl,
+          };
+      return { ...restOfPost, author };
     });
     return res.json(listResponse(sanitized));
   } catch (err) {
@@ -367,7 +407,12 @@ export async function getMySavedPosts(
     const userRepo = AppDataSource.getRepository(User);
     const userWithSaves = await userRepo.findOne({
       where: { id: user.id },
-      relations: ["savedPosts", "savedPosts.user", "savedPosts.persona"],
+      relations: [
+        "savedPosts",
+        "savedPosts.actor",
+        "savedPosts.actor.user",
+        "savedPosts.actor.persona",
+      ],
     });
 
     if (!userWithSaves) {
@@ -378,14 +423,31 @@ export async function getMySavedPosts(
 
     if (authorName && typeof authorName === "string") {
       const searchTerm = authorName.toLowerCase();
-      savedPosts = savedPosts.filter(
-        (post) => post.user && post.user.name.toLowerCase().includes(searchTerm)
-      );
+      savedPosts = savedPosts.filter((post) => {
+        const authorIsUser =
+          post.actor.user &&
+          post.actor.user.name.toLowerCase().includes(searchTerm);
+        const authorIsPersona =
+          post.actor.persona &&
+          post.actor.persona.displayName.toLowerCase().includes(searchTerm);
+        return authorIsUser || authorIsPersona;
+      });
     }
 
-    const sanitized = savedPosts.map((post: any) => {
-      if (post.isAnonymous && post.persona) return post;
-      return { ...post, user: sanitizeUser(post.user) };
+    const sanitized = savedPosts.map((post) => {
+      const { actor, ...restOfPost } = post;
+      const author = actor.user
+        ? {
+            type: "user",
+            name: actor.user.name,
+            profileImg: actor.user.profileImg,
+          }
+        : {
+            type: "persona",
+            name: actor.persona!.displayName,
+            avatarUrl: actor.persona!.avatarUrl,
+          };
+      return { ...restOfPost, author };
     });
     return res.json(listResponse(sanitized));
   } catch (err) {
@@ -409,10 +471,9 @@ export async function listAllUsers(
       .createQueryBuilder("user")
       .leftJoinAndSelect("user.actor", "actor")
       .orderBy("user.name", "ASC")
-      // ❌ ไม่ต้องมี .skip() และ .take() แล้ว
+
       .getMany();
 
-    // กรอง user ที่ login อยู่ปัจจุบันออกจากผลลัพธ์
     const results = users
       .filter((user) => user.id !== currentUser.id)
       .map((user) => ({
@@ -423,7 +484,6 @@ export async function listAllUsers(
         actorId: user.actor ? user.actor.id : null,
       }));
 
-    // ส่งข้อมูลกลับไปเป็น array ตรงๆ
     return res.json(results);
   } catch (err) {
     console.error("listAllUsers error:", err);
