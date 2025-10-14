@@ -170,21 +170,46 @@ export default function FeedsMainPage() {
   // Fetch posts from API
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
+    if (!token || !currentUser) return;
 
     const fetchPosts = async () => {
       setPostsLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/posts`, {
+        // ดึง actorId ของผู้ใช้ปัจจุบัน
+        const actorId = activeProfile === 1
+          ? currentUser.persona?.actorId
+          : currentUser.actorId;
+
+        if (!actorId) {
+          console.error("Could not determine actorId for post fetching");
+          return;
+        }
+
+        let data: Post[] = [];
+        let url = '';
+        
+        if (feedMode === 'Friends') {
+          // ใช้ API endpoint สำหรับ Friends Feed
+          url = `${API_BASE_URL}/api/posts/feed/friends/${actorId}`;
+        } else {
+          // ใช้ API endpoint สำหรับ Global Feed
+          url = `${API_BASE_URL}/api/posts`;
+        }
+
+        const res = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!res.ok) throw new Error('Failed to fetch posts');
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch ${feedMode.toLowerCase()} posts`);
+        }
+        
         const response = await res.json();
-        // API returns { data: [...] }, extract the array
-        const data = response.data || response;
-        // Ensure data is an array
+        data = response.data || response;
+
+        // ตรวจสอบว่าข้อมูลเป็น array
         if (Array.isArray(data)) {
           setPosts(data);
         } else {
@@ -568,7 +593,16 @@ export default function FeedsMainPage() {
           )}
           
           {/* API Posts - Show first (newest on top) */}
-          {Array.isArray(posts) && posts.map((post) => {
+            {Array.isArray(posts) && posts
+              .filter(post =>
+                feedMode !== "Global" ||
+                post.visibility === "public" ||
+                (
+                  post.visibility === "friends" &&
+                  sidebarFriends.some(friend => friend.actorId === post.actorId)
+                )
+              )
+              .map((post) => {
             // API returns author object with either name+profileImg (public) or displayName+avatarUrl (anonymous)
             const isPublicPost = !!post.author?.name;
             const authorName = isPublicPost ? post.author.name : post.author.displayName;
