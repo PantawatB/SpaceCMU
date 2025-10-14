@@ -107,6 +107,44 @@ export default function FeedsMainPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState<boolean>(false);
 
+  type SidebarFriend = {
+  actorId: string;
+  name: string;
+  profileImg?: string | null;
+  };
+  const [sidebarFriends, setSidebarFriends] = useState<SidebarFriend[]>([]);
+
+  
+  const fetchSidebarFriends = async () => {
+  const token = localStorage.getItem('token');
+  if (!token || !currentUser) return;
+
+  const actorId = activeProfile === 1
+    ? currentUser.persona?.actorId
+    : currentUser.actorId;
+
+  if (!actorId) {
+    console.error("Sidebar: Could not determine actorId to fetch friends.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/friends/${actorId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch friends for sidebar');
+    }
+
+    const data: SidebarFriend[] = await res.json();
+    setSidebarFriends(data);
+  } catch (err) {
+    console.error(err);
+    setSidebarFriends([]); 
+  }
+};
+
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
@@ -162,7 +200,8 @@ export default function FeedsMainPage() {
     };
 
     fetchPosts();
-  }, []);
+    fetchSidebarFriends(); 
+  }, [feedMode, currentUser, activeProfile]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -836,27 +875,28 @@ export default function FeedsMainPage() {
         <div>
           <h2 className="text-lg font-bold mb-4">Friends</h2>
           <ul className="space-y-4">
-            <li className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div>
-                <div className="font-medium">People 1</div>
-                {/* <div className="text-xs text-gray-400">Active now</div> */}
-              </div>
-            </li>
-            <li className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div>
-                <div className="font-medium">People 2</div>
-                {/* <div className="text-xs text-gray-400">Active 2m ago</div> */}
-              </div>
-            </li>
-            <li className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div>
-                <div className="font-medium">People 3</div>
-                {/* <div className="text-xs text-gray-400">Active 5m ago</div> */}
-              </div>
-            </li>
+            {sidebarFriends.length > 0 ? (
+              sidebarFriends.map((friend) => (
+                <li key={friend.actorId} className="flex items-center gap-3">
+                  {friend.profileImg ? (
+                    <Image
+                      src={friend.profileImg}
+                      alt={friend.name}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                  )}
+                  <div>
+                    <div className="font-medium">{friend.name}</div>
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="text-sm text-gray-500">No friends to show.</li>
+            )}
           </ul>
         </div>
       </aside>
