@@ -12,6 +12,8 @@ export default function FeedsMainPage() {
   const [feedMode, setFeedMode] = useState("Global");
   const [showShareBar, setShowShareBar] = useState(true);
   const [postText, setPostText] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
   const [postMode, setPostMode] = useState<'public'|'friends'>('public');
   const [posting, setPosting] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
@@ -107,6 +109,44 @@ export default function FeedsMainPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState<boolean>(false);
 
+  type SidebarFriend = {
+  actorId: string;
+  name: string;
+  profileImg?: string | null;
+  };
+  const [sidebarFriends, setSidebarFriends] = useState<SidebarFriend[]>([]);
+
+  
+  const fetchSidebarFriends = async () => {
+  const token = localStorage.getItem('token');
+  if (!token || !currentUser) return;
+
+  const actorId = activeProfile === 1
+    ? currentUser.persona?.actorId
+    : currentUser.actorId;
+
+  if (!actorId) {
+    console.error("Sidebar: Could not determine actorId to fetch friends.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/friends/${actorId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch friends for sidebar');
+    }
+
+    const data: SidebarFriend[] = await res.json();
+    setSidebarFriends(data);
+  } catch (err) {
+    console.error(err);
+    setSidebarFriends([]); 
+  }
+};
+
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
@@ -132,21 +172,46 @@ export default function FeedsMainPage() {
   // Fetch posts from API
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
+    if (!token || !currentUser) return;
 
     const fetchPosts = async () => {
       setPostsLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/api/posts`, {
+        // ดึง actorId ของผู้ใช้ปัจจุบัน
+        const actorId = activeProfile === 1
+          ? currentUser.persona?.actorId
+          : currentUser.actorId;
+
+        if (!actorId) {
+          console.error("Could not determine actorId for post fetching");
+          return;
+        }
+
+        let data: Post[] = [];
+        let url = '';
+        
+        if (feedMode === 'Friends') {
+          // ใช้ API endpoint สำหรับ Friends Feed
+          url = `${API_BASE_URL}/api/posts/feed/friends/${actorId}`;
+        } else {
+          // ใช้ API endpoint สำหรับ Global Feed
+          url = `${API_BASE_URL}/api/posts`;
+        }
+
+        const res = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!res.ok) throw new Error('Failed to fetch posts');
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch ${feedMode.toLowerCase()} posts`);
+        }
+        
         const response = await res.json();
-        // API returns { data: [...] }, extract the array
-        const data = response.data || response;
-        // Ensure data is an array
+        data = response.data || response;
+
+        // ตรวจสอบว่าข้อมูลเป็น array
         if (Array.isArray(data)) {
           setPosts(data);
         } else {
@@ -162,7 +227,8 @@ export default function FeedsMainPage() {
     };
 
     fetchPosts();
-  }, []);
+    fetchSidebarFriends(); 
+  }, [feedMode, currentUser, activeProfile]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -354,14 +420,29 @@ export default function FeedsMainPage() {
         return;
       }
 
-      const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+      let imageUrl = "";
+      if (imageFile) {
+        // upload image to /api/uploads
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        const uploadRes = await fetch(`${API_BASE_URL}/api/uploads`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          throw new Error('Image upload failed');
+        }
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       headers.Authorization = `Bearer ${token}`;
 
-      // Prepare post data with isAnonymous flag based on active profile
       const postData = {
         content: postText,
-        imageUrl: "", // Backend doesn't support image yet
-        isAnonymous: activeProfile === 1, // true if anonymous mode
+        imageUrl,
         visibility: postMode,
       };
 
@@ -370,18 +451,17 @@ export default function FeedsMainPage() {
         headers,
         body: JSON.stringify(postData)
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         throw new Error(errorData?.message || 'Post failed');
       }
 
-      // Clear the input
       setPostText('');
-      
-      // Reload the page to show new post
+      setImageFile(null);
+      setImagePreview("");
       window.location.reload();
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Error creating post:', err);
       if (err instanceof Error) {
         alert(`Failed to create post: ${err.message}`);
@@ -529,7 +609,19 @@ export default function FeedsMainPage() {
           )}
           
           {/* API Posts - Show first (newest on top) */}
-          {Array.isArray(posts) && posts.map((post) => {
+            {Array.isArray(posts) && posts
+              .filter(post =>
+                feedMode !== "Global" ||
+                post.visibility === "public" ||
+                (
+                  post.visibility === "friends" &&
+                  (
+                    sidebarFriends.some(friend => friend.actorId === post.actorId) ||
+                    post.actorId === (activeProfile === 1 ? currentUser?.persona?.actorId : currentUser?.actorId)
+                  )
+                )
+              )
+              .map((post) => {
             // API returns author object with either name+profileImg (public) or displayName+avatarUrl (anonymous)
             const isPublicPost = !!post.author?.name;
             const authorName = isPublicPost ? post.author.name : post.author.displayName;
@@ -812,14 +904,46 @@ export default function FeedsMainPage() {
                   className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg"
                 />
               </div>
+              {imagePreview && (
+                <div className="mt-2">
+                  <img src={imagePreview} alt="preview" className="max-h-40 rounded-lg" />
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2">
-                <div className="flex gap-6 items-center">
-                  <div className="relative">
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex items-center">
                     <select value={postMode} onChange={(e) => setPostMode(e.target.value as 'public'|'friends')}
                       className="px-3 py-2 border rounded-md bg-white text-sm">
                       <option value="public">Public</option>
                       <option value="friends">Friends</option>
                     </select>
+                    {/* ปุ่มอัปโหลดรูปภาพแบบ custom อยู่ขวาของ select */}
+                    <label className="ml-4 cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition" title="Add image">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v9a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5l4.72-4.72a2.25 2.25 0 013.18 0l2.4 2.4a2.25 2.25 0 003.18 0L21 10.5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 9.75h.008v.008H16.5V9.75z" />
+                      </svg>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setImageFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setImagePreview(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            setImageFile(null);
+                            setImagePreview("");
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
                 <button onClick={handleSend} disabled={posting}
@@ -836,27 +960,28 @@ export default function FeedsMainPage() {
         <div>
           <h2 className="text-lg font-bold mb-4">Friends</h2>
           <ul className="space-y-4">
-            <li className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div>
-                <div className="font-medium">People 1</div>
-                {/* <div className="text-xs text-gray-400">Active now</div> */}
-              </div>
-            </li>
-            <li className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div>
-                <div className="font-medium">People 2</div>
-                {/* <div className="text-xs text-gray-400">Active 2m ago</div> */}
-              </div>
-            </li>
-            <li className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full" />
-              <div>
-                <div className="font-medium">People 3</div>
-                {/* <div className="text-xs text-gray-400">Active 5m ago</div> */}
-              </div>
-            </li>
+            {sidebarFriends.length > 0 ? (
+              sidebarFriends.map((friend) => (
+                <li key={friend.actorId} className="flex items-center gap-3">
+                  {friend.profileImg ? (
+                    <Image
+                      src={friend.profileImg}
+                      alt={friend.name}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                  )}
+                  <div>
+                    <div className="font-medium">{friend.name}</div>
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="text-sm text-gray-500">No friends to show.</li>
+            )}
           </ul>
         </div>
       </aside>
