@@ -12,6 +12,8 @@ export default function FeedsMainPage() {
   const [feedMode, setFeedMode] = useState("Global");
   const [showShareBar, setShowShareBar] = useState(true);
   const [postText, setPostText] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
   const [postMode, setPostMode] = useState<'public'|'friends'>('public');
   const [posting, setPosting] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
@@ -418,14 +420,29 @@ export default function FeedsMainPage() {
         return;
       }
 
-      const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+      let imageUrl = "";
+      if (imageFile) {
+        // upload image to /api/uploads
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        const uploadRes = await fetch(`${API_BASE_URL}/api/uploads`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          throw new Error('Image upload failed');
+        }
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       headers.Authorization = `Bearer ${token}`;
 
-      // Prepare post data with isAnonymous flag based on active profile
       const postData = {
         content: postText,
-        imageUrl: "", // Backend doesn't support image yet
-        isAnonymous: activeProfile === 1, // true if anonymous mode
+        imageUrl,
         visibility: postMode,
       };
 
@@ -434,18 +451,17 @@ export default function FeedsMainPage() {
         headers,
         body: JSON.stringify(postData)
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         throw new Error(errorData?.message || 'Post failed');
       }
 
-      // Clear the input
       setPostText('');
-      
-      // Reload the page to show new post
+      setImageFile(null);
+      setImagePreview("");
       window.location.reload();
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Error creating post:', err);
       if (err instanceof Error) {
         alert(`Failed to create post: ${err.message}`);
@@ -599,7 +615,10 @@ export default function FeedsMainPage() {
                 post.visibility === "public" ||
                 (
                   post.visibility === "friends" &&
-                  sidebarFriends.some(friend => friend.actorId === post.actorId)
+                  (
+                    sidebarFriends.some(friend => friend.actorId === post.actorId) ||
+                    post.actorId === (activeProfile === 1 ? currentUser?.persona?.actorId : currentUser?.actorId)
+                  )
                 )
               )
               .map((post) => {
@@ -885,14 +904,46 @@ export default function FeedsMainPage() {
                   className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg"
                 />
               </div>
+              {imagePreview && (
+                <div className="mt-2">
+                  <img src={imagePreview} alt="preview" className="max-h-40 rounded-lg" />
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2">
-                <div className="flex gap-6 items-center">
-                  <div className="relative">
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex items-center">
                     <select value={postMode} onChange={(e) => setPostMode(e.target.value as 'public'|'friends')}
                       className="px-3 py-2 border rounded-md bg-white text-sm">
                       <option value="public">Public</option>
                       <option value="friends">Friends</option>
                     </select>
+                    {/* ปุ่มอัปโหลดรูปภาพแบบ custom อยู่ขวาของ select */}
+                    <label className="ml-4 cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition" title="Add image">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v9a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5l4.72-4.72a2.25 2.25 0 013.18 0l2.4 2.4a2.25 2.25 0 003.18 0L21 10.5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 9.75h.008v.008H16.5V9.75z" />
+                      </svg>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setImageFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setImagePreview(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            setImageFile(null);
+                            setImagePreview("");
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
                 <button onClick={handleSend} disabled={posting}
