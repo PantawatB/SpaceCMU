@@ -29,7 +29,7 @@ async function bootstrap() {
 
     app.use(
       cors({
-        origin: "http://localhost:3001", // Frontend รันที่ port 3001
+        origin: "http://localhost:3000", // Frontend รันที่ port 3000
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
