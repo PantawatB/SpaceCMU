@@ -19,7 +19,18 @@ router.use(authenticateToken);
 
 // Chat management
 router.get("/", getMyChats); // GET /api/chats - Get all user's chats
-router.post("/direct", createDirectChat); // POST /api/chats/direct - Create direct chat
+router.post(
+  "/direct",
+  (req, res, next) => {
+    console.log(" DIRECT CHAT ROUTE HIT WITH BODY:", req.body);
+    console.log(
+      " USER FROM REQ:",
+      (req as any).user ? (req as any).user.id : "NO USER"
+    );
+    next();
+  },
+  createDirectChat
+); // POST /api/chats/direct - Create direct chat
 router.post("/product", createProductChat); // POST /api/chats/product - Contact product seller
 
 // Message management

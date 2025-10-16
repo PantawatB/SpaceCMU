@@ -8,7 +8,10 @@ const router = (0, express_1.Router)();
 router.use(auth_1.authenticateToken);
 // Chat management
 router.get("/", chatController_1.getMyChats); // GET /api/chats - Get all user's chats
-router.post("/direct", chatController_1.createDirectChat); // POST /api/chats/direct - Create direct chat
+router.post("/direct", (req, res, next) => {
+    console.log("🔥 Direct chat route hit:", req.body);
+    next();
+}, chatController_1.createDirectChat); // POST /api/chats/direct - Create direct chat
 router.post("/product", chatController_1.createProductChat); // POST /api/chats/product - Contact product seller
 // Message management
 router.get("/:chatId/messages", chatController_1.getChatMessages); // GET /api/chats/:chatId/messages - Get chat messages (real-time)

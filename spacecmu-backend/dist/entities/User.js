@@ -12,9 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const Persona_1 = require("./Persona");
-const Post_1 = require("./Post");
 const Report_1 = require("./Report");
-const Comment_1 = require("./Comment");
 const Message_1 = require("./Message");
 const Actor_1 = require("./Actor");
 /**
@@ -96,22 +94,6 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Report_1.Report, (report) => report.reportingUser),
     __metadata("design:type", Array)
 ], User.prototype, "reports", void 0);
-__decorate([
-    (0, typeorm_1.ManyToMany)(() => Post_1.Post, (post) => post.likedBy),
-    __metadata("design:type", Array)
-], User.prototype, "likedPosts", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => Comment_1.Comment, (comment) => comment.user),
-    __metadata("design:type", Array)
-], User.prototype, "comments", void 0);
-__decorate([
-    (0, typeorm_1.ManyToMany)(() => Post_1.Post, (post) => post.repostedBy),
-    __metadata("design:type", Array)
-], User.prototype, "repostedPosts", void 0);
-__decorate([
-    (0, typeorm_1.ManyToMany)(() => Post_1.Post, (post) => post.savedBy),
-    __metadata("design:type", Array)
-], User.prototype, "savedPosts", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Message_1.Message, (message) => message.sender),
     __metadata("design:type", Array)

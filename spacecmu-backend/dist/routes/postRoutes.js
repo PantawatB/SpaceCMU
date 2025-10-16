@@ -10,7 +10,7 @@ router.get("/feed/public", postController_1.getPublicFeed);
 router.get("/", postController_1.listPosts);
 // 📌 Protected endpoints (ต้อง login)
 // Feed ของเพื่อน
-router.get("/feed/friends", auth_1.authenticateToken, postController_1.getFriendFeed);
+router.get("/feed/friends/:actorId", auth_1.authenticateToken, postController_1.getFriendFeed);
 // 📌 Get single post (must be after specific routes)
 router.get("/:id", postController_1.getPost);
 // สร้าง/แก้ไข/ลบโพสต์
@@ -24,4 +24,10 @@ router.post("/:id/repost", auth_1.authenticateToken, postController_1.repostPost
 router.delete("/:id/repost", auth_1.authenticateToken, postController_1.undoRepost);
 router.post("/:id/save", auth_1.authenticateToken, postController_1.savePost);
 router.delete("/:id/save", auth_1.authenticateToken, postController_1.unsavePost);
+// GET /api/posts/:id/likers - ดูรายชื่อคนไลค์
+router.get("/:id/likers", postController_1.getPostLikers);
+// GET /api/posts/:id/reposters - ดูรายชื่อคนรีโพสต์
+router.get("/:id/reposters", postController_1.getPostReposters);
+// GET /api/posts/:id/savers - ดูรายชื่อคนเซฟ (ต้องเป็นเจ้าของโพสต์)
+router.get("/:id/savers", auth_1.authenticateToken, postController_1.getPostSavers);
 exports.default = router;

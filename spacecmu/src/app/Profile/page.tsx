@@ -2,16 +2,31 @@
 
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
-import { useEffect, useState } from 'react';
-import ChatWindow from '@/components/ChatWindow';
+import { useEffect, useState } from "react";
+import ChatWindow from "@/components/ChatWindow";
 
-type Persona = { id?: string; displayName?: string; avatarUrl?: string; bio?: string; friendCount?: number; bannerImg?: string };
-type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bannerImg?: string; bio?: string | null; persona?: Persona; friendCount?: number } | null;
+type Persona = {
+  id?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  bio?: string;
+  friendCount?: number;
+  bannerImg?: string;
+};
+type CurrentUser = {
+  id?: string;
+  name?: string;
+  studentId?: string;
+  profileImg?: string;
+  bannerImg?: string;
+  bio?: string | null;
+  persona?: Persona;
+  friendCount?: number;
+} | null;
 
-import { API_BASE_URL } from '@/utils/apiConfig';
+import { API_BASE_URL } from "@/utils/apiConfig";
 
 export default function ProfileMainPage() {
-
   const menuItems = [
     {
       name: "Profile",
@@ -173,8 +188,8 @@ export default function ProfileMainPage() {
 
   // Initialize activeProfile from localStorage after hydration
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const v = localStorage.getItem('activeProfile');
+    if (typeof window !== "undefined") {
+      const v = localStorage.getItem("activeProfile");
       if (v) {
         setActiveProfile(parseInt(v, 10));
       }
@@ -186,7 +201,9 @@ export default function ProfileMainPage() {
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [editingBio, setEditingBio] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'market' | 'reposts' | 'likes' | 'saved'>('posts');
+  const [activeTab, setActiveTab] = useState<
+    "posts" | "market" | "reposts" | "likes" | "saved"
+  >("posts");
 
   // hover states
   const [hoverBanner, setHoverBanner] = useState(false);
@@ -240,41 +257,54 @@ export default function ProfileMainPage() {
 
   // API handlers for saving changes
   const handleSaveBanner = async () => {
-    const token = localStorage.getItem('token');
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
-      alert('You need to be logged in to update your profile');
+      alert("You need to be logged in to update your profile");
       return;
     }
 
     // TODO: Upload bannerFile to server first if it exists
     // For now, we'll use the preview URL (in production, you'd upload the file and get a URL back)
     if (!bannerFile) {
-      alert('Please select a banner image first');
+      alert("Please select a banner image first");
       return;
     }
 
-    // In production, upload the file first:
-    // const formData = new FormData();
-    // formData.append('banner', bannerFile);
-    // const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', body: formData });
-    // const { url } = await uploadRes.json();
-
-    const endpoint = activeProfile === 0 ? '/api/users/me' : '/api/personas/me';
-    const fieldName = activeProfile === 0 ? 'bannerImg' : 'bannerImg';
+    const endpoint = activeProfile === 0 ? "/api/users/me" : "/api/personas/me";
+    const fieldName = activeProfile === 0 ? "bannerImg" : "bannerImg";
 
     try {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PATCH',
+      // First, upload the file
+      const formData = new FormData();
+      formData.append("file", bannerFile);
+
+      const uploadRes = await fetch(`${API_BASE_URL}/api/uploads`, {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Failed to upload banner image");
+
+      const uploadData = await uploadRes.json();
+      const imageUrl = uploadData.url; // Backend returns {url: "..."} directly
+
+      // Then update the profile
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "PUT", // Changed from PATCH to PUT
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          [fieldName]: newBannerPreview, // In production, use the uploaded URL
+          [fieldName]: imageUrl, // Use uploaded URL
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update banner');
+      if (!res.ok) throw new Error("Failed to update banner");
 
       // Refresh user data
       const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
@@ -286,41 +316,60 @@ export default function ProfileMainPage() {
       }
 
       closeBannerModal();
-      alert('Banner updated successfully!');
+      alert("Banner updated successfully!");
     } catch (err) {
       console.error(err);
-      alert('Failed to update banner');
+      alert("Failed to update banner");
     }
   };
 
   const handleSaveAvatar = async () => {
-    const token = localStorage.getItem('token');
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
-      alert('You need to be logged in to update your profile');
+      alert("You need to be logged in to update your profile");
       return;
     }
 
     if (!avatarFile) {
-      alert('Please select a profile picture first');
+      alert("Please select a profile picture first");
       return;
     }
 
-    const endpoint = activeProfile === 0 ? '/api/users/me' : '/api/personas/me';
-    const fieldName = activeProfile === 0 ? 'profileImg' : 'avatarUrl';
+    const endpoint = activeProfile === 0 ? "/api/users/me" : "/api/personas/me";
+    const fieldName = activeProfile === 0 ? "profileImg" : "avatarUrl";
 
     try {
-      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PATCH',
+      // First, upload the file
+      const formData = new FormData();
+      formData.append("file", avatarFile);
+
+      const uploadRes = await fetch(`${API_BASE_URL}/api/uploads`, {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error("Failed to upload image");
+
+      const uploadData = await uploadRes.json();
+      const imageUrl = uploadData.url; // Backend returns {url: "..."} directly
+
+      // Then update the profile
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "PUT", // Changed from PATCH to PUT
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          [fieldName]: newAvatarPreview, // In production, use the uploaded URL
+          [fieldName]: imageUrl, // Use uploaded URL
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update profile picture');
+      if (!res.ok) throw new Error("Failed to update profile picture");
 
       // Refresh user data
       const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
@@ -332,44 +381,47 @@ export default function ProfileMainPage() {
       }
 
       closeAvatarModal();
-      alert('Profile picture updated successfully!');
+      alert("Profile picture updated successfully!");
     } catch (err) {
       console.error(err);
-      alert('Failed to update profile picture');
+      alert("Failed to update profile picture");
     }
   };
 
   const handleSaveName = async () => {
-    const token = localStorage.getItem('token');
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
-      alert('You need to be logged in to update your profile');
+      alert("You need to be logged in to update your profile");
       return;
     }
 
-    const input = document.querySelector<HTMLInputElement>('input[type="text"][placeholder="Enter your name"]');
+    const input = document.querySelector<HTMLInputElement>(
+      'input[type="text"][placeholder="Enter your name"]'
+    );
     const newName = input?.value?.trim();
 
     if (!newName) {
-      alert('Please enter a name');
+      alert("Please enter a name");
       return;
     }
 
-    const endpoint = activeProfile === 0 ? '/api/users/me' : '/api/personas/me';
-    const fieldName = activeProfile === 0 ? 'name' : 'displayName';
+    const endpoint = activeProfile === 0 ? "/api/users/me" : "/api/personas/me";
+    const fieldName = activeProfile === 0 ? "name" : "displayName";
 
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           [fieldName]: newName,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update name');
+      if (!res.ok) throw new Error("Failed to update name");
 
       // Refresh user data
       const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
@@ -381,38 +433,41 @@ export default function ProfileMainPage() {
       }
 
       setEditingName(false);
-      alert('Name updated successfully!');
+      alert("Name updated successfully!");
     } catch (err) {
       console.error(err);
-      alert('Failed to update name');
+      alert("Failed to update name");
     }
   };
 
   const handleSaveBio = async () => {
-    const token = localStorage.getItem('token');
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) {
-      alert('You need to be logged in to update your profile');
+      alert("You need to be logged in to update your profile");
       return;
     }
 
-    const textarea = document.querySelector<HTMLTextAreaElement>('textarea[placeholder="Tell us about yourself..."]');
-    const newBio = textarea?.value?.trim() || '';
+    const textarea = document.querySelector<HTMLTextAreaElement>(
+      'textarea[placeholder="Tell us about yourself..."]'
+    );
+    const newBio = textarea?.value?.trim() || "";
 
-    const endpoint = activeProfile === 0 ? '/api/users/me' : '/api/personas/me';
+    const endpoint = activeProfile === 0 ? "/api/users/me" : "/api/personas/me";
 
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           bio: newBio,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update bio');
+      if (!res.ok) throw new Error("Failed to update bio");
 
       // Refresh user data
       const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
@@ -424,22 +479,23 @@ export default function ProfileMainPage() {
       }
 
       setEditingBio(false);
-      alert('Bio updated successfully!');
+      alert("Bio updated successfully!");
     } catch (err) {
       console.error(err);
-      alert('Failed to update bio');
+      alert("Failed to update bio");
     }
   };
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) return;
     const fetchMe = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error('Failed to fetch current user');
+        if (!res.ok) throw new Error("Failed to fetch current user");
         const data = await res.json();
         setCurrentUser(data);
       } catch (err) {
@@ -453,18 +509,22 @@ export default function ProfileMainPage() {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<number>).detail;
-      if (typeof detail === 'number') {
+      if (typeof detail === "number") {
         setActiveProfile(detail);
       }
     };
-    window.addEventListener('activeProfileChanged', handler as EventListener);
-    return () => window.removeEventListener('activeProfileChanged', handler as EventListener);
+    window.addEventListener("activeProfileChanged", handler as EventListener);
+    return () =>
+      window.removeEventListener(
+        "activeProfileChanged",
+        handler as EventListener
+      );
   }, []);
 
   // compute displayed profile
   const publicProfile = {
-    name: currentUser?.name ?? 'Kamado Tanjiro',
-    studentId: currentUser?.studentId ?? '6506xxxxx',
+    name: currentUser?.name ?? "Kamado Tanjiro",
+    studentId: currentUser?.studentId ?? "6506xxxxx",
     // keep avatar null when profileImg is null so UI can show a gray placeholder
     avatar: currentUser?.profileImg ?? null,
     // banner: use null when not provided so UI shows default gradient
@@ -475,7 +535,7 @@ export default function ProfileMainPage() {
   };
 
   const anonymousProfile = {
-    name: currentUser?.persona?.displayName ?? 'Noobcat',
+    name: currentUser?.persona?.displayName ?? "Noobcat",
     // keep avatar null when persona has no avatarUrl so UI can show gray placeholder
     avatar: currentUser?.persona?.avatarUrl ?? null,
     bio: currentUser?.persona?.bio ?? null,
@@ -530,7 +590,7 @@ export default function ProfileMainPage() {
         <section className="flex-1 overflow-y-auto flex flex-col gap-6">
           <div className="bg-white rounded-2xl shadow relative overflow-hidden">
             {/* Cover Image */}
-            <div 
+            <div
               className="relative cursor-pointer"
               onMouseEnter={() => setHoverBanner(true)}
               onMouseLeave={() => setHoverBanner(false)}
@@ -538,7 +598,7 @@ export default function ProfileMainPage() {
             >
               {publicProfile.banner ? (
                 // show provided banner image
-                (publicProfile.banner.startsWith('http') ? (
+                publicProfile.banner.startsWith("http") ? (
                   <div className="h-40 w-full relative">
                     <Image
                       loader={({ src }) => src}
@@ -558,7 +618,7 @@ export default function ProfileMainPage() {
                       className="object-cover"
                     />
                   </div>
-                ))
+                )
               ) : (
                 <div className="h-40 w-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200 flex items-center justify-center relative">
                   {/* Rainbow background (default when no banner) */}
@@ -566,17 +626,38 @@ export default function ProfileMainPage() {
               )}
               {/* Hover overlay with pencil icon */}
               {hoverBanner && (
-                <div className="absolute inset-0 flex items-center justify-center transition-all duration-200" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-12 h-12">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125l-2.625-2.625" />
+                <div
+                  className="absolute inset-0 flex items-center justify-center transition-all duration-200"
+                  style={{
+                    backgroundColor: "rgba(0, 0, 0, 0.4)",
+                    backdropFilter: "blur(4px)",
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="white"
+                    className="w-12 h-12"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 7.125l-2.625-2.625"
+                    />
                   </svg>
                 </div>
               )}
             </div>
             {/* Profile Avatar - left aligned */}
             <div className="absolute left-10 top-28 flex items-center">
-              <div 
+              <div
                 className="rounded-full border-4 border-white p-1 bg-white relative cursor-pointer"
                 onMouseEnter={() => setHoverAvatar(true)}
                 onMouseLeave={() => setHoverAvatar(false)}
@@ -584,7 +665,8 @@ export default function ProfileMainPage() {
               >
                 {displayed.avatar ? (
                   // render provided avatar (external or local)
-                  (typeof displayed.avatar === 'string' && displayed.avatar.startsWith('http')) ? (
+                  typeof displayed.avatar === "string" &&
+                  displayed.avatar.startsWith("http") ? (
                     <Image
                       loader={({ src }) => src}
                       src={displayed.avatar}
@@ -605,23 +687,52 @@ export default function ProfileMainPage() {
                   )
                 ) : (
                   // no profile image: show neutral gray placeholder circle
-                  <div className="w-[90px] h-[90px] rounded-full bg-gray-300 border-2 border-white" aria-hidden="true" />
+                  <div
+                    className="w-[90px] h-[90px] rounded-full bg-gray-300 border-2 border-white"
+                    aria-hidden="true"
+                  />
                 )}
                 {/* Hover overlay with pencil icon */}
                 {hoverAvatar && (
-                  <div className="absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(4px)' }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-8 h-8">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125l-2.625-2.625" />
+                  <div
+                    className="absolute inset-0 rounded-full flex items-center justify-center transition-all duration-200"
+                    style={{
+                      backgroundColor: "rgba(0, 0, 0, 0.4)",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="white"
+                      className="w-8 h-8"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 7.125l-2.625-2.625"
+                      />
                     </svg>
                   </div>
                 )}
               </div>
               {/* Stats - right of avatar */}
-              <div className="flex flex-col justify-center ml-6 relative" style={{ top: '18px' }}>
+              <div
+                className="flex flex-col justify-center ml-6 relative"
+                style={{ top: "18px" }}
+              >
                 <div className="flex gap-8">
                   <div className="text-center">
-                    <span className="text-xl font-semibold">{displayed.friendCount}</span>
+                    <span className="text-xl font-semibold">
+                      {displayed.friendCount}
+                    </span>
                     <span className="text-gray-500 ml-1">Friends</span>
                     {/* <span className="text-gray-500 ml-4">|</span> */}
                     {/* <span className="text-black-500 ml-4 font-semibold">65</span>
@@ -631,7 +742,7 @@ export default function ProfileMainPage() {
               </div>
             </div>
             {/* Name & Verified */}
-            <div 
+            <div
               className="flex items-center mt-20 ml-8 cursor-pointer group"
               onMouseEnter={() => setHoverName(true)}
               onMouseLeave={() => setHoverName(false)}
@@ -649,9 +760,24 @@ export default function ProfileMainPage() {
               )}
               {/* Pencil icon on hover */}
               {hoverName && (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 ml-2 text-gray-500">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125l-2.625-2.625" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-5 h-5 ml-2 text-gray-500"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 7.125l-2.625-2.625"
+                  />
                 </svg>
               )}
             </div>
@@ -660,120 +786,196 @@ export default function ProfileMainPage() {
               <div className="text-left text-gray-600 mt-2 px-8">@{publicProfile.studentId}</div>
             )} */}
             {/* Bio */}
-            <div 
+            <div
               className="text-left text-gray-600 mt-2 px-8 cursor-pointer group flex items-center"
               onMouseEnter={() => setHoverBio(true)}
               onMouseLeave={() => setHoverBio(false)}
               onClick={() => setEditingBio(true)}
             >
-              <span>{displayed.bio ?? 'No bio.'}</span>
+              <span>{displayed.bio ?? "No bio."}</span>
               {/* Pencil icon on hover */}
               {hoverBio && (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 ml-2 text-gray-500">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 7.125l-2.625-2.625" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-4 h-4 ml-2 text-gray-500"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.862 3.487a2.25 2.25 0 013.182 0l.469.469a2.25 2.25 0 010 3.182l-9.75 9.75a4.5 4.5 0 01-1.591.939l-3.645 1.214a.75.75 0 01-.949-.949l1.214-3.645a4.5 4.5 0 01.939-1.591l9.75-9.75z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 7.125l-2.625-2.625"
+                  />
                 </svg>
               )}
             </div>
             {/* Tabs */}
             <div className="flex justify-center mt-6 border-b border-gray-200">
-              <button 
-                onClick={() => setActiveTab('posts')}
+              <button
+                onClick={() => setActiveTab("posts")}
                 className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === 'posts' 
-                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  activeTab === "posts"
+                    ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Your Posts
               </button>
-              <button 
-                onClick={() => setActiveTab('market')}
+              <button
+                onClick={() => setActiveTab("market")}
                 className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === 'market' 
-                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  activeTab === "market"
+                    ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Your Market Items
               </button>
-              <button 
-                onClick={() => setActiveTab('reposts')}
+              <button
+                onClick={() => setActiveTab("reposts")}
                 className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === 'reposts' 
-                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  activeTab === "reposts"
+                    ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Reposts
               </button>
-              <button 
-                onClick={() => setActiveTab('likes')}
+              <button
+                onClick={() => setActiveTab("likes")}
                 className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === 'likes' 
-                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  activeTab === "likes"
+                    ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Likes
               </button>
-              <button 
-                onClick={() => setActiveTab('saved')}
+              <button
+                onClick={() => setActiveTab("saved")}
                 className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === 'saved' 
-                    ? 'text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  activeTab === "saved"
+                    ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Saved
               </button>
             </div>
-            
+
             {/* Tab Content */}
             <div className="p-8">
-              {activeTab === 'posts' && (
+              {activeTab === "posts" && (
                 <div className="text-center text-gray-500 py-12">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
                   </svg>
                   <p className="text-lg font-medium">No posts yet</p>
                   <p className="text-sm mt-1">Your posts will appear here</p>
                 </div>
               )}
-              {activeTab === 'market' && (
+              {activeTab === "market" && (
                 <div className="text-center text-gray-500 py-12">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z"
+                    />
                   </svg>
                   <p className="text-lg font-medium">No items listed yet</p>
-                  <p className="text-sm mt-1">Your market items will appear here</p>
+                  <p className="text-sm mt-1">
+                    Your market items will appear here
+                  </p>
                 </div>
               )}
-              {activeTab === 'reposts' && (
+              {activeTab === "reposts" && (
                 <div className="text-center text-gray-500 py-12">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                    />
                   </svg>
                   <p className="text-lg font-medium">No reposts yet</p>
                   <p className="text-sm mt-1">Your reposts will appear here</p>
                 </div>
               )}
-              {activeTab === 'likes' && (
+              {activeTab === "likes" && (
                 <div className="text-center text-gray-500 py-12">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                    />
                   </svg>
                   <p className="text-lg font-medium">No liked posts yet</p>
-                  <p className="text-sm mt-1">Posts you like will appear here</p>
+                  <p className="text-sm mt-1">
+                    Posts you like will appear here
+                  </p>
                 </div>
               )}
-              {activeTab === 'saved' && (
+              {activeTab === "saved" && (
                 <div className="text-center text-gray-500 py-12">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 mx-auto mb-4 text-gray-300">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+                    />
                   </svg>
                   <p className="text-lg font-medium">No saved posts yet</p>
-                  <p className="text-sm mt-1">Posts you save will appear here</p>
+                  <p className="text-sm mt-1">
+                    Posts you save will appear here
+                  </p>
                 </div>
               )}
             </div>
@@ -785,8 +987,18 @@ export default function ProfileMainPage() {
 
       {/* Edit Banner Modal */}
       {editingBanner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }} onClick={closeBannerModal}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+          }}
+          onClick={closeBannerModal}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold mb-6">Edit Banner</h2>
             <div className="flex gap-6 mb-6">
               {/* Current banner */}
@@ -794,10 +1006,24 @@ export default function ProfileMainPage() {
                 <p className="text-sm text-gray-500 mb-2">Current</p>
                 <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200">
                   {publicProfile.banner ? (
-                    publicProfile.banner.startsWith('http') ? (
-                      <Image loader={({ src }) => src} src={publicProfile.banner} alt="current banner" width={300} height={128} unoptimized className="w-full h-full object-cover" />
+                    publicProfile.banner.startsWith("http") ? (
+                      <Image
+                        loader={({ src }) => src}
+                        src={publicProfile.banner}
+                        alt="current banner"
+                        width={300}
+                        height={128}
+                        unoptimized
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <Image src={publicProfile.banner} alt="current banner" width={300} height={128} className="w-full h-full object-cover" />
+                      <Image
+                        src={publicProfile.banner}
+                        alt="current banner"
+                        width={300}
+                        height={128}
+                        className="w-full h-full object-cover"
+                      />
                     )
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200"></div>
@@ -830,14 +1056,27 @@ export default function ProfileMainPage() {
                 className="hidden"
                 id="banner-upload"
               />
-              <label htmlFor="banner-upload" className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition cursor-pointer flex items-center justify-center">
-                {bannerFile ? 'Change Banner' : 'Upload New Banner'}
+              <label
+                htmlFor="banner-upload"
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition cursor-pointer flex items-center justify-center"
+              >
+                {bannerFile ? "Change Banner" : "Upload New Banner"}
               </label>
             </div>
             {/* Actions */}
             <div className="flex gap-3">
-              <button className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition" onClick={handleSaveBanner}>Save</button>
-              <button className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition" onClick={closeBannerModal}>Cancel</button>
+              <button
+                className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition"
+                onClick={handleSaveBanner}
+              >
+                Save
+              </button>
+              <button
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
+                onClick={closeBannerModal}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -845,8 +1084,18 @@ export default function ProfileMainPage() {
 
       {/* Edit Avatar Modal */}
       {editingAvatar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }} onClick={closeAvatarModal}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+          }}
+          onClick={closeAvatarModal}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold mb-6">Edit Profile Picture</h2>
             <div className="flex gap-6 mb-6 justify-center">
               {/* Current avatar */}
@@ -854,10 +1103,25 @@ export default function ProfileMainPage() {
                 <p className="text-sm text-gray-500 mb-2">Current</p>
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 mx-auto">
                   {displayed.avatar ? (
-                    (typeof displayed.avatar === 'string' && displayed.avatar.startsWith('http')) ? (
-                      <Image loader={({ src }) => src} src={displayed.avatar} alt="current" width={96} height={96} unoptimized className="w-full h-full object-cover" />
+                    typeof displayed.avatar === "string" &&
+                    displayed.avatar.startsWith("http") ? (
+                      <Image
+                        loader={({ src }) => src}
+                        src={displayed.avatar}
+                        alt="current"
+                        width={96}
+                        height={96}
+                        unoptimized
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <Image src={displayed.avatar} alt="current" width={96} height={96} className="w-full h-full object-cover" />
+                      <Image
+                        src={displayed.avatar}
+                        alt="current"
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
                     )
                   ) : (
                     <div className="w-full h-full bg-gray-300"></div>
@@ -890,14 +1154,27 @@ export default function ProfileMainPage() {
                 className="hidden"
                 id="avatar-upload"
               />
-              <label htmlFor="avatar-upload" className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition cursor-pointer flex items-center justify-center">
-                {avatarFile ? 'Change Picture' : 'Upload New Picture'}
+              <label
+                htmlFor="avatar-upload"
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition cursor-pointer flex items-center justify-center"
+              >
+                {avatarFile ? "Change Picture" : "Upload New Picture"}
               </label>
             </div>
             {/* Actions */}
             <div className="flex gap-3">
-              <button className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition" onClick={handleSaveAvatar}>Save</button>
-              <button className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition" onClick={closeAvatarModal}>Cancel</button>
+              <button
+                className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition"
+                onClick={handleSaveAvatar}
+              >
+                Save
+              </button>
+              <button
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
+                onClick={closeAvatarModal}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -905,13 +1182,25 @@ export default function ProfileMainPage() {
 
       {/* Edit Name Modal */}
       {editingName && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }} onClick={() => setEditingName(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+          }}
+          onClick={() => setEditingName(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold mb-6">Edit Name</h2>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
-              <input 
-                type="text" 
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Display Name
+              </label>
+              <input
+                type="text"
                 defaultValue={displayed.name}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
                 placeholder="Enter your name"
@@ -919,8 +1208,18 @@ export default function ProfileMainPage() {
             </div>
             {/* Actions */}
             <div className="flex gap-3">
-              <button className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition" onClick={handleSaveName}>Save</button>
-              <button className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition" onClick={() => setEditingName(false)}>Cancel</button>
+              <button
+                className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition"
+                onClick={handleSaveName}
+              >
+                Save
+              </button>
+              <button
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
+                onClick={() => setEditingName(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -928,21 +1227,43 @@ export default function ProfileMainPage() {
 
       {/* Edit Bio Modal */}
       {editingBio && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }} onClick={() => setEditingBio(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+          }}
+          onClick={() => setEditingBio(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-2xl font-bold mb-6">Edit Bio</h2>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-              <textarea 
-                defaultValue={displayed.bio ?? ''}
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bio
+              </label>
+              <textarea
+                defaultValue={displayed.bio ?? ""}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 min-h-[120px] resize-none"
                 placeholder="Tell us about yourself..."
               />
             </div>
             {/* Actions */}
             <div className="flex gap-3">
-              <button className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition" onClick={handleSaveBio}>Save</button>
-              <button className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition" onClick={() => setEditingBio(false)}>Cancel</button>
+              <button
+                className="flex-1 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition"
+                onClick={handleSaveBio}
+              >
+                Save
+              </button>
+              <button
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition"
+                onClick={() => setEditingBio(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

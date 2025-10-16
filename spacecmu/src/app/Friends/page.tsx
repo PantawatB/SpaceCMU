@@ -1,11 +1,20 @@
 "use client";
 
-
 import Sidebar from "../../components/Sidebar";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { API_BASE_URL } from "../../utils/apiConfig";
-import ChatWindow from '@/components/ChatWindow';
+import ChatWindow from "@/components/ChatWindow";
+
+// Interface for search user result from /api/users/search
+interface SearchUser {
+  id: string; // ✅ User.id (must have for chat creation)
+  name?: string;
+  profileImg?: string | null;
+  bio?: string | null;
+  actorId?: string; // optional for friend operations
+  type?: string; // user or persona type
+}
 
 // Interface for friend request API response
 interface FriendRequestActor {
@@ -40,7 +49,17 @@ interface FriendCardProps {
   onRemove: () => void;
   onMessage?: () => void;
 }
-function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLabel, onFollow, onRemove, onMessage }: FriendCardProps) {
+function FriendCard({
+  name,
+  bio,
+  followed,
+  avatarUrl,
+  isFriend,
+  readonlyFriendLabel,
+  onFollow,
+  onRemove,
+  onMessage,
+}: FriendCardProps) {
   return (
     <div className="relative rounded-xl overflow-hidden flex flex-col items-center shadow-lg bg-white font-Roboto-light mb-6">
       <div className="h-24 w-full bg-gray-500"></div>
@@ -85,10 +104,13 @@ function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLa
             </>
           ) : isFriend ? (
             // Existing friend
-            <> 
+            <>
               {readonlyFriendLabel ? (
                 <>
-                  <button className="bg-gray-300 text-gray-700 cursor-default text-[15px] px-3 py-[6px] rounded-full" disabled>
+                  <button
+                    className="bg-gray-300 text-gray-700 cursor-default text-[15px] px-3 py-[6px] rounded-full"
+                    disabled
+                  >
                     Your Friend
                   </button>
                   <button
@@ -96,8 +118,19 @@ function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLa
                     onClick={onMessage}
                     aria-label="Message"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.5"
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
                     </svg>
                   </button>
                 </>
@@ -114,8 +147,19 @@ function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLa
                     onClick={onMessage}
                     aria-label="Message"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.5"
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
                     </svg>
                   </button>
                 </>
@@ -135,8 +179,19 @@ function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLa
                 onClick={onMessage}
                 aria-label="Message"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-6 4h4M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7 8h10M7 12h6m-6 4h4M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
                 </svg>
               </button>
             </>
@@ -147,7 +202,13 @@ function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLa
   );
 }
 
-function HorizontalScrollSection({ title, items }: { title: string; items: FriendCardProps[] }) {
+function HorizontalScrollSection({
+  title,
+  items,
+}: {
+  title: string;
+  items: FriendCardProps[];
+}) {
   const [startIdx, setStartIdx] = React.useState(0);
   const visibleCount = 4;
   const canGoBack = startIdx > 0;
@@ -160,17 +221,49 @@ function HorizontalScrollSection({ title, items }: { title: string; items: Frien
         <div className="flex gap-2">
           <button
             onClick={() => setStartIdx(Math.max(0, startIdx - visibleCount))}
-            className={`p-2 rounded-full bg-gray-200 hover:bg-gray-300 ${!canGoBack ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`p-2 rounded-full bg-gray-200 hover:bg-gray-300 ${
+              !canGoBack ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             disabled={!canGoBack}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
           </button>
           <button
-            onClick={() => setStartIdx(Math.min(items.length - visibleCount, startIdx + visibleCount))}
-            className={`p-2 rounded-full bg-gray-200 hover:bg-gray-300 ${!canGoNext ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={() =>
+              setStartIdx(
+                Math.min(items.length - visibleCount, startIdx + visibleCount)
+              )
+            }
+            className={`p-2 rounded-full bg-gray-200 hover:bg-gray-300 ${
+              !canGoNext ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             disabled={!canGoNext}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </button>
         </div>
       </div>
@@ -191,16 +284,23 @@ export default function FriendsMainPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeProfile, setActiveProfile] = useState<number>(0);
-  const [peopleYouMayKnow, setPeopleYouMayKnow] = useState<FriendCardProps[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [peopleYouMayKnow, setPeopleYouMayKnow] = useState<FriendCardProps[]>(
+    []
+  );
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<FriendCardProps[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Chat state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedFriendForChat, setSelectedFriendForChat] = useState<
+    string | null
+  >(null);
 
   // Listen for active profile changes
   useEffect(() => {
     // Get initial value from localStorage
-    const storedProfile = localStorage.getItem('activeProfile');
+    const storedProfile = localStorage.getItem("activeProfile");
     if (storedProfile) {
       setActiveProfile(parseInt(storedProfile, 10) || 0);
     }
@@ -208,77 +308,153 @@ export default function FriendsMainPage() {
     // Listen for changes
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<number>).detail;
-      if (typeof detail === 'number') {
+      if (typeof detail === "number") {
         setActiveProfile(detail);
       }
     };
-    window.addEventListener('activeProfileChanged', handler as EventListener);
-    
+    window.addEventListener("activeProfileChanged", handler as EventListener);
+
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'activeProfile') {
+      if (e.key === "activeProfile") {
         const v = e.newValue;
         setActiveProfile(v ? parseInt(v, 10) : 0);
       }
     };
-    window.addEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
 
     return () => {
-      window.removeEventListener('activeProfileChanged', handler as EventListener);
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(
+        "activeProfileChanged",
+        handler as EventListener
+      );
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
+
+  // Function to start chat with a friend
+  const handleStartChat = async (friendUserId: string) => {
+    try {
+      console.log("🚀 Starting chat with user:", friendUserId);
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        alert("You need to be logged in to start a chat");
+        return;
+      }
+
+      // Create or get existing direct chat
+      // Always send otherUserId (real User.id) to backend
+      const payload = { otherUserId: friendUserId };
+      console.log("📦 [Chat] create payload:", payload);
+      console.log(
+        "📤 Sending API request to:",
+        `${API_BASE_URL}/api/chats/direct`
+      );
+
+      const response = await fetch(`${API_BASE_URL}/api/chats/direct`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Chat creation failed:", response.status, errorText);
+        throw new Error(
+          `Failed to create or get chat: ${response.status} - ${errorText}`
+        );
+      }
+
+      const chatData = await response.json();
+      console.log("Chat created/retrieved:", chatData);
+
+      // Set the friend for chat and open chat window
+      setSelectedFriendForChat(chatData.data?.chat?.id || friendUserId);
+      setChatOpen(true);
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      alert("Failed to start chat. Please try again.");
+    }
+  };
 
   const performSearch = async (query: string) => {
     if (!query) return;
     setIsSearching(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
         setError("Authentication required for search");
         return;
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/users/search?name=${encodeURIComponent(query)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/users/search?name=${encodeURIComponent(query)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`Search failed with status: ${res.status}`);
       }
 
-      const responseData: { items: { id: string; name?: string; profileImg?: string | null; bio?: string | null; actorId?: string }[] } = await res.json();
-      
-      const currentFriendIds = new Set(friends.map(f => f.id));
+      const responseData: {
+        items: SearchUser[];
+      } = await res.json();
 
-      const transformedResults: FriendCardProps[] = responseData.items.map(u => ({
-        id: u.actorId ?? u.id,
-        name: u.name ?? 'Unknown User',
-        bio: u.bio ?? 'No bio available',
-        followed: false, 
-        avatarUrl: u.profileImg ?? null,
-        isFriend: currentFriendIds.has(u.actorId ?? u.id),
-        readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
-        onFollow: () => sendFriendRequest(u.actorId),
-        onRemove: () => unfriend(u.actorId),
-        onMessage: () => {},
-      }));
+      const currentFriendIds = new Set(friends.map((f) => f.id));
+
+      const transformedResults: FriendCardProps[] = responseData.items.map(
+        (u) => {
+          // Debug logging for each search result
+          console.log("🔍 [Search Result] User:", {
+            id: u.id, // Should be User.id (for chat creation)
+            actorId: u.actorId, // Should be Actor.id (for friend operations)
+            name: u.name,
+            type: u.type || "unknown",
+          });
+
+          return {
+            id: u.actorId ?? u.id, // Card display uses actorId for friend operations
+            name: u.name ?? "Unknown User",
+            bio: u.bio ?? "No bio available",
+            followed: false,
+            avatarUrl: u.profileImg ?? null,
+            isFriend: currentFriendIds.has(u.actorId ?? u.id),
+            readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
+            onFollow: () => sendFriendRequest(u.actorId),
+            onRemove: () => unfriend(u.actorId),
+            onMessage: () => {
+              // ✅ ALWAYS use u.id (real User.id) for chat creation
+              console.log("📱 [Chat Button] Selected user for chat:", {
+                displayId: u.actorId ?? u.id, // What user sees in UI
+                realUserId: u.id, // What we send to backend
+                name: u.name,
+              });
+              handleStartChat(u.id); // ✅ u.id is the real User.id from backend
+            },
+          };
+        }
+      );
 
       setSearchResults(transformedResults);
-
     } catch (err) {
       console.error("Error performing search:", err);
-      setSearchResults([]); 
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
+    if (searchQuery.trim() === "") {
       setSearchResults([]);
       return;
     }
@@ -288,25 +464,26 @@ export default function FriendsMainPage() {
     }, 500);
 
     return () => clearTimeout(debounceTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Function to fetch friend requests
   const fetchFriendRequests = async () => {
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = localStorage.getItem("token");
+
       if (!token) {
-        setError('No authentication token found');
+        setError("No authentication token found");
         setLoading(false);
         return;
       }
 
       // First get current user's actorId or persona.actorId
       const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
@@ -314,47 +491,56 @@ export default function FriendsMainPage() {
         throw new Error(`Failed to fetch current user: ${meRes.status}`);
       }
 
-      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
-      
+      const meData: { actorId?: string; persona?: { actorId?: string } } =
+        await meRes.json();
+
       // Determine which actorId to use based on active profile
-      const actorId = activeProfile === 1 && meData.persona?.actorId 
-        ? meData.persona.actorId 
-        : meData.actorId;
+      const actorId =
+        activeProfile === 1 && meData.persona?.actorId
+          ? meData.persona.actorId
+          : meData.actorId;
 
       if (!actorId) {
-        throw new Error('No actorId found for current user');
+        throw new Error("No actorId found for current user");
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/friends/requests/${actorId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/friends/requests/${actorId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data: FriendRequestsApiResponse = await response.json();
-      
+
       // Transform incoming friend requests to match FriendCardProps interface
-      const transformedRequests: FriendCardProps[] = data.incoming.map((request) => ({
-        id: request.id,
-        name: request.from?.name ?? 'Unknown',
-        bio: 'No bio available',
-        followed: request.status === 'pending',
-        avatarUrl: request.from?.profileImg || null,
-        onFollow: () => handleAcceptRequest(request.id),
-        onRemove: () => handleRejectRequest(request.id),
-        onMessage: () => {},
-      }));
+      const transformedRequests: FriendCardProps[] = data.incoming.map(
+        (request) => ({
+          id: request.id,
+          name: request.from?.name ?? "Unknown",
+          bio: "No bio available",
+          followed: request.status === "pending",
+          avatarUrl: request.from?.profileImg || null,
+          onFollow: () => handleAcceptRequest(request.id),
+          onRemove: () => handleRejectRequest(request.id),
+          onMessage: () => handleStartChat(request.from?.actorId || request.id),
+        })
+      );
 
       setFriendRequests(transformedRequests);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch friend requests');
-      console.error('Error fetching friend requests:', err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch friend requests"
+      );
+      console.error("Error fetching friend requests:", err);
     } finally {
       setLoading(false);
     }
@@ -363,65 +549,77 @@ export default function FriendsMainPage() {
   // Function to fetch current friends list
   const fetchFriends = async (): Promise<FriendCardProps[]> => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) return [];
 
       // First get current user's actorId or persona.actorId
       const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!meRes.ok) {
-        console.warn('Failed to fetch current user:', meRes.status);
+        console.warn("Failed to fetch current user:", meRes.status);
         return [];
       }
 
-      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
-      
+      const meData: { actorId?: string; persona?: { actorId?: string } } =
+        await meRes.json();
+
       // Determine which actorId to use based on active profile
-      const actorId = activeProfile === 1 && meData.persona?.actorId 
-        ? meData.persona.actorId 
-        : meData.actorId;
+      const actorId =
+        activeProfile === 1 && meData.persona?.actorId
+          ? meData.persona.actorId
+          : meData.actorId;
 
       if (!actorId) {
-        console.warn('No actorId found for current user');
+        console.warn("No actorId found for current user");
         return [];
       }
 
       const res = await fetch(`${API_BASE_URL}/api/friends/${actorId}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!res.ok) {
-        console.warn('Failed to fetch friends:', res.status);
+        console.warn("Failed to fetch friends:", res.status);
         return [];
       }
 
-      const data: { actorId: string; name: string; type: string; profileImg?: string | null; bio?: string | null }[] = await res.json();
+      const data: {
+        actorId: string;
+        name: string;
+        type: string;
+        profileImg?: string | null;
+        bio?: string | null;
+      }[] = await res.json();
       const transformed: FriendCardProps[] = data.map((u) => ({
         id: u.actorId,
         name: u.name,
-        bio: u.bio || 'No bio available',
+        bio: u.bio || "No bio available",
         followed: false,
         isFriend: true,
         onFollow: () => {},
         onRemove: () => unfriend(u.actorId),
-        onMessage: () => {},
+        onMessage: () => {
+          // Need to get user ID from actorId for chat
+          // For now use actorId, but should map to actual user ID
+          handleStartChat(u.actorId);
+        },
         avatarUrl: u.profileImg, // Map profileImg to avatarUrl
       }));
 
       setFriends(transformed);
       return transformed;
     } catch (err) {
-      console.error('Error fetching friends:', err);
+      console.error("Error fetching friends:", err);
       return [];
     }
   };
@@ -429,44 +627,50 @@ export default function FriendsMainPage() {
   // Function to handle accepting friend request
   const handleAcceptRequest = async (requestId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/api/friends/accept/${requestId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/friends/accept/${requestId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (response.ok) {
         // Refresh friend requests after accepting
         fetchFriendRequests();
       }
     } catch (err) {
-      console.error('Error accepting friend request:', err);
+      console.error("Error accepting friend request:", err);
     }
   };
 
   // Function to handle rejecting friend request
   const handleRejectRequest = async (requestId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/api/friends/reject/${requestId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/friends/reject/${requestId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (response.ok) {
         // Refresh friend requests after rejecting
         fetchFriendRequests();
       }
     } catch (err) {
-      console.error('Error rejecting friend request:', err);
+      console.error("Error rejecting friend request:", err);
     }
   };
 
@@ -474,54 +678,59 @@ export default function FriendsMainPage() {
   const sendFriendRequest = async (toActorId?: string) => {
     if (!toActorId) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        alert('You need to be logged in to send friend requests');
+        alert("You need to be logged in to send friend requests");
         return;
       }
 
       // Resolve our current actorId according to activeProfile
       const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!meRes.ok) {
-        console.warn('Failed to fetch current user when sending friend request', meRes.status);
+        console.warn(
+          "Failed to fetch current user when sending friend request",
+          meRes.status
+        );
         return;
       }
 
-      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
-      const fromActorId = activeProfile === 1 && meData.persona?.actorId
-        ? meData.persona.actorId
-        : meData.actorId;
+      const meData: { actorId?: string; persona?: { actorId?: string } } =
+        await meRes.json();
+      const fromActorId =
+        activeProfile === 1 && meData.persona?.actorId
+          ? meData.persona.actorId
+          : meData.actorId;
 
       if (!fromActorId) {
-        alert('Unable to determine your actorId for the current profile');
+        alert("Unable to determine your actorId for the current profile");
         return;
       }
 
       const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ fromActorId, toActorId }),
       });
 
       if (!res.ok) {
-        console.warn('Failed to send friend request', res.status);
+        console.warn("Failed to send friend request", res.status);
       } else {
         // Refresh friend requests so pending requests appear
         await fetchFriendRequests();
-        alert('Friend request sent');
+        alert("Friend request sent");
       }
     } catch (err) {
-      console.error('Error sending friend request:', err);
+      console.error("Error sending friend request:", err);
     }
   };
 
@@ -529,94 +738,113 @@ export default function FriendsMainPage() {
   const unfriend = async (targetActorId?: string) => {
     if (!targetActorId) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        alert('You need to be logged in to unfriend');
+        alert("You need to be logged in to unfriend");
         return;
       }
 
       // Resolve our current actorId according to activeProfile
       const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!meRes.ok) {
-        console.warn('Failed to fetch current user when unfriending', meRes.status);
+        console.warn(
+          "Failed to fetch current user when unfriending",
+          meRes.status
+        );
         return;
       }
 
-      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
-      const myActorId = activeProfile === 1 && meData.persona?.actorId
-        ? meData.persona.actorId
-        : meData.actorId;
+      const meData: { actorId?: string; persona?: { actorId?: string } } =
+        await meRes.json();
+      const myActorId =
+        activeProfile === 1 && meData.persona?.actorId
+          ? meData.persona.actorId
+          : meData.actorId;
 
       if (!myActorId) {
-        alert('Unable to determine your actorId for the current profile');
+        alert("Unable to determine your actorId for the current profile");
         return;
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/friends/${encodeURIComponent(myActorId)}/friends/${encodeURIComponent(targetActorId)}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/friends/${encodeURIComponent(
+          myActorId
+        )}/friends/${encodeURIComponent(targetActorId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!res.ok) {
-        console.warn('Failed to unfriend', res.status);
+        console.warn("Failed to unfriend", res.status);
       } else {
         // Refresh friends + suggestions
         await fetchFriends();
         const currentFriends = await fetchFriends();
-        const friendIds = new Set(currentFriends.map(f => f.id));
+        const friendIds = new Set(currentFriends.map((f) => f.id));
         await fetchPeopleYouMayKnow(friendIds);
       }
     } catch (err) {
-      console.error('Error unfriending user:', err);
+      console.error("Error unfriending user:", err);
     }
   };
 
   // Function to fetch "People you may know" data
   const fetchPeopleYouMayKnow = async (friendIds?: Set<string>) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) return;
 
       const res = await fetch(`${API_BASE_URL}/api/users/all`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!res.ok) {
-        console.warn('Failed to fetch users for "People you may know"', res.status);
+        console.warn(
+          'Failed to fetch users for "People you may know"',
+          res.status
+        );
         return;
       }
 
-      const data: { id: string; name?: string; profileImg?: string | null; bio?: string | null; actorId?: string }[] = await res.json();
+      const data: {
+        id: string;
+        name?: string;
+        profileImg?: string | null;
+        bio?: string | null;
+        actorId?: string;
+      }[] = await res.json();
 
-      const mapped: FriendCardProps[] = data.map(u => ({
+      const mapped: FriendCardProps[] = data.map((u) => ({
         id: u.actorId ?? u.id,
-        name: u.name ?? 'Unknown',
-        bio: u.bio ?? 'No bio available',
+        name: u.name ?? "Unknown",
+        bio: u.bio ?? "No bio available",
         followed: false,
         avatarUrl: u.profileImg ?? null,
         isFriend: false,
         readonlyFriendLabel: false,
         onFollow: () => sendFriendRequest(u.actorId ?? u.id),
         onRemove: () => unfriend(u.actorId ?? u.id),
-        onMessage: () => {},
+        onMessage: () => handleStartChat(u.id ?? u.actorId),
       }));
 
-      const friendActorIds = friendIds ?? new Set(friends.map(f => f.id));
-      const enriched = mapped.map(item => ({
+      const friendActorIds = friendIds ?? new Set(friends.map((f) => f.id));
+      const enriched = mapped.map((item) => ({
         ...item,
         isFriend: friendActorIds.has(item.id),
         readonlyFriendLabel: friendActorIds.has(item.id),
@@ -624,7 +852,7 @@ export default function FriendsMainPage() {
 
       setPeopleYouMayKnow(enriched);
     } catch (err) {
-      console.error('Error fetching people you may know:', err);
+      console.error("Error fetching people you may know:", err);
     }
   };
 
@@ -633,7 +861,7 @@ export default function FriendsMainPage() {
     const load = async () => {
       // fetch friends first so we can mark existing friends correctly
       const currentFriends = await fetchFriends();
-      const friendIds = new Set(currentFriends.map(f => f.id));
+      const friendIds = new Set(currentFriends.map((f) => f.id));
       await fetchPeopleYouMayKnow(friendIds);
       fetchFriendRequests();
     };
@@ -846,29 +1074,44 @@ export default function FriendsMainPage() {
             isSearching ? (
               <div className="text-center text-gray-500">Searching...</div>
             ) : (
-              <HorizontalScrollSection title="Search Results" items={searchResults} />
+              <HorizontalScrollSection
+                title="Search Results"
+                items={searchResults}
+              />
             )
+          ) : loading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="text-gray-500">Loading...</div>
+            </div>
+          ) : error ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="text-red-500">Error: {error}</div>
+            </div>
           ) : (
-            loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="text-gray-500">Loading...</div>
-              </div>
-            ) : error ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="text-red-500">Error: {error}</div>
-              </div>
-            ) : (
-              <>
-                <HorizontalScrollSection title="Friends" items={friends} />
-                <HorizontalScrollSection title="Friend Requests" items={friendRequests} />
-                <HorizontalScrollSection title="People you may know" items={peopleYouMayKnow} />
-              </>
-            )
+            <>
+              <HorizontalScrollSection title="Friends" items={friends} />
+              <HorizontalScrollSection
+                title="Friend Requests"
+                items={friendRequests}
+              />
+              <HorizontalScrollSection
+                title="People you may know"
+                items={peopleYouMayKnow}
+              />
+            </>
           )}
         </div>
       </main>
       {/* Chat Window */}
-      <ChatWindow />
+      {chatOpen && selectedFriendForChat && (
+        <ChatWindow
+          chatId={`direct_${selectedFriendForChat}`}
+          onClose={() => {
+            setChatOpen(false);
+            setSelectedFriendForChat(null);
+          }}
+        />
+      )}
     </div>
   );
 }

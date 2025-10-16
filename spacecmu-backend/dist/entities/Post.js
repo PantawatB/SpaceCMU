@@ -11,7 +11,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Post = void 0;
 const typeorm_1 = require("typeorm");
-const User_1 = require("./User");
 const Report_1 = require("./Report");
 const Comment_1 = require("./Comment");
 const Actor_1 = require("./Actor");
@@ -47,7 +46,7 @@ __decorate([
     __metadata("design:type", String)
 ], Post.prototype, "visibility", void 0);
 __decorate([
-    (0, typeorm_1.ManyToMany)(() => User_1.User, (user) => user.likedPosts, { eager: true }),
+    (0, typeorm_1.ManyToMany)(() => Actor_1.Actor, (actor) => actor.likedPosts),
     (0, typeorm_1.JoinTable)({ name: "post_likes" }),
     __metadata("design:type", Array)
 ], Post.prototype, "likedBy", void 0);
@@ -56,12 +55,12 @@ __decorate([
     __metadata("design:type", Array)
 ], Post.prototype, "comments", void 0);
 __decorate([
-    (0, typeorm_1.ManyToMany)(() => User_1.User, (user) => user.repostedPosts),
+    (0, typeorm_1.ManyToMany)(() => Actor_1.Actor, (actor) => actor.repostedPosts),
     (0, typeorm_1.JoinTable)({ name: "post_reposts" }),
     __metadata("design:type", Array)
 ], Post.prototype, "repostedBy", void 0);
 __decorate([
-    (0, typeorm_1.ManyToMany)(() => User_1.User, (user) => user.savedPosts),
+    (0, typeorm_1.ManyToMany)(() => Actor_1.Actor, (actor) => actor.savedPosts),
     (0, typeorm_1.JoinTable)({ name: "post_saves" }),
     __metadata("design:type", Array)
 ], Post.prototype, "savedBy", void 0);

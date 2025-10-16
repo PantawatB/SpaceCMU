@@ -68,7 +68,13 @@ function authenticateToken(req, res, next) {
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const user = yield userRepo.findOne({
                 where: { id: payload.userId },
-                relations: ["persona", "persona.actor", "actor", "actor.friends"],
+                relations: [
+                    "persona",
+                    "persona.actor",
+                    "persona.actor.friends",
+                    "actor",
+                    "actor.friends",
+                ],
             });
             if (!user) {
                 return res.status(401).json({ message: "Invalid or expired token" });

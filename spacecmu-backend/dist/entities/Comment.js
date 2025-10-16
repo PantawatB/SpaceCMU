@@ -11,8 +11,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Comment = void 0;
 const typeorm_1 = require("typeorm");
-const User_1 = require("./User");
 const Post_1 = require("./Post");
+const Actor_1 = require("./Actor");
 let Comment = class Comment {
 };
 exports.Comment = Comment;
@@ -21,9 +21,9 @@ __decorate([
     __metadata("design:type", String)
 ], Comment.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.comments, { onDelete: "CASCADE" }),
-    __metadata("design:type", User_1.User)
-], Comment.prototype, "user", void 0);
+    (0, typeorm_1.ManyToOne)(() => Actor_1.Actor, (actor) => actor.comments, { onDelete: "CASCADE" }),
+    __metadata("design:type", Actor_1.Actor)
+], Comment.prototype, "actor", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Post_1.Post, (post) => post.comments, { onDelete: "CASCADE" }),
     __metadata("design:type", Post_1.Post)

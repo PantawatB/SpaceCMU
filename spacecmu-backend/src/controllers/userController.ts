@@ -219,6 +219,7 @@ export async function searchUsers(
       .createQueryBuilder("actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
+      .leftJoinAndSelect("persona.user", "personaUser") // ✅ Add persona.user relation
       .where("(user.name ILIKE :name OR persona.displayName ILIKE :name)", {
         name: `%${name}%`,
       })
@@ -233,25 +234,29 @@ export async function searchUsers(
     const results = actors
       .map((actor) => {
         if (actor.user) {
+          // ✅ Direct user - return real User.id
           return {
-            actorId: actor.id,
-            id: actor.user.id,
+            id: actor.user.id, // ✅ Real User.id (CRITICAL for chat creation)
+            actorId: actor.id, // Actor ID for friend operations
             name: actor.user.name,
             type: "user",
             profileImg: actor.user.profileImg,
             bio: actor.user.bio,
           };
         }
-        if (actor.persona) {
+        if (actor.persona && actor.persona.user) {
+          // ✅ Persona with user relation - return real User.id
           return {
-            actorId: actor.id,
-            id: actor.persona.id,
+            id: actor.persona.user.id, // ✅ Real User.id from persona.user (CRITICAL for chat creation)
+            actorId: actor.id, // Actor ID for friend operations
             name: actor.persona.displayName,
             type: "persona",
             profileImg: actor.persona.avatarUrl,
             bio: actor.persona.bio,
           };
         }
+        // Skip actors without proper user references
+        console.warn("⚠️ Skipping actor without user reference:", actor.id);
         return null;
       })
       .filter(Boolean);
@@ -271,6 +276,145 @@ export async function searchUsers(
   } catch (err) {
     console.error("searchActors error:", err);
     return res.status(500).json({ message: "Failed to search for actors" });
+  }
+}
+
+/**
+ * 📌 Debug endpoint to resolve User.id ↔ Actor.id mapping
+ * Usage: GET /api/users/resolve?id=USER_ID or GET /api/users/resolve?actorId=ACTOR_ID
+ */
+export async function resolveUserActorMapping(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const { id: userId, actorId } = req.query;
+
+    if (!userId && !actorId) {
+      return res.status(400).json({
+        message:
+          "Provide either 'id' (User.id) or 'actorId' (Actor.id) parameter",
+      });
+    }
+
+    if (userId && actorId) {
+      return res.status(400).json({
+        message: "Provide only one parameter: either 'id' or 'actorId'",
+      });
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const actorRepo = AppDataSource.getRepository(Actor);
+
+    let result: any = null;
+
+    if (userId) {
+      // Resolve User.id → Actor.id(s)
+      const user = await userRepo.findOne({
+        where: { id: userId as string },
+        relations: ["actor", "persona", "persona.actor"],
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          message: `User not found with id: ${userId}`,
+          provided: { userId },
+        });
+      }
+
+      result = {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+        actors: [
+          user.actor
+            ? {
+                id: user.actor.id,
+                type: "user_actor",
+                linkedToUser: user.id,
+              }
+            : null,
+          user.persona?.actor
+            ? {
+                id: user.persona.actor.id,
+                type: "persona_actor",
+                linkedToPersona: user.persona.id,
+                personaName: user.persona.displayName,
+              }
+            : null,
+        ].filter(Boolean),
+        mapping: `User.id ${user.id} maps to ${
+          user.actor ? 1 : 0
+        } user actor(s) and ${user.persona?.actor ? 1 : 0} persona actor(s)`,
+      };
+    } else if (actorId) {
+      // Resolve Actor.id → User.id
+      const actor = await actorRepo.findOne({
+        where: { id: actorId as string },
+        relations: ["user", "persona", "persona.user"],
+      });
+
+      if (!actor) {
+        return res.status(404).json({
+          message: `Actor not found with id: ${actorId}`,
+          provided: { actorId },
+        });
+      }
+
+      let resolvedUser = null;
+      let actorType = "unknown";
+
+      if (actor.user) {
+        resolvedUser = actor.user;
+        actorType = "user_actor";
+      } else if (actor.persona?.user) {
+        resolvedUser = actor.persona.user;
+        actorType = "persona_actor";
+      }
+
+      if (!resolvedUser) {
+        return res.status(404).json({
+          message: `No user found for actor: ${actorId}`,
+          actor: {
+            id: actor.id,
+            hasUser: !!actor.user,
+            hasPersona: !!actor.persona,
+          },
+        });
+      }
+
+      result = {
+        actor: {
+          id: actor.id,
+          type: actorType,
+          hasUser: !!actor.user,
+          hasPersona: !!actor.persona,
+        },
+        resolvedUser: {
+          id: resolvedUser.id,
+          name: resolvedUser.name,
+          email: resolvedUser.email,
+        },
+        mapping: `Actor.id ${actor.id} (${actorType}) maps to User.id ${resolvedUser.id}`,
+      };
+    }
+
+    return res.json({
+      success: true,
+      result,
+      debug: {
+        queryParams: { userId, actorId },
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("resolveUserActorMapping error:", error);
+    return res.status(500).json({
+      message: "Failed to resolve user/actor mapping",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }
 

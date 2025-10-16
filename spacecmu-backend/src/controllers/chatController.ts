@@ -5,6 +5,7 @@ import { Message, MessageType } from "../entities/Message";
 import { ChatParticipant } from "../entities/ChatParticipant";
 import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 import { User } from "../entities/User";
+import { Actor } from "../entities/Actor";
 
 /**
  * Get all chats for the authenticated user
@@ -64,7 +65,7 @@ export async function createDirectChat(
   res: Response
 ) {
   console.log("=== CREATE DIRECT CHAT DEBUG ===");
-  console.log("Request body:", req.body);
+  console.log("[createDirectChat] body:", req.body);
   console.log(
     "User from req:",
     req.user ? { id: req.user.id, name: req.user.name } : "undefined"
@@ -83,31 +84,66 @@ export async function createDirectChat(
       name: currentUser.name,
     });
 
-    // Validate request body
-    const { otherUserId } = req.body;
-    if (!otherUserId) {
-      console.log("❌ No otherUserId provided");
-      return res.status(400).json({ message: "Other user ID is required" });
+    // Validate request body - accept either otherUserId or otherActorId
+    const { otherUserId, otherActorId } = req.body || {};
+    if ((!otherUserId && !otherActorId) || (otherUserId && otherActorId)) {
+      console.log(
+        "❌ Invalid parameters: must provide exactly one of otherUserId or otherActorId"
+      );
+      return res.status(400).json({
+        message: "Provide exactly one of otherUserId or otherActorId",
+      });
     }
 
-    console.log("🔍 Looking for other user:", otherUserId);
+    console.log(
+      "🔍 Looking for other user with:",
+      otherUserId ? `userId: ${otherUserId}` : `actorId: ${otherActorId}`
+    );
 
     // Get repositories
     const userRepo = AppDataSource.getRepository(User);
-    const chatRepo = AppDataSource.getRepository(Chat);
-    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
+    let otherUser: User | null = null;
 
-    // Check if other user exists
-    const otherUser = await userRepo.findOne({ where: { id: otherUserId } });
+    if (otherUserId) {
+      // Direct user ID lookup
+      otherUser = await userRepo.findOne({ where: { id: otherUserId } });
+      console.log(
+        "✅ Direct user lookup result:",
+        otherUser ? "Found" : "Not found"
+      );
+    } else {
+      // Actor ID lookup - resolve to user
+      const actorRepo = AppDataSource.getRepository(Actor);
+      const actor = await actorRepo.findOne({
+        where: { id: otherActorId },
+        relations: ["user"],
+      });
+      console.log("🎭 Actor lookup result:", actor ? "Found" : "Not found");
+
+      if (actor && actor.user) {
+        otherUser = actor.user;
+        console.log("✅ Found user via actor:", {
+          actorId: actor.id,
+          userId: actor.user.id,
+          userName: actor.user.name,
+        });
+      }
+    }
+
     if (!otherUser) {
-      console.log("❌ Other user not found");
+      console.log("❌ Other user not found after resolution");
       return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("[createDirectChat] resolved otherUserId:", otherUser?.id);
     console.log("✅ Other user found:", {
       id: otherUser.id,
       name: otherUser.name,
     });
+
+    // Get additional repositories
+    const chatRepo = AppDataSource.getRepository(Chat);
+    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
 
     // Check for existing direct chat between these two users
     console.log("🔍 Checking for existing chat between users...");
@@ -132,7 +168,7 @@ export async function createDirectChat(
           const otherParticipant = allParticipants.find(
             (p: any) => p.user.id !== currentUser.id
           );
-          if (otherParticipant && otherParticipant.user.id === otherUserId) {
+          if (otherParticipant && otherParticipant.user.id === otherUser.id) {
             existingChat = chat;
             break;
           }

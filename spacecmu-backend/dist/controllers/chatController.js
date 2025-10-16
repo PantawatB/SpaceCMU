@@ -132,10 +132,18 @@ function createDirectChat(req, res) {
             const userRepo = ormconfig_1.AppDataSource.getRepository(User_1.User);
             const chatRepo = ormconfig_1.AppDataSource.getRepository(Chat_1.Chat);
             const chatParticipantRepo = ormconfig_1.AppDataSource.getRepository(ChatParticipant_1.ChatParticipant);
-            // Check if other user exists
-            const otherUser = yield userRepo.findOne({ where: { id: otherUserId } });
+            // Check if other user exists (try both user ID and actor ID)
+            let otherUser = yield userRepo.findOne({ where: { id: otherUserId } });
+            // If not found by user ID, try to find by actor ID
             if (!otherUser) {
-                console.log("❌ Other user not found");
+                console.log("🔍 User not found by ID, trying actor ID...");
+                otherUser = yield userRepo.findOne({
+                    where: { actor: { id: otherUserId } },
+                    relations: ["actor"]
+                });
+            }
+            if (!otherUser) {
+                console.log("❌ Other user not found by ID or actor ID");
                 return res.status(404).json({ message: "User not found" });
             }
             console.log("✅ Other user found:", {

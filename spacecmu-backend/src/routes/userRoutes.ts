@@ -6,6 +6,7 @@ import {
   getCurrentUserActor,
   updateUser,
   searchUsers,
+  resolveUserActorMapping,
   getMyReposts,
   getMyLikedPosts,
   getMySavedPosts,
@@ -21,6 +22,9 @@ router.post("/login", login);
 
 // GET /api/users/search?name=...
 router.get("/search", authenticateToken, searchUsers);
+
+// GET /api/users/resolve?id=...&actorId=... (debug endpoint)
+router.get("/resolve", authenticateToken, resolveUserActorMapping);
 
 // Protected routes
 router.get("/me", authenticateToken, getMe);
