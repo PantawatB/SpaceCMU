@@ -251,7 +251,10 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                 </span>
               )}
             </div>
-            <button className="text-gray-400 hover:text-gray-600 transition">
+            <button 
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className="text-gray-400 hover:text-gray-600 transition"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
