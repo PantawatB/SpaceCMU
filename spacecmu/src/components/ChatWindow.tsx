@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { API_BASE_URL } from "@/utils/apiConfig";
 import {
-  getSocket,
   joinChat,
   leaveChat,
   sendMessage,
@@ -88,31 +87,7 @@ async function fetchMessages(chatId: string): Promise<Message[]> {
   }
 }
 
-async function sendTextMessage(
-  chatId: string,
-  text: string
-): Promise<Message | null> {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/chats/${chatId}/messages`,
-      {
-        method: "POST",
-        headers: authHeader(),
-        body: JSON.stringify({ type: "text", content: text }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.data?.message ?? null;
-  } catch (error) {
-    console.error("Failed to send message:", error);
-    return null;
-  }
-}
+// Removed unused sendTextMessage function
 
 interface ChatWindowProps {
   chatId?: string;
