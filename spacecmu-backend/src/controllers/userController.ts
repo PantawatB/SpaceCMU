@@ -209,25 +209,52 @@ export async function searchUsers(
         .json({ message: "Search 'name' query is required" });
     }
 
-    const userRepo = AppDataSource.getRepository(User);
-    const [users, totalItems] = await userRepo
-      .createQueryBuilder("user")
-      .where("user.name ILIKE :name", { name: `%${name}%` })
-      .leftJoinAndSelect("user.actor", "actor")
-      .orderBy("user.name", "ASC")
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const myActorIds = [currentUser.actor.id];
+    if (currentUser.persona?.actor) {
+      myActorIds.push(currentUser.persona.actor.id);
+    }
 
-    const results = users
-      .filter((user) => user.id !== currentUser.id)
-      .map((user) => ({
-        id: user.id,
-        name: user.name,
-        profileImg: user.profileImg,
-        bio: user.bio,
-        actorId: user.actor ? user.actor.id : null,
-      }));
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const qb = actorRepo
+      .createQueryBuilder("actor")
+      .leftJoinAndSelect("actor.user", "user")
+      .leftJoinAndSelect("actor.persona", "persona")
+      .where("(user.name ILIKE :name OR persona.displayName ILIKE :name)", {
+        name: `%${name}%`,
+      })
+      .andWhere("actor.id NOT IN (:...myActorIds)", { myActorIds })
+      .orderBy("user.name", "ASC")
+      .addOrderBy("persona.displayName", "ASC")
+      .skip(skip)
+      .take(limit);
+
+    const [actors, totalItems] = await qb.getManyAndCount();
+
+    const results = actors
+      .map((actor) => {
+        if (actor.user) {
+          return {
+            actorId: actor.id,
+            id: actor.user.id,
+            name: actor.user.name,
+            type: "user",
+            profileImg: actor.user.profileImg,
+            bio: actor.user.bio,
+          };
+        }
+        if (actor.persona) {
+          return {
+            actorId: actor.id,
+            id: actor.persona.id,
+            name: actor.persona.displayName,
+            type: "persona",
+            profileImg: actor.persona.avatarUrl,
+            bio: actor.persona.bio,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
 
     const totalPages = Math.ceil(totalItems / limit);
 
@@ -242,8 +269,8 @@ export async function searchUsers(
       },
     });
   } catch (err) {
-    console.error("searchUsers error:", err);
-    return res.status(500).json({ message: "Failed to search for users" });
+    console.error("searchActors error:", err);
+    return res.status(500).json({ message: "Failed to search for actors" });
   }
 }
 
@@ -415,27 +442,46 @@ export async function listAllUsers(
   try {
     const currentUser = req.user!;
 
-    const userRepo = AppDataSource.getRepository(User);
-    const users = await userRepo
-      .createQueryBuilder("user")
-      .leftJoinAndSelect("user.actor", "actor")
-      .orderBy("user.name", "ASC")
+    const myActorIds = [currentUser.actor.id];
+    if (currentUser.persona?.actor) {
+      myActorIds.push(currentUser.persona.actor.id);
+    }
 
+    const actorRepo = AppDataSource.getRepository(Actor);
+    const allActors = await actorRepo
+      .createQueryBuilder("actor")
+      .leftJoinAndSelect("actor.user", "user")
+      .leftJoinAndSelect("actor.persona", "persona")
+      .where("actor.id NOT IN (:...myActorIds)", { myActorIds })
       .getMany();
 
-    const results = users
-      .filter((user) => user.id !== currentUser.id)
-      .map((user) => ({
-        id: user.id,
-        name: user.name,
-        profileImg: user.profileImg,
-        bio: user.bio,
-        actorId: user.actor ? user.actor.id : null,
-      }));
+    const results = allActors
+      .map((actor) => {
+        if (actor.user) {
+          return {
+            actorId: actor.id,
+            name: actor.user.name,
+            type: "user",
+            profileImg: actor.user.profileImg,
+            bio: actor.user.bio,
+          };
+        }
+        if (actor.persona) {
+          return {
+            actorId: actor.id,
+            name: actor.persona.displayName,
+            type: "persona",
+            profileImg: actor.persona.avatarUrl,
+            bio: actor.persona.bio,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
 
     return res.json(results);
   } catch (err) {
-    console.error("listAllUsers error:", err);
-    return res.status(500).json({ message: "Failed to fetch users" });
+    console.error("listAllActors error:", err);
+    return res.status(500).json({ message: "Failed to fetch actors" });
   }
 }

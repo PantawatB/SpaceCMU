@@ -169,13 +169,11 @@ export async function listPosts(req: Request, res: Response) {
   try {
     const postRepo = AppDataSource.getRepository(Post);
 
-    // 👇 เปลี่ยนจาก .find() มาใช้ .createQueryBuilder()
     const posts = await postRepo
       .createQueryBuilder("post")
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
-      // ✨ เพิ่ม 3 บรรทัดนี้เข้ามาเพื่อนับจำนวน ✨
       .loadRelationCountAndMap("post.likeCount", "post.likedBy")
       .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
       .loadRelationCountAndMap("post.saveCount", "post.savedBy")
@@ -183,7 +181,21 @@ export async function listPosts(req: Request, res: Response) {
       .take(50)
       .getMany();
 
-    return res.json({ data: posts });
+    const items = posts.map((post) => {
+      const author = post.actor.persona
+        ? {
+            name: post.actor.persona.displayName,
+            avatarUrl: post.actor.persona.avatarUrl,
+          }
+        : {
+            name: post.actor.user!.name,
+            profileImg: post.actor.user!.profileImg,
+          };
+      const { actor, ...restOfPost } = post;
+      return { ...restOfPost, author, actorId: actor.id };
+    });
+
+    return res.json({ data: items });
   } catch (err) {
     console.error("listPosts error:", err);
     return res.status(500).json({ message: "Failed to fetch posts" });
@@ -287,11 +299,9 @@ export async function getFriendFeed(
     );
 
     if (!isOwner && !isFriend) {
-      return res
-        .status(403)
-        .json({
-          message: "You can only view the feed of your friends or your own.",
-        });
+      return res.status(403).json({
+        message: "You can only view the feed of your friends or your own.",
+      });
     }
     const targetActorIds = [targetActor.id];
     const friendActorIds = targetActor.friends?.map((f) => f.id) || [];

@@ -35,11 +35,12 @@ interface FriendCardProps {
   followed: boolean;
   avatarUrl?: string | null;
   isFriend?: boolean;
+  readonlyFriendLabel?: boolean;
   onFollow: () => void;
   onRemove: () => void;
   onMessage?: () => void;
 }
-function FriendCard({ name, bio, followed, avatarUrl, isFriend, onFollow, onRemove, onMessage }: FriendCardProps) {
+function FriendCard({ name, bio, followed, avatarUrl, isFriend, readonlyFriendLabel, onFollow, onRemove, onMessage }: FriendCardProps) {
   return (
     <div className="relative rounded-xl overflow-hidden flex flex-col items-center shadow-lg bg-white font-Roboto-light mb-6">
       <div className="h-24 w-full bg-gray-500"></div>
@@ -83,23 +84,42 @@ function FriendCard({ name, bio, followed, avatarUrl, isFriend, onFollow, onRemo
               </button>
             </>
           ) : isFriend ? (
-            // Existing friend: show Unfriend + Message
-            <>
-              <button
-                className={`bg-red-600 hover:bg-red-700 transition-all text-[15px] text-white px-3 py-[6px] rounded-full flex items-center gap-1`}
-                onClick={onRemove}
-              >
-                Unfriend
-              </button>
-              <button
-                className="bg-gray-200/65 hover:bg-gray-200 transition-colors p-2 rounded-full"
-                onClick={onMessage}
-                aria-label="Message"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              </button>
+            // Existing friend
+            <> 
+              {readonlyFriendLabel ? (
+                <>
+                  <button className="bg-gray-300 text-gray-700 cursor-default text-[15px] px-3 py-[6px] rounded-full" disabled>
+                    Your Friend
+                  </button>
+                  <button
+                    className="bg-gray-200/65 hover:bg-gray-200 transition-colors p-2 rounded-full"
+                    onClick={onMessage}
+                    aria-label="Message"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className={`bg-red-600 hover:bg-red-700 transition-all text-[15px] text-white px-3 py-[6px] rounded-full flex items-center gap-1`}
+                    onClick={onRemove}
+                  >
+                    Unfriend
+                  </button>
+                  <button
+                    className="bg-gray-200/65 hover:bg-gray-200 transition-colors p-2 rounded-full"
+                    onClick={onMessage}
+                    aria-label="Message"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97 5.969 5.969 0 014.936 20.9 4.48 4.48 0 015.914 18.875c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                </>
+              )}
             </>
           ) : (
             // Other cards: keep Add Friend + Message
@@ -171,6 +191,11 @@ export default function FriendsMainPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeProfile, setActiveProfile] = useState<number>(0);
+  const [peopleYouMayKnow, setPeopleYouMayKnow] = useState<FriendCardProps[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FriendCardProps[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
 
   // Listen for active profile changes
   useEffect(() => {
@@ -202,6 +227,68 @@ export default function FriendsMainPage() {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
+
+  const performSearch = async (query: string) => {
+    if (!query) return;
+    setIsSearching(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError("Authentication required for search");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/users/search?name=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Search failed with status: ${res.status}`);
+      }
+
+      const responseData: { items: { id: string; name?: string; profileImg?: string | null; bio?: string | null; actorId?: string }[] } = await res.json();
+      
+      const currentFriendIds = new Set(friends.map(f => f.id));
+
+      const transformedResults: FriendCardProps[] = responseData.items.map(u => ({
+        id: u.actorId ?? u.id,
+        name: u.name ?? 'Unknown User',
+        bio: u.bio ?? 'No bio available',
+        followed: false, 
+        avatarUrl: u.profileImg ?? null,
+        isFriend: currentFriendIds.has(u.actorId ?? u.id),
+        readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
+        onFollow: () => sendFriendRequest(u.actorId),
+        onRemove: () => unfriend(u.actorId),
+        onMessage: () => {},
+      }));
+
+      setSearchResults(transformedResults);
+
+    } catch (err) {
+      console.error("Error performing search:", err);
+      setSearchResults([]); 
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      performSearch(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
 
   // Function to fetch friend requests
   const fetchFriendRequests = async () => {
@@ -274,10 +361,10 @@ export default function FriendsMainPage() {
   };
 
   // Function to fetch current friends list
-  const fetchFriends = async () => {
+  const fetchFriends = async (): Promise<FriendCardProps[]> => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) return [];
 
       // First get current user's actorId or persona.actorId
       const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
@@ -290,7 +377,7 @@ export default function FriendsMainPage() {
 
       if (!meRes.ok) {
         console.warn('Failed to fetch current user:', meRes.status);
-        return;
+        return [];
       }
 
       const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
@@ -302,7 +389,7 @@ export default function FriendsMainPage() {
 
       if (!actorId) {
         console.warn('No actorId found for current user');
-        return;
+        return [];
       }
 
       const res = await fetch(`${API_BASE_URL}/api/friends/${actorId}`, {
@@ -315,7 +402,7 @@ export default function FriendsMainPage() {
 
       if (!res.ok) {
         console.warn('Failed to fetch friends:', res.status);
-        return;
+        return [];
       }
 
       const data: { actorId: string; name: string; type: string; profileImg?: string | null; bio?: string | null }[] = await res.json();
@@ -326,14 +413,16 @@ export default function FriendsMainPage() {
         followed: false,
         isFriend: true,
         onFollow: () => {},
-        onRemove: () => {},
+        onRemove: () => unfriend(u.actorId),
         onMessage: () => {},
         avatarUrl: u.profileImg, // Map profileImg to avatarUrl
       }));
 
       setFriends(transformed);
+      return transformed;
     } catch (err) {
       console.error('Error fetching friends:', err);
+      return [];
     }
   };
 
@@ -381,61 +470,176 @@ export default function FriendsMainPage() {
     }
   };
 
+  // Function to send friend request
+  const sendFriendRequest = async (toActorId?: string) => {
+    if (!toActorId) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You need to be logged in to send friend requests');
+        return;
+      }
+
+      // Resolve our current actorId according to activeProfile
+      const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!meRes.ok) {
+        console.warn('Failed to fetch current user when sending friend request', meRes.status);
+        return;
+      }
+
+      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
+      const fromActorId = activeProfile === 1 && meData.persona?.actorId
+        ? meData.persona.actorId
+        : meData.actorId;
+
+      if (!fromActorId) {
+        alert('Unable to determine your actorId for the current profile');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fromActorId, toActorId }),
+      });
+
+      if (!res.ok) {
+        console.warn('Failed to send friend request', res.status);
+      } else {
+        // Refresh friend requests so pending requests appear
+        await fetchFriendRequests();
+        alert('Friend request sent');
+      }
+    } catch (err) {
+      console.error('Error sending friend request:', err);
+    }
+  };
+
+  // Function to unfriend someone (DELETE /api/friends/{meActorId}/friends/{targetActorId})
+  const unfriend = async (targetActorId?: string) => {
+    if (!targetActorId) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You need to be logged in to unfriend');
+        return;
+      }
+
+      // Resolve our current actorId according to activeProfile
+      const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!meRes.ok) {
+        console.warn('Failed to fetch current user when unfriending', meRes.status);
+        return;
+      }
+
+      const meData: { actorId?: string; persona?: { actorId?: string } } = await meRes.json();
+      const myActorId = activeProfile === 1 && meData.persona?.actorId
+        ? meData.persona.actorId
+        : meData.actorId;
+
+      if (!myActorId) {
+        alert('Unable to determine your actorId for the current profile');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/friends/${encodeURIComponent(myActorId)}/friends/${encodeURIComponent(targetActorId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        console.warn('Failed to unfriend', res.status);
+      } else {
+        // Refresh friends + suggestions
+        await fetchFriends();
+        const currentFriends = await fetchFriends();
+        const friendIds = new Set(currentFriends.map(f => f.id));
+        await fetchPeopleYouMayKnow(friendIds);
+      }
+    } catch (err) {
+      console.error('Error unfriending user:', err);
+    }
+  };
+
+  // Function to fetch "People you may know" data
+  const fetchPeopleYouMayKnow = async (friendIds?: Set<string>) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/users/all`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        console.warn('Failed to fetch users for "People you may know"', res.status);
+        return;
+      }
+
+      const data: { id: string; name?: string; profileImg?: string | null; bio?: string | null; actorId?: string }[] = await res.json();
+
+      const mapped: FriendCardProps[] = data.map(u => ({
+        id: u.actorId ?? u.id,
+        name: u.name ?? 'Unknown',
+        bio: u.bio ?? 'No bio available',
+        followed: false,
+        avatarUrl: u.profileImg ?? null,
+        isFriend: false,
+        readonlyFriendLabel: false,
+        onFollow: () => sendFriendRequest(u.actorId ?? u.id),
+        onRemove: () => unfriend(u.actorId ?? u.id),
+        onMessage: () => {},
+      }));
+
+      const friendActorIds = friendIds ?? new Set(friends.map(f => f.id));
+      const enriched = mapped.map(item => ({
+        ...item,
+        isFriend: friendActorIds.has(item.id),
+        readonlyFriendLabel: friendActorIds.has(item.id),
+      }));
+
+      setPeopleYouMayKnow(enriched);
+    } catch (err) {
+      console.error('Error fetching people you may know:', err);
+    }
+  };
+
   // Fetch friend requests and friends on component mount and when activeProfile changes
   useEffect(() => {
-    fetchFriendRequests();
-    fetchFriends();
+    const load = async () => {
+      // fetch friends first so we can mark existing friends correctly
+      const currentFriends = await fetchFriends();
+      const friendIds = new Set(currentFriends.map(f => f.id));
+      await fetchPeopleYouMayKnow(friendIds);
+      fetchFriendRequests();
+    };
+    load();
   }, [activeProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mock data for "People you may know" section
-  const peopleYouMayKnow: FriendCardProps[] = [
-    {
-      id: 'p5',
-      name: "People 5",
-      bio: "Design is my passion",
-      followed: false,
-      onFollow: () => {},
-      onRemove: () => {},
-      onMessage: () => {},
-    },
-    {
-      id: 'p6',
-      name: "People 6",
-      bio: "Always learning",
-      followed: false,
-      onFollow: () => {},
-      onRemove: () => {},
-      onMessage: () => {},
-    },
-    {
-      id: 'p7',
-      name: "People 7",
-      bio: "Fullstack developer",
-      followed: false,
-      onFollow: () => {},
-      onRemove: () => {},
-      onMessage: () => {},
-    },
-    {
-      id: 'p8',
-      name: "People 8",
-      bio: "Marketing & growth hacker",
-      followed: false,
-      onFollow: () => {},
-      onRemove: () => {},
-      onMessage: () => {},
-    },
-    {
-      id: 'p9',
-      name: "Tomás García",
-      bio: "React Native expert",
-      followed: false,
-      onFollow: () => {},
-      onRemove: () => {},
-      onMessage: () => {},
-    },
-  ];
-  
   const menuItems = [
     {
       name: "Profile",
@@ -630,26 +834,36 @@ export default function FriendsMainPage() {
             </span>
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search for friends..."
               className="w-full pl-10 pr-3 py-2 rounded-full bg-white text-sm placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
         <div className="flex flex-col">
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="text-gray-500">Loading friend requests...</div>
-            </div>
-          ) : error ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="text-red-500">Error: {error}</div>
-            </div>
+          {searchQuery.trim() ? (
+            isSearching ? (
+              <div className="text-center text-gray-500">Searching...</div>
+            ) : (
+              <HorizontalScrollSection title="Search Results" items={searchResults} />
+            )
           ) : (
-            <>
-              <HorizontalScrollSection title="Friends" items={friends} />
-              <HorizontalScrollSection title="Friend Requests" items={friendRequests} />
-              <HorizontalScrollSection title="People you may know" items={peopleYouMayKnow} />
-            </>
+            loading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-gray-500">Loading...</div>
+              </div>
+            ) : error ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="text-red-500">Error: {error}</div>
+              </div>
+            ) : (
+              <>
+                <HorizontalScrollSection title="Friends" items={friends} />
+                <HorizontalScrollSection title="Friend Requests" items={friendRequests} />
+                <HorizontalScrollSection title="People you may know" items={peopleYouMayKnow} />
+              </>
+            )
           )}
         </div>
       </main>

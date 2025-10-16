@@ -29,10 +29,10 @@ async function bootstrap() {
 
     app.use(
       cors({
-        origin: "http://localhost:3000", // Frontend รันที่ port 3001
+        origin: "http://localhost:3001", // Frontend รันที่ port 3001
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"],
-        methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         exposedHeaders: ["Authorization"],
       })
     );
@@ -79,7 +79,7 @@ async function bootstrap() {
     app.use("/api/uploads", uploadRoutes);
     app.use("/api/products", productRoutes);
 
-    const port = parseInt(process.env.PORT || "3001");
+    const port = parseInt(process.env.PORT || "3000");
     // Use 0.0.0.0 for Docker compatibility - allows external connections
     const host = "0.0.0.0";
     const server = app.listen(port, host, () => {

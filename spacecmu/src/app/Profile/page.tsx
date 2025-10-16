@@ -169,13 +169,17 @@ export default function ProfileMainPage() {
   ];
 
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
-  const [activeProfile, setActiveProfile] = useState<number>(() => {
+  const [activeProfile, setActiveProfile] = useState<number>(0);
+
+  // Initialize activeProfile from localStorage after hydration
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const v = localStorage.getItem('activeProfile');
-      return v ? parseInt(v, 10) : 0;
+      if (v) {
+        setActiveProfile(parseInt(v, 10));
+      }
     }
-    return 0;
-  });
+  }, []);
 
   // modal states for editing
   const [editingBanner, setEditingBanner] = useState(false);
@@ -355,7 +359,7 @@ export default function ProfileMainPage() {
 
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -398,7 +402,7 @@ export default function ProfileMainPage() {
 
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -443,12 +447,15 @@ export default function ProfileMainPage() {
       }
     };
     fetchMe();
+  }, []);
 
-    // listen for activeProfile changes from Sidebar
+  // Listen for activeProfile changes from Sidebar
+  useEffect(() => {
     const handler = (e: Event) => {
-      // event detail is the new profile index
       const detail = (e as CustomEvent<number>).detail;
-      if (typeof detail === 'number') setActiveProfile(detail);
+      if (typeof detail === 'number') {
+        setActiveProfile(detail);
+      }
     };
     window.addEventListener('activeProfileChanged', handler as EventListener);
     return () => window.removeEventListener('activeProfileChanged', handler as EventListener);
