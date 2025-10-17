@@ -1,12 +1,9 @@
 import "reflect-metadata";
 import express from "express";
 import path from "path";
-import { createServer } from "http";
-import { Server } from "socket.io";
 import { AppDataSource } from "./ormconfig";
 import dotenv from "dotenv";
 import cors from "cors";
-import { initializeSocket } from "./socket";
 
 // Import routes
 import userRoutes from "./routes/userRoutes";
@@ -86,25 +83,9 @@ async function bootstrap() {
     // Use 0.0.0.0 for Docker compatibility - allows external connections
     const host = "0.0.0.0";
 
-    // สร้าง HTTP server แทน app.listen
-    const server = createServer(app);
-    server.listen(port, host, () => {
+    // Start server with Express only (no Socket.IO)
+    app.listen(port, host, () => {
       console.log(`Server listening on ${host}:${port}`);
-    });
-
-    // สร้าง Socket.IO server พร้อม CORS config
-    const io = new Server(server, {
-      cors: {
-        origin: ["http://localhost:3001", "http://26.171.147.78:3001"], // Frontend รันที่ port 3001
-        credentials: true,
-      },
-    });
-
-    // เรียกใช้ Socket.IO initialization
-    initializeSocket(io);
-
-    server.on("error", (err) => {
-      console.error("HTTP server error:", err);
     });
 
     process.on("uncaughtException", (err) => {

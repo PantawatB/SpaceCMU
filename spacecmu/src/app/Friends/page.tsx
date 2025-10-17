@@ -331,10 +331,15 @@ export default function FriendsMainPage() {
     };
   }, []);
 
+  // Helper: extract ID (prefer actorId since backend accepts it)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getUserId = (x: any): string | undefined =>
+    x?.actorId ?? x?.id ?? x?._id ?? x?.userId ?? x?.user?.id;
+
   // Function to start chat with a friend
-  const handleStartChat = async (friendUserId: string) => {
+  const handleStartChat = async (friendIdOrActorId: string) => {
     try {
-      console.log("🚀 Starting chat with user:", friendUserId);
+      console.log("🚀 Starting chat with ID:", friendIdOrActorId);
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) {
@@ -342,9 +347,9 @@ export default function FriendsMainPage() {
         return;
       }
 
-      // Create or get existing direct chat
-      // Always send otherUserId (real User.id) to backend
-      const payload = { otherUserId: friendUserId };
+      // Backend accepts both otherUserId (User.id) OR otherActorId (Actor.id)
+      // We send actorId since that's what we have from friends list
+      const payload = { otherActorId: friendIdOrActorId };
       console.log("📦 [Chat] create payload:", payload);
       console.log(
         "📤 Sending API request to:",
@@ -371,8 +376,15 @@ export default function FriendsMainPage() {
       const chatData = await response.json();
       console.log("Chat created/retrieved:", chatData);
 
+      // Backend returns { id, type, otherUser } directly
+      const chatId = chatData.id || chatData.data?.chat?.id;
+      if (!chatId) {
+        console.error("No chat ID in response:", chatData);
+        throw new Error("Invalid chat response");
+      }
+
       // Set the friend for chat and open chat window
-      setSelectedFriendForChat(chatData.data?.chat?.id || friendUserId);
+      setSelectedFriendForChat(chatId);
       setChatOpen(true);
     } catch (error) {
       console.error("Error starting chat:", error);
@@ -432,13 +444,9 @@ export default function FriendsMainPage() {
             onFollow: () => sendFriendRequest(u.actorId),
             onRemove: () => unfriend(u.actorId),
             onMessage: () => {
-              // ✅ ALWAYS use u.id (real User.id) for chat creation
-              console.log("📱 [Chat Button] Selected user for chat:", {
-                displayId: u.actorId ?? u.id, // What user sees in UI
-                realUserId: u.id, // What we send to backend
-                name: u.name,
-              });
-              handleStartChat(u.id); // ✅ u.id is the real User.id from backend
+              const uid = getUserId(u);
+              if (uid) handleStartChat(uid);
+              else console.warn("No userId for", u);
             },
           };
         }
@@ -531,7 +539,11 @@ export default function FriendsMainPage() {
           avatarUrl: request.from?.profileImg || null,
           onFollow: () => handleAcceptRequest(request.id),
           onRemove: () => handleRejectRequest(request.id),
-          onMessage: () => handleStartChat(request.from?.actorId || request.id),
+          onMessage: () => {
+            const uid = getUserId(request.from ?? request);
+            if (uid) handleStartChat(uid);
+            else console.warn("No userId for request", request);
+          },
         })
       );
 
@@ -609,9 +621,9 @@ export default function FriendsMainPage() {
         onFollow: () => {},
         onRemove: () => unfriend(u.actorId),
         onMessage: () => {
-          // Need to get user ID from actorId for chat
-          // For now use actorId, but should map to actual user ID
-          handleStartChat(u.actorId);
+          const uid = getUserId(u);
+          if (uid) handleStartChat(uid);
+          else console.warn("No userId for friend", u);
         },
         avatarUrl: u.profileImg, // Map profileImg to avatarUrl
       }));
@@ -840,7 +852,11 @@ export default function FriendsMainPage() {
         readonlyFriendLabel: false,
         onFollow: () => sendFriendRequest(u.actorId ?? u.id),
         onRemove: () => unfriend(u.actorId ?? u.id),
-        onMessage: () => handleStartChat(u.id ?? u.actorId),
+        onMessage: () => {
+          const uid = getUserId(u);
+          if (uid) handleStartChat(uid);
+          else console.warn("No userId for user", u);
+        },
       }));
 
       const friendActorIds = friendIds ?? new Set(friends.map((f) => f.id));

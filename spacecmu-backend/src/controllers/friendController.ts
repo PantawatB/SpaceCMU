@@ -5,7 +5,6 @@ import { Actor } from "../entities/Actor";
 import { FriendRequest } from "../entities/FriendRequest";
 import { createResponse } from "../utils/serialize";
 
-import { isUserOnline } from "../socket";
 import { In } from "typeorm";
 
 /**
@@ -503,7 +502,7 @@ export async function getFriendStatuses(req: Request, res: Response) {
             actorId: friendActor.id,
             name: friendActor.user.name,
             type: "user",
-            isOnline: isUserOnline(friendActor.user.id),
+            isOnline: false, // Socket.IO removed - always show offline
             lastActiveAt: friendActor.user.lastActiveAt,
           };
         }
@@ -513,7 +512,7 @@ export async function getFriendStatuses(req: Request, res: Response) {
             actorId: friendActor.id,
             name: friendActor.persona.displayName,
             type: "persona",
-            isOnline: isUserOnline(underlyingUser.id),
+            isOnline: false, // Socket.IO removed - always show offline
             lastActiveAt: underlyingUser.lastActiveAt,
           };
         }

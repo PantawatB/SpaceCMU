@@ -505,6 +505,14 @@ export async function sendMessage(
   res: Response
 ) {
   try {
+    console.log("📨 [sendMessage] Request received");
+    console.log(
+      "   User:",
+      req.user ? { id: req.user.id, name: req.user.name } : "NO USER"
+    );
+    console.log("   Params:", req.params);
+    console.log("   Body:", req.body);
+
     const user = req.user!;
     const { chatId } = req.params;
     const {
@@ -518,12 +526,14 @@ export async function sendMessage(
 
     // Validation based on message type
     if (type === MessageType.TEXT && !content) {
+      console.log("❌ No content provided");
       return res
         .status(400)
         .json({ message: "Text message content is required" });
     }
 
     if (type === MessageType.IMAGE && !imageUrl) {
+      console.log("❌ No imageUrl provided");
       return res
         .status(400)
         .json({ message: "Image URL is required for image messages" });
@@ -611,7 +621,11 @@ export async function sendMessage(
       },
     });
   } catch (error) {
-    console.error("Error sending message:", error);
+    console.error("❌ Error sending message:", error);
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "Unknown error"
+    );
     return res.status(500).json({ message: "Internal server error" });
   }
 }

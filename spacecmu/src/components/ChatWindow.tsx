@@ -1,93 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { API_BASE_URL } from "@/utils/apiConfig";
 import {
-  joinChat,
-  leaveChat,
-  sendMessage,
-  onNewMessage,
-  offNewMessage,
-} from "@/lib/socket";
-
-// Types
-interface Chat {
-  id: string;
-  name?: string;
-  type: "direct" | "group";
-  participants: Array<{
-    id: string;
-    name: string;
-    email: string;
-  }>;
-  lastMessage?: {
-    content: string;
-    createdAt: string;
-  };
-}
-
-interface Message {
-  id: string;
-  content: string;
-  type: string;
-  senderId: string;
-  chatId: string;
-  createdAt: string;
-  sender?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
-
-// Helper functions for API calls
-const authHeader = () => ({
-  Authorization: `Bearer ${
-    typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : ""
-  }`,
-  "Content-Type": "application/json",
-});
-
-async function fetchMyChats(): Promise<Chat[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/chats`, {
-      headers: authHeader(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.data?.chats ?? [];
-  } catch (error) {
-    console.error("Failed to fetch chats:", error);
-    return [];
-  }
-}
-
-async function fetchMessages(chatId: string): Promise<Message[]> {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/chats/${chatId}/messages?limit=50`,
-      {
-        headers: authHeader(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.data?.messages ?? [];
-  } catch (error) {
-    console.error("Failed to fetch messages:", error);
-    return [];
-  }
-}
-
-// Removed unused sendTextMessage function
+  getMyChats,
+  getMessages,
+  sendMessageRest,
+  type Chat,
+  type Message,
+} from "@/lib/chatApi";
 
 interface ChatWindowProps {
   chatId?: string;
@@ -129,28 +49,20 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
     }
   }, [isChatOpen, chats.length]);
 
-  // Setup Socket.IO listeners when chat is selected
+  // Load messages and start polling when chat is selected
   useEffect(() => {
     if (selectedChat) {
-      // Join the chat room
-      joinChat(selectedChat);
-
-      // Load messages for this chat
+      // Load messages immediately
       loadMessages(selectedChat);
 
-      // Listen for new messages
-      const handleNewMessage = (message: Message) => {
-        if (message.chatId === selectedChat) {
-          setMessages((prev) => [...prev, message]);
-        }
-      };
+      // Poll for new messages every 2 seconds
+      const pollInterval = setInterval(() => {
+        loadMessages(selectedChat);
+      }, 2000);
 
-      onNewMessage(handleNewMessage);
-
-      // Cleanup when changing chats
+      // Cleanup polling when changing chats
       return () => {
-        leaveChat(selectedChat);
-        offNewMessage(handleNewMessage);
+        clearInterval(pollInterval);
       };
     }
   }, [selectedChat]);
@@ -167,7 +79,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   const loadChats = async () => {
     setLoading(true);
     try {
-      const fetchedChats = await fetchMyChats();
+      const fetchedChats = await getMyChats();
       setChats(fetchedChats);
     } catch (error) {
       console.error("Error loading chats:", error);
@@ -177,7 +89,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
 
   const loadMessages = async (chatId: string) => {
     try {
-      const fetchedMessages = await fetchMessages(chatId);
+      const fetchedMessages = await getMessages(chatId);
       setMessages(fetchedMessages);
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -191,13 +103,14 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
     setChatMessage("");
 
     try {
-      // Send via Socket.IO for real-time
-      sendMessage(selectedChat, messageText);
+      // Send via REST API
+      await sendMessageRest(selectedChat, messageText);
 
-      // Optionally also send via HTTP as backup
-      // await sendTextMessage(selectedChat, messageText);
+      // Immediately reload messages to show the new one
+      await loadMessages(selectedChat);
     } catch (error) {
       console.error("Error sending message:", error);
+      alert("Failed to send message. Please try again.");
       // Restore message if failed
       setChatMessage(messageText);
     }
@@ -214,7 +127,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
     if (chat.name) return chat.name;
 
     // For direct chats, show the other participant's name
-    const otherParticipant = chat.participants.find(
+    const otherParticipant = chat.participants?.find(
       (p) => p.id !== currentUserId
     );
     return otherParticipant?.name || "Unknown User";
