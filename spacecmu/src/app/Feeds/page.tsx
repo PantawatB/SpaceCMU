@@ -26,10 +26,10 @@ export default function FeedsMainPage() {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentPostId, setCommentPostId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<{postId: number, text: string, author: string}[]>([
-    { postId: 0, text: "This is amazing!", author: "Nezuko"},
-    { postId: 0, text: "Love this post!", author: "Zenitsu" },
-    { postId: 1, text: "So cute!", author: "Inosuke" },
+  const [comments, setComments] = useState<{postId: number, text: string, author: string, avatar?: string}[]>([
+    { postId: 0, text: "This is amazing!", author: "Nezuko", avatar: "/nezuko.jpg"},
+    { postId: 0, text: "Love this post!", author: "Zenitsu", avatar: "/zenitsu.jpg" },
+    { postId: 1, text: "So cute!", author: "Inosuke", avatar: "/inosuke.jpeg" },
   ]);
   
   // Active profile mode: 0 = public, 1 = anonymous
@@ -229,6 +229,7 @@ export default function FeedsMainPage() {
 
     fetchPosts();
     fetchSidebarFriends(); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedMode, currentUser, activeProfile]);
 
   useEffect(() => {
@@ -630,6 +631,9 @@ export default function FeedsMainPage() {
       author: activeProfile === 0 
         ? (currentUser?.name ?? "Anonymous")
         : (currentUser?.persona?.displayName ?? "Anonymous"),
+      avatar: activeProfile === 0
+        ? (currentUser?.profileImg ?? "/tanjiro.jpg")
+        : (currentUser?.persona?.avatarUrl ?? "/noobcat.png"),
       time: "Just now"
     };
     setComments([newComment, ...comments]);
@@ -996,16 +1000,30 @@ export default function FeedsMainPage() {
           {showShareBar && (
             <div className="bg-gray-50 rounded-xl shadow-lg px-8 py-5 flex flex-col gap-3 w-full max-w-3xl">
               <div className="flex items-center gap-3">
-                <Image
-                  src={activeProfile === 0 
-                    ? (currentUser?.profileImg ?? "/tanjiro.jpg")
-                    : (currentUser?.persona?.avatarUrl ?? "/noobcat.png")
-                  }
-                  alt="avatar"
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                />
+                {activeProfile === 0 
+                  ? (currentUser?.profileImg ? (
+                      <Image
+                        src={currentUser.profileImg}
+                        alt="avatar"
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-300" aria-hidden="true" />
+                    ))
+                  : (currentUser?.persona?.avatarUrl ? (
+                      <Image
+                        src={currentUser.persona.avatarUrl}
+                        alt="avatar"
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-300" aria-hidden="true" />
+                    ))
+                }
 
                 <input
                   type="text"
@@ -1016,8 +1034,25 @@ export default function FeedsMainPage() {
                 />
               </div>
               {imagePreview && (
-                <div className="mt-2">
-                  <img src={imagePreview} alt="preview" className="max-h-40 rounded-lg" />
+                <div className="mt-2 relative">
+                  <Image
+                    src={imagePreview}
+                    alt="preview"
+                    width={160}
+                    height={160}
+                    className="max-h-40 rounded-lg object-cover"
+                    unoptimized
+                  />
+                  <button
+                    onClick={() => {
+                      setImageFile(null);
+                      setImagePreview("");
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition"
+                    title="Remove image"
+                  >
+                    ✕
+                  </button>
                 </div>
               )}
               <div className="flex items-center justify-between pt-2">
@@ -1186,7 +1221,13 @@ export default function FeedsMainPage() {
                 .filter(comment => comment.postId === commentPostId)
                 .map((comment, idx) => (
                   <div key={idx} className="flex gap-3 p-4 bg-gray-50 rounded-xl">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0" />
+                    <Image
+                      src={comment.avatar ?? "/tanjiro.jpg"}
+                      alt={comment.author}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-sm">{comment.author}</span>
@@ -1206,16 +1247,30 @@ export default function FeedsMainPage() {
             {/* Write Comment Section */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-start gap-3">
-                <Image
-                  src={activeProfile === 0 
-                    ? (currentUser?.profileImg ?? "/tanjiro.jpg")
-                    : (currentUser?.persona?.avatarUrl ?? "/noobcat.png")
-                  }
-                  alt="avatar"
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover flex-shrink-0"
-                />
+                {activeProfile === 0 
+                  ? (currentUser?.profileImg ? (
+                      <Image
+                        src={currentUser.profileImg}
+                        alt="avatar"
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0" aria-hidden="true" />
+                    ))
+                  : (currentUser?.persona?.avatarUrl ? (
+                      <Image
+                        src={currentUser.persona.avatarUrl}
+                        alt="avatar"
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0" aria-hidden="true" />
+                    ))
+                }
                 <div className="flex-1">
                   <textarea
                     value={commentText}
