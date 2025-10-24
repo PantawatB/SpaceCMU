@@ -1,5 +1,9 @@
-// Use Docker host IP for backend
-export const API_BASE_URL = "http://26.171.147.78:3001";
+// Dynamic API base URL that works on any machine
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (typeof window !== "undefined"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "http://localhost:3000");
 
 /**
  * Convert old localhost URLs to current API base URL
@@ -8,21 +12,21 @@ export const API_BASE_URL = "http://26.171.147.78:3001";
 export function normalizeImageUrl(url: string | null | undefined): string {
   if (!url) return "";
 
-  // If it's already using the correct base URL, return as is
+  // ถ้าเป็น absolute ที่ชี้ API_BASE_URL อยู่แล้ว
   if (url.startsWith(API_BASE_URL)) {
     return url;
   }
 
-  // Replace localhost URLs with correct base URL
-  if (url.includes("localhost:3000") || url.includes("localhost:3001")) {
+  // แทนที่ localhost:* ด้วยฐานใหม่ (รองรับรูปเก่า)
+  if (/^http:\/\/localhost:\d+/.test(url)) {
     return url.replace(/http:\/\/localhost:\d+/, API_BASE_URL);
   }
 
-  // If it's a relative URL (starts with /uploads/), make it absolute
+  // ถ้าเป็น path เริ่มด้วย /uploads/ ให้ประกอบเป็น absolute
   if (url.startsWith("/uploads/")) {
     return `${API_BASE_URL}${url}`;
   }
 
-  // Return as is for other cases (external URLs, etc.)
+  // กรณีเป็น URL ภายนอกอื่น ๆ ก็คืนตามเดิม
   return url;
 }

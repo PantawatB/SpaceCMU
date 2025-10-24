@@ -12,7 +12,9 @@ services:
       - DB_PASS=postgres
       - DB_NAME=spacecmu
       - JWT_SECRET=super_secret_key_change_this
-      - PUBLIC_BASE_URL=http://26.171.147.78:3000
+      # Public base URL - leave empty to use dynamic hostname
+      # Or set to specific IP: PUBLIC_BASE_URL=http://YOUR_IP:3000
+      - PUBLIC_BASE_URL=
     depends_on:
       db:
         condition: service_healthy
