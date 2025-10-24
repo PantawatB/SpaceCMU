@@ -219,6 +219,88 @@ export const createProduct = async (
   }
 };
 
+// PUT /api/products/:id - Update product
+export const updateProduct = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { name, price, description } = req.body;
+    const user = req.user!;
+    const imageFile = req.file;
+
+    // Validate input
+    const validationErrors = validateProduct(name, price, description);
+    if (validationErrors) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validationErrors,
+      });
+    }
+
+    const productRepo = AppDataSource.getRepository(Product);
+    const product = await productRepo.findOne({
+      where: { id: parseInt(id) },
+      relations: ["seller"],
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Check ownership
+    if (product.seller.id !== user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update your own products",
+      });
+    }
+
+    // Update fields
+    product.name = name.trim();
+    product.price = parseFloat(price);
+    product.description = description?.trim();
+
+    // Update image if provided
+    if (imageFile) {
+      product.imageUrl = `/uploads/${imageFile.filename}`;
+    }
+
+    const updatedProduct = await productRepo.save(product);
+
+    // Return response
+    const productData = {
+      id: updatedProduct.id,
+      name: updatedProduct.name,
+      description: updatedProduct.description,
+      price: updatedProduct.price,
+      status: updatedProduct.status,
+      imageUrl: updatedProduct.imageUrl
+        ? createAbsoluteImageUrl(req, updatedProduct.imageUrl)
+        : null,
+      createdAt: updatedProduct.createdAt,
+      seller: sanitizeSeller(user),
+    };
+
+    return res.json({
+      success: true,
+      message: "Product updated successfully",
+      data: { product: productData },
+    });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 // DELETE /api/products/:id - ลบสินค้า (เจ้าของเท่านั้น)
 export const deleteProduct = async (
   req: AuthenticatedRequest,

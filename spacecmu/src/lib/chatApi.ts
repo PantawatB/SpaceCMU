@@ -22,6 +22,7 @@ export interface Chat {
     id: string;
     name: string;
     email: string;
+    profileImg?: string;
   }>;
   lastMessage?: {
     content: string;

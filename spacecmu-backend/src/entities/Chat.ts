@@ -66,6 +66,12 @@ export class Chat {
   @OneToMany("Message", "chat", { cascade: true })
   messages!: any[];
 
+  /**
+   * All participants in this chat
+   */
+  @OneToMany("ChatParticipant", "chat")
+  participants!: any[];
+
   @CreateDateColumn()
   createdAt!: Date;
 

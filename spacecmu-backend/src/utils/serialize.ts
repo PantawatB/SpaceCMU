@@ -23,6 +23,7 @@ export function sanitizeSeller(user: Partial<User> | null) {
   return {
     id: user.id,
     name: user.name,
+    profileImg: user.profileImg ?? null,
   };
 }
 

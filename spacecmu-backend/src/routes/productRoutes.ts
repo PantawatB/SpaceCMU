@@ -16,7 +16,6 @@ router.post(
   upload.single("image"),
   productController.createProduct
 );
-router.delete("/:id", authenticateToken, productController.deleteProduct);
 router.patch(
   "/:id/status",
   authenticateToken,
@@ -27,5 +26,12 @@ router.put(
   authenticateToken,
   productController.updateProductImage
 );
+router.put(
+  "/:id",
+  authenticateToken,
+  upload.single("image"),
+  productController.updateProduct
+);
+router.delete("/:id", authenticateToken, productController.deleteProduct);
 
 export default router;

@@ -4,6 +4,7 @@ import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import ChatWindow from "@/components/ChatWindow";
+import { normalizeImageUrl } from "@/utils/apiConfig";
 
 type Persona = {
   id?: string;
@@ -23,6 +24,20 @@ type CurrentUser = {
   persona?: Persona;
   friendCount?: number;
 } | null;
+
+type Product = {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  imageUrl: string;
+  status?: string;
+  seller?: {
+    id: string;
+    name: string;
+    profileImg?: string;
+  };
+};
 
 import { API_BASE_URL } from "@/utils/apiConfig";
 
@@ -183,8 +198,12 @@ export default function ProfileMainPage() {
     },
   ];
 
+  const DEFAULT_IMAGE =
+    "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'%3E%3Crect width='100%25' height='100%25' fill='%23E5E7EB'/%3E%3C/svg%3E";
+
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
   const [activeProfile, setActiveProfile] = useState<number>(0);
+  const [myProducts, setMyProducts] = useState<Product[]>([]);
 
   // Initialize activeProfile from localStorage after hydration
   useEffect(() => {
@@ -287,7 +306,13 @@ export default function ProfileMainPage() {
         body: formData,
       });
 
-      if (!uploadRes.ok) throw new Error("Failed to upload banner image");
+      console.log("Upload response status:", uploadRes?.status);
+
+      if (!uploadRes || !uploadRes.ok) {
+        const errorText = await uploadRes?.text();
+        console.error("Upload error:", errorText);
+        throw new Error("Failed to upload banner image");
+      }
 
       const uploadData = await uploadRes.json();
       const imageUrl = uploadData.url; // Backend returns {url: "..."} directly
@@ -505,6 +530,33 @@ export default function ProfileMainPage() {
     fetchMe();
   }, []);
 
+  // Fetch user's products
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token || !currentUser?.id) return;
+
+    const fetchMyProducts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/products`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const products = json.data || json;
+          // Filter products owned by current user
+          const myItems = products.filter(
+            (p: Product) => p.seller?.id === currentUser.id
+          );
+          setMyProducts(myItems);
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      }
+    };
+    fetchMyProducts();
+  }, [currentUser]);
+
   // Listen for activeProfile changes from Sidebar
   useEffect(() => {
     const handler = (e: Event) => {
@@ -602,7 +654,7 @@ export default function ProfileMainPage() {
                   <div className="h-40 w-full relative">
                     <Image
                       loader={({ src }) => src}
-                      src={publicProfile.banner}
+                      src={normalizeImageUrl(publicProfile.banner)}
                       alt="banner"
                       fill
                       className="object-cover"
@@ -612,7 +664,7 @@ export default function ProfileMainPage() {
                 ) : (
                   <div className="h-40 w-full relative">
                     <Image
-                      src={publicProfile.banner}
+                      src={normalizeImageUrl(publicProfile.banner)}
                       alt="banner"
                       fill
                       className="object-cover"
@@ -663,35 +715,13 @@ export default function ProfileMainPage() {
                 onMouseLeave={() => setHoverAvatar(false)}
                 onClick={() => setEditingAvatar(true)}
               >
-                {displayed.avatar ? (
-                  // render provided avatar (external or local)
-                  typeof displayed.avatar === "string" &&
-                  displayed.avatar.startsWith("http") ? (
-                    <Image
-                      loader={({ src }) => src}
-                      src={displayed.avatar}
-                      alt={displayed.name}
-                      width={90}
-                      height={90}
-                      unoptimized
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <Image
-                      src={displayed.avatar}
-                      alt={displayed.name}
-                      width={90}
-                      height={90}
-                      className="rounded-full"
-                    />
-                  )
-                ) : (
-                  // no profile image: show neutral gray placeholder circle
-                  <div
-                    className="w-[90px] h-[90px] rounded-full bg-gray-300 border-2 border-white"
-                    aria-hidden="true"
-                  />
-                )}
+                <Image
+                  src={normalizeImageUrl(displayed.avatar) || DEFAULT_IMAGE}
+                  alt={displayed.name}
+                  width={90}
+                  height={90}
+                  className="w-[90px] h-[90px] rounded-full object-cover"
+                />
                 {/* Hover overlay with pencil icon */}
                 {hoverAvatar && (
                   <div
@@ -893,26 +923,73 @@ export default function ProfileMainPage() {
                 </div>
               )}
               {activeTab === "market" && (
-                <div className="text-center text-gray-500 py-12">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z"
-                    />
-                  </svg>
-                  <p className="text-lg font-medium">No items listed yet</p>
-                  <p className="text-sm mt-1">
-                    Your market items will appear here
-                  </p>
-                </div>
+                <>
+                  {myProducts.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      {myProducts.map((product) => (
+                        <article
+                          key={product.id}
+                          className="bg-white rounded-xl shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition-shadow"
+                        >
+                          {/* Product Image */}
+                          <div className="w-full h-48">
+                            <Image
+                              src={
+                                normalizeImageUrl(product.imageUrl) ||
+                                "/noobcat.png"
+                              }
+                              alt={product.name}
+                              width={300}
+                              height={192}
+                              className="w-full h-full object-cover rounded-t-xl"
+                            />
+                          </div>
+                          {/* Card Content */}
+                          <div className="flex-1 flex flex-col p-4">
+                            <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
+                              {product.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                              {product.description || "No description"}
+                            </p>
+                            {/* Price */}
+                            <div className="mt-auto flex items-center justify-between">
+                              <span className="text-lg font-semibold text-orange-600">
+                                ฿{product.price}
+                              </span>
+                              {product.status === "sold" && (
+                                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
+                                  Sold
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-12">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">No items listed yet</p>
+                      <p className="text-sm mt-1">
+                        Your market items will appear here
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               {activeTab === "reposts" && (
                 <div className="text-center text-gray-500 py-12">
@@ -1102,30 +1179,13 @@ export default function ProfileMainPage() {
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-2">Current</p>
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 mx-auto">
-                  {displayed.avatar ? (
-                    typeof displayed.avatar === "string" &&
-                    displayed.avatar.startsWith("http") ? (
-                      <Image
-                        loader={({ src }) => src}
-                        src={displayed.avatar}
-                        alt="current"
-                        width={96}
-                        height={96}
-                        unoptimized
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Image
-                        src={displayed.avatar}
-                        alt="current"
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                      />
-                    )
-                  ) : (
-                    <div className="w-full h-full bg-gray-300"></div>
-                  )}
+                  <Image
+                    src={normalizeImageUrl(displayed.avatar) || DEFAULT_IMAGE}
+                    alt="current"
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
               {/* New avatar preview */}

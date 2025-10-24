@@ -3,8 +3,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useLayoutEffect } from "react";
 import Image from "next/image";
-import { useRouter } from 'next/navigation';
-import { API_BASE_URL } from '@/utils/apiConfig';
+import { useRouter } from "next/navigation";
+import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 
 export interface SidebarMenuItem {
   name: string;
@@ -17,8 +17,20 @@ interface SidebarProps {
 }
 
 // profiles will be derived from current user (public and anonymous persona)
-type Persona = { id?: string; displayName?: string; avatarUrl?: string; bannerImg?: string };
-type CurrentUser = { id?: string; name?: string; studentId?: string; profileImg?: string; bannerImg?: string; persona?: Persona } | null;
+type Persona = {
+  id?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  bannerImg?: string;
+};
+type CurrentUser = {
+  id?: string;
+  name?: string;
+  studentId?: string;
+  profileImg?: string;
+  bannerImg?: string;
+  persona?: Persona;
+} | null;
 
 export default function Sidebar({ menuItems }: SidebarProps) {
   const pathname = usePathname();
@@ -28,7 +40,7 @@ export default function Sidebar({ menuItems }: SidebarProps) {
   // read persisted value synchronously on mount to avoid a visible flash
   useLayoutEffect(() => {
     try {
-      const v = localStorage.getItem('activeProfile');
+      const v = localStorage.getItem("activeProfile");
       if (v) {
         const parsed = parseInt(v, 10);
         if (!Number.isNaN(parsed)) setActiveProfile(parsed);
@@ -47,14 +59,16 @@ export default function Sidebar({ menuItems }: SidebarProps) {
   // helper to set and persist active profile immediately
   const setProfile = (idx: number) => {
     setActiveProfile(idx);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       try {
-        localStorage.setItem('activeProfile', String(idx));
+        localStorage.setItem("activeProfile", String(idx));
       } catch {
         // ignore
       }
       try {
-        window.dispatchEvent(new CustomEvent('activeProfileChanged', { detail: idx }));
+        window.dispatchEvent(
+          new CustomEvent("activeProfileChanged", { detail: idx })
+        );
       } catch {
         // ignore
       }
@@ -65,16 +79,20 @@ export default function Sidebar({ menuItems }: SidebarProps) {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<number>).detail;
-      if (typeof detail === 'number') setActiveProfile(detail);
+      if (typeof detail === "number") setActiveProfile(detail);
     };
-    window.addEventListener('activeProfileChanged', handler as EventListener);
-    return () => window.removeEventListener('activeProfileChanged', handler as EventListener);
+    window.addEventListener("activeProfileChanged", handler as EventListener);
+    return () =>
+      window.removeEventListener(
+        "activeProfileChanged",
+        handler as EventListener
+      );
   }, []);
 
   // listen for storage events (cross-tab or code that writes directly to localStorage)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'activeProfile') {
+      if (e.key === "activeProfile") {
         try {
           const v = e.newValue;
           if (v) setActiveProfile(parseInt(v, 10));
@@ -84,19 +102,20 @@ export default function Sidebar({ menuItems }: SidebarProps) {
         }
       }
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) return;
     const fetchMe = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error('Failed to fetch current user');
+        if (!res.ok) throw new Error("Failed to fetch current user");
         const data = await res.json();
         setCurrentUser(data);
       } catch (err) {
@@ -113,7 +132,9 @@ export default function Sidebar({ menuItems }: SidebarProps) {
     {
       type: "Public",
       name: currentUser?.name ?? "Kamado Tanjiro",
-      username: currentUser?.studentId ? `@${currentUser.studentId}` : "@6506xxxxx",
+      username: currentUser?.studentId
+        ? `@${currentUser.studentId}`
+        : "@6506xxxxx",
       // keep avatar null when profileImg is null so UI can show a gray placeholder
       avatar: currentUser?.profileImg ?? null,
       bg: "bg-gradient-to-tr from-purple-400 via-cyan-300 to-yellow-300",
@@ -129,15 +150,15 @@ export default function Sidebar({ menuItems }: SidebarProps) {
   ];
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       try {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       } catch {
         // ignore
       }
     }
-    router.push('/');
+    router.push("/");
   };
 
   return (
@@ -166,12 +187,20 @@ export default function Sidebar({ menuItems }: SidebarProps) {
           {!userLoaded ? (
             // skeleton placeholders while currentUser is being fetched
             <>
-              <div className={`cursor-default flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''}`}>
+              <div
+                className={`cursor-default flex flex-col items-center ${
+                  hydrated ? "transition-all duration-300" : ""
+                }`}
+              >
                 <div className="w-14 h-14 rounded-full bg-gray-200 animate-pulse"></div>
                 <div className="mt-2 h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
                 <div className="mt-1 h-2 w-24 bg-gray-200 rounded animate-pulse"></div>
               </div>
-              <div className={`cursor-default flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''}`}>
+              <div
+                className={`cursor-default flex flex-col items-center ${
+                  hydrated ? "transition-all duration-300" : ""
+                }`}
+              >
                 <div className="w-14 h-14 rounded-full bg-gray-200 animate-pulse"></div>
                 <div className="mt-2 h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
                 <div className="mt-1 h-2 w-24 bg-gray-200 rounded animate-pulse"></div>
@@ -186,16 +215,23 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                   role="button"
                   tabIndex={0}
                   onClick={() => setProfile(idx)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfile(idx); }}
-                  className={`cursor-pointer flex flex-col items-center ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && isActive ? '' : 'opacity-50 grayscale'}`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setProfile(idx);
+                  }}
+                  className={`cursor-pointer flex flex-col items-center ${
+                    hydrated ? "transition-all duration-300" : ""
+                  } ${hydrated && isActive ? "" : "opacity-50 grayscale"}`}
                 >
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}>
+                  <div
+                    className={`w-14 h-14 rounded-full flex items-center justify-center relative ${profile.bg} shadow-lg`}
+                  >
                     {profile.avatar ? (
                       // if avatar provided (external or local), render with Image
-                      typeof profile.avatar === 'string' && profile.avatar.startsWith('http') ? (
+                      typeof profile.avatar === "string" &&
+                      profile.avatar.startsWith("http") ? (
                         <Image
                           loader={({ src }) => src}
-                          src={profile.avatar}
+                          src={normalizeImageUrl(profile.avatar)}
                           alt={profile.name}
                           width={48}
                           height={48}
@@ -205,7 +241,7 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                         />
                       ) : (
                         <Image
-                          src={profile.avatar}
+                          src={normalizeImageUrl(profile.avatar)}
                           alt={profile.name}
                           width={48}
                           height={48}
@@ -215,16 +251,29 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                       )
                     ) : (
                       // no profile image: show neutral gray placeholder circle
-                      <div className="w-12 h-12 rounded-full bg-gray-300 border-2 border-white" aria-hidden="true" />
+                      <div
+                        className="w-12 h-12 rounded-full bg-gray-300 border-2 border-white"
+                        aria-hidden="true"
+                      />
                     )}
                     {hydrated && isActive && (
                       <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow"></span>
                     )}
                   </div>
                   <div className="mt-2 text-sm font-semibold text-gray-800">
-                    <div className="max-w-[5rem] truncate text-center" title={profile.name}>{profile.name}</div>
+                    <div
+                      className="max-w-[5rem] truncate text-center"
+                      title={profile.name}
+                    >
+                      {profile.name}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 max-w-[10rem] truncate text-center" title={profile.username}>{profile.username}</div>
+                  <div
+                    className="text-xs text-gray-500 max-w-[10rem] truncate text-center"
+                    title={profile.username}
+                  >
+                    {profile.username}
+                  </div>
                 </div>
               );
             })
@@ -271,19 +320,34 @@ export default function Sidebar({ menuItems }: SidebarProps) {
         {/* Toggle Profile Button */}
         <div className="flex mb-6 rounded-lg overflow-hidden border border-gray-200">
           <button
-            className={`flex-1 py-2 text-center font-semibold ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && activeProfile === 0 ? 'bg-white text-black' : 'bg-gray-200 text-gray-500'}`}
+            className={`flex-1 py-2 text-center font-semibold ${
+              hydrated ? "transition-all duration-300" : ""
+            } ${
+              hydrated && activeProfile === 0
+                ? "bg-white text-black"
+                : "bg-gray-200 text-gray-500"
+            }`}
             onClick={() => setProfile(0)}
           >
             Public
           </button>
           <button
-            className={`flex-1 py-2 text-center font-semibold ${hydrated ? 'transition-all duration-300' : ''} ${hydrated && activeProfile === 1 ? 'bg-white text-black' : 'bg-gray-200 text-gray-500'}`}
+            className={`flex-1 py-2 text-center font-semibold ${
+              hydrated ? "transition-all duration-300" : ""
+            } ${
+              hydrated && activeProfile === 1
+                ? "bg-white text-black"
+                : "bg-gray-200 text-gray-500"
+            }`}
             onClick={() => setProfile(1)}
           >
             Anonymous
           </button>
         </div>
-        <button className="w-full flex items-center gap-3 justify-center bg-black text-white rounded-lg px-3 py-2 font-semibold hover:bg-gray-800" onClick={handleLogout}>
+        <button
+          className="w-full flex items-center gap-3 justify-center bg-black text-white rounded-lg px-3 py-2 font-semibold hover:bg-gray-800"
+          onClick={handleLogout}
+        >
           <span className="w-5 h-5 flex items-center justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"

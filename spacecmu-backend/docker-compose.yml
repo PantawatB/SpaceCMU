@@ -12,10 +12,13 @@ services:
       - DB_PASS=postgres
       - DB_NAME=spacecmu
       - JWT_SECRET=super_secret_key_change_this
+      - PUBLIC_BASE_URL=http://26.171.147.78:3000
     depends_on:
       db:
         condition: service_healthy
     restart: on-failure
+    volumes:
+      - uploads_data:/app/public/uploads
 
   db:
     image: postgres:15
@@ -35,3 +38,4 @@ services:
 
 volumes:
   db_data:
+  uploads_data:

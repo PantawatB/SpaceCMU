@@ -3,7 +3,7 @@
 import Sidebar from "../../components/Sidebar";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { API_BASE_URL } from "../../utils/apiConfig";
+import { API_BASE_URL, normalizeImageUrl } from "../../utils/apiConfig";
 import ChatWindow from "@/components/ChatWindow";
 
 // Interface for search user result from /api/users/search
@@ -67,7 +67,7 @@ function FriendCard({
         <div className="-mt-16">
           {avatarUrl ? (
             <Image
-              src={avatarUrl}
+              src={normalizeImageUrl(avatarUrl)}
               alt="Profile Avatar"
               width={75}
               height={75}
@@ -1121,7 +1121,7 @@ export default function FriendsMainPage() {
       {/* Chat Window */}
       {chatOpen && selectedFriendForChat && (
         <ChatWindow
-          chatId={`direct_${selectedFriendForChat}`}
+          chatId={selectedFriendForChat}
           onClose={() => {
             setChatOpen(false);
             setSelectedFriendForChat(null);

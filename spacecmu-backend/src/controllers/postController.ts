@@ -174,6 +174,7 @@ export async function listPosts(req: Request, res: Response) {
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
+      .where("post.visibility = :visibility", { visibility: "public" })
       .loadRelationCountAndMap("post.likeCount", "post.likedBy")
       .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
       .loadRelationCountAndMap("post.saveCount", "post.savedBy")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   getMyChats,
   getMessages,
@@ -8,6 +9,7 @@ import {
   type Chat,
   type Message,
 } from "@/lib/chatApi";
+import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 
 interface ChatWindowProps {
   chatId?: string;
@@ -26,12 +28,32 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get current user ID on client side
+  // Get current user ID from backend
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const userId = localStorage.getItem("userId");
-      setCurrentUserId(userId);
-    }
+    const fetchCurrentUser = async () => {
+      try {
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (!token) return;
+
+        const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          const userId = userData.id || userData.data?.id;
+          setCurrentUserId(userId);
+          console.log("✅ Current user ID:", userId);
+        }
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+      }
+    };
+
+    fetchCurrentUser();
   }, []);
 
   // Handle chatId prop changes
@@ -126,11 +148,59 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   const getChatDisplayName = (chat: Chat) => {
     if (chat.name) return chat.name;
 
+    // Debug log
+    console.log("Chat object:", chat);
+    console.log("Current user ID:", currentUserId);
+    console.log("Participants:", chat.participants);
+
     // For direct chats, show the other participant's name
-    const otherParticipant = chat.participants?.find(
-      (p) => p.id !== currentUserId
-    );
-    return otherParticipant?.name || "Unknown User";
+    if (chat.participants && chat.participants.length > 0) {
+      // If we have currentUserId, filter it out
+      if (currentUserId) {
+        const otherParticipant = chat.participants.find(
+          (p) => p.id !== currentUserId
+        );
+        if (otherParticipant) {
+          console.log("Found other participant:", otherParticipant.name);
+          return otherParticipant.name;
+        }
+      }
+
+      // Fallback: just show the first participant that's not in localStorage userId
+      const localUserId =
+        typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+      if (localUserId) {
+        const otherParticipant = chat.participants.find(
+          (p) => p.id !== localUserId
+        );
+        if (otherParticipant) {
+          console.log("Found via localStorage:", otherParticipant.name);
+          return otherParticipant.name;
+        }
+      }
+
+      // Last resort: show first participant
+      console.log("Using first participant:", chat.participants[0].name);
+      return chat.participants[0].name;
+    }
+
+    return "Unknown User";
+  };
+
+  const getOtherParticipant = (chat: Chat) => {
+    if (!chat.participants || chat.participants.length === 0) return null;
+
+    if (currentUserId) {
+      return chat.participants.find((p) => p.id !== currentUserId) || null;
+    }
+
+    const localUserId =
+      typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+    if (localUserId) {
+      return chat.participants.find((p) => p.id !== localUserId) || null;
+    }
+
+    return chat.participants[0] || null;
   };
 
   return (
@@ -195,38 +265,55 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                 </div>
               ) : (
                 <>
-                  {chats.map((chat) => (
-                    <div
-                      key={chat.id}
-                      onClick={() => setSelectedChat(chat.id)}
-                      className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 cursor-pointer transition border-b border-gray-50"
-                    >
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-600">
-                            {getChatDisplayName(chat).charAt(0).toUpperCase()}
-                          </span>
+                  {chats.map((chat) => {
+                    const otherUser = getOtherParticipant(chat);
+                    const profileImg = otherUser?.profileImg;
+
+                    return (
+                      <div
+                        key={chat.id}
+                        onClick={() => setSelectedChat(chat.id)}
+                        className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 cursor-pointer transition border-b border-gray-50"
+                      >
+                        <div className="relative">
+                          {profileImg ? (
+                            <Image
+                              src={normalizeImageUrl(profileImg)}
+                              alt="Profile"
+                              width={48}
+                              height={48}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-600">
+                                {getChatDisplayName(chat)
+                                  .charAt(0)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-semibold text-sm text-gray-800 truncate">
+                              {getChatDisplayName(chat)}
+                            </h4>
+                            <span className="text-xs text-gray-400">
+                              {chat.lastMessage
+                                ? formatTime(chat.lastMessage.createdAt)
+                                : ""}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-gray-500 truncate">
+                              {chat.lastMessage?.content || "No messages yet"}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-semibold text-sm text-gray-800 truncate">
-                            {getChatDisplayName(chat)}
-                          </h4>
-                          <span className="text-xs text-gray-400">
-                            {chat.lastMessage
-                              ? formatTime(chat.lastMessage.createdAt)
-                              : ""}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-500 truncate">
-                            {chat.lastMessage?.content || "No messages yet"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {chats.length === 0 && (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-sm text-gray-500">
@@ -265,17 +352,33 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                 </svg>
               </button>
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-600">
-                    {selectedChat && chats.find((c) => c.id === selectedChat)
-                      ? getChatDisplayName(
-                          chats.find((c) => c.id === selectedChat)!
-                        )
-                          .charAt(0)
-                          .toUpperCase()
-                      : "U"}
-                  </span>
-                </div>
+                {(() => {
+                  const currentChat = chats.find((c) => c.id === selectedChat);
+                  const otherUser = currentChat
+                    ? getOtherParticipant(currentChat)
+                    : null;
+                  const profileImg = otherUser?.profileImg;
+
+                  return profileImg ? (
+                    <Image
+                      src={normalizeImageUrl(profileImg)}
+                      alt="Profile"
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-sm font-medium text-gray-600">
+                        {currentChat
+                          ? getChatDisplayName(currentChat)
+                              .charAt(0)
+                              .toUpperCase()
+                          : "U"}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div>
                 <h4 className="font-bold text-sm text-gray-800">
@@ -315,7 +418,16 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
             {messages.map((msg) => {
-              const isMine = msg.senderId === currentUserId;
+              const isMine = msg.sender.id === currentUserId;
+
+              // Check if message contains image URL
+              const lines = msg.content.split("\n");
+              const hasImage = lines.some(
+                (line) =>
+                  line.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+                  line.includes("/uploads/")
+              );
+
               return (
                 <div
                   key={msg.id}
@@ -328,7 +440,59 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                         : "bg-white text-gray-800 rounded-bl-sm shadow-sm"
                     }`}
                   >
-                    <p className="text-sm">{msg.content}</p>
+                    {hasImage ? (
+                      <div className="space-y-2">
+                        {lines.map((line, idx) => {
+                          const trimmedLine = line.trim();
+                          const isImageUrl =
+                            trimmedLine.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+                            trimmedLine.includes("/uploads/");
+
+                          if (isImageUrl) {
+                            // Make sure URL is absolute and normalized
+                            let imageUrl = trimmedLine.startsWith("http")
+                              ? trimmedLine
+                              : `${API_BASE_URL}${trimmedLine}`;
+
+                            // Normalize localhost URLs
+                            imageUrl = normalizeImageUrl(imageUrl);
+
+                            return (
+                              <div
+                                key={idx}
+                                className="rounded-lg overflow-hidden bg-white p-2"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={imageUrl}
+                                  alt="Product"
+                                  className="w-full h-auto max-w-[200px] object-cover rounded-lg"
+                                  onError={(e) => {
+                                    // Show placeholder if image fails to load
+                                    const target = e.currentTarget;
+                                    target.src =
+                                      "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlDQTNCRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4=";
+                                    target.onerror = null; // Prevent infinite loop
+                                  }}
+                                />
+                                <p className="text-xs text-gray-400 mt-1 break-all">
+                                  {trimmedLine}
+                                </p>
+                              </div>
+                            );
+                          } else if (trimmedLine) {
+                            return (
+                              <p key={idx} className="text-sm">
+                                {trimmedLine}
+                              </p>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm">{msg.content}</p>
+                    )}
                     <span
                       className={`text-xs mt-1 block ${
                         isMine ? "text-blue-100" : "text-gray-400"

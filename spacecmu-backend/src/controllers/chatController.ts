@@ -27,6 +27,8 @@ export async function getMyChats(
         "chat.lastMessage",
         "chat.lastMessage.sender",
         "chat.createdBy",
+        "chat.participants",
+        "chat.participants.user",
       ],
       order: { chat: { updatedAt: "DESC" } },
     });
@@ -35,6 +37,12 @@ export async function getMyChats(
       id: p.chat.id,
       type: p.chat.type,
       name: p.chat.name,
+      participants: p.chat.participants?.map((participant: any) => ({
+        id: participant.user.id,
+        name: participant.user.name,
+        email: participant.user.email,
+        profileImg: participant.user.profileImg,
+      })),
       lastMessage: p.chat.lastMessage
         ? {
             id: p.chat.lastMessage.id,

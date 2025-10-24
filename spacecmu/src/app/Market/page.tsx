@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Sidebar from "../../components/Sidebar";
 import ChatWindow from "@/components/ChatWindow";
-import { API_BASE_URL } from "@/utils/apiConfig";
+import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 
 // MarketCard component
 type MarketCardProps = {
@@ -14,6 +14,15 @@ type MarketCardProps = {
   image: string;
   sellerName: string;
   sellerImage: string;
+  sellerId: string;
+  productId: string;
+  isOwnProduct: boolean;
+  onChatClick: (
+    sellerId: string,
+    productTitle: string,
+    productImage: string
+  ) => void;
+  onEditClick?: (productId: string) => void;
 };
 
 function MarketCard({
@@ -23,13 +32,18 @@ function MarketCard({
   image,
   sellerName,
   sellerImage,
+  sellerId,
+  productId,
+  isOwnProduct,
+  onChatClick,
+  onEditClick,
 }: MarketCardProps) {
   return (
     <article className="bg-white rounded-xl shadow-md w-full max-w-[300px] mx-auto mb-8 border border-gray-100 flex flex-col h-[380px] overflow-hidden">
       {/* Product Image */}
       <div className="w-full h-[180px] flex-shrink-0">
         <Image
-          src={image}
+          src={normalizeImageUrl(image)}
           alt={title}
           width={300}
           height={180}
@@ -63,7 +77,7 @@ function MarketCard({
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 flex-shrink-0">
                 <Image
-                  src={sellerImage}
+                  src={normalizeImageUrl(sellerImage)}
                   alt={sellerName}
                   width={32}
                   height={32}
@@ -76,8 +90,17 @@ function MarketCard({
                 </span>
               </div>
             </div>
-            <button className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium">
-              Chat
+            <button
+              onClick={() => {
+                if (isOwnProduct && onEditClick) {
+                  onEditClick(productId);
+                } else {
+                  onChatClick(sellerId, title, image);
+                }
+              }}
+              className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
+            >
+              {isOwnProduct ? "Edit" : "Chat"}
             </button>
           </div>
         </div>
@@ -88,6 +111,13 @@ function MarketCard({
 
 export default function MarketMainPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(
+    null
+  );
+  const [chatOpen, setChatOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -174,6 +204,19 @@ export default function MarketMainPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    setEditingProductId(null);
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      image: "/noobcat.png",
+    });
+    setSelectedImageFile(null);
+  };
+
   const handleSubmit = async () => {
     try {
       const token =
@@ -185,8 +228,15 @@ export default function MarketMainPage() {
       payload.append("price", String(formData.price || "0"));
       if (selectedImageFile) payload.append("image", selectedImageFile);
 
-      const res = await fetch(`${API_BASE_URL}/api/products`, {
-        method: "POST",
+      const url =
+        isEditMode && editingProductId
+          ? `${API_BASE_URL}/api/products/${editingProductId}`
+          : `${API_BASE_URL}/api/products`;
+
+      const method = isEditMode && editingProductId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: payload,
       });
@@ -194,26 +244,19 @@ export default function MarketMainPage() {
       if (!res.ok) {
         const text = await res.text();
         console.error("Upload failed", res.status, text);
-        alert("Failed to add product");
+        alert(
+          isEditMode ? "Failed to update product" : "Failed to add product"
+        );
         return;
       }
 
       // success
       const json = await res.json();
-      console.log("Product created", json);
-      // reset form
-      setIsModalOpen(false);
-      setFormData({
-        name: "",
-        description: "",
-        price: "",
-        image: "/noobcat.png",
-      });
-      setSelectedImageFile(null);
-      // refresh list
-      // simple approach: re-fetch products by calling the fetch effect — toggle isModalOpen already triggers no fetch, so reload page or implement a refresh; for now reload items by calling window.location.reload()
-      // better: implement a refetch function; but to keep change small, just reload
-      window.location.reload();
+      console.log(isEditMode ? "Product updated" : "Product created", json);
+      // reset form and close modal
+      closeModal();
+      // Refresh products
+      fetchProducts();
     } catch (err) {
       console.error("Error submitting product", err);
       alert("Error submitting product");
@@ -420,7 +463,7 @@ export default function MarketMainPage() {
     price: string | number | null;
     description: string | null;
     imageUrl: string | null;
-    seller?: { id: string; name: string } | null;
+    seller?: { id: string; name: string; profileImg?: string | null } | null;
   };
 
   const [marketItems, setMarketItems] = useState<
@@ -431,6 +474,9 @@ export default function MarketMainPage() {
       image: string;
       sellerName: string;
       sellerImage: string;
+      sellerId: string;
+      productId: string;
+      isOwnProduct: boolean;
     }>
   >([]);
 
@@ -443,42 +489,127 @@ export default function MarketMainPage() {
     return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
   };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const token =
-          typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const res = await fetch(`${API_BASE_URL}/api/products`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        if (!res.ok) throw new Error("Failed to fetch products");
-        const json = await res.json();
-        const items: Product[] = json?.data ?? [];
-        const mapped = items.map((p) => {
-          const priceNum = p.price ? parseFloat(String(p.price)) : 0;
-          const priceStr = Number.isInteger(priceNum)
-            ? `฿${priceNum}`
-            : `฿${priceNum.toFixed(2)}`;
-          return {
-            price: priceStr,
-            title: truncateText(p.name || "Untitled Product", MAX_TITLE_LENGTH),
-            jobTitle: truncateText(
-              p.description || "No description provided",
-              MAX_DESC_LENGTH
-            ),
-            image: p.imageUrl || DEFAULT_IMAGE,
-            sellerName: p.seller?.name || "Unknown Seller",
-            sellerImage: DEFAULT_IMAGE, // placeholder avatar until API provides one
-          };
-        });
-        setMarketItems(mapped);
-      } catch (err) {
-        console.error("Error fetching products", err);
-      }
-    };
+  const fetchProducts = useCallback(async () => {
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    fetchProducts();
+      // Fetch current user first
+      let currentUser = null;
+      if (token) {
+        try {
+          const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            currentUser = userData.id || userData.data?.id;
+            setCurrentUserId(currentUser);
+          }
+        } catch (err) {
+          console.error("Error fetching current user:", err);
+        }
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/products`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!res.ok) throw new Error("Failed to fetch products");
+      const json = await res.json();
+      const items: Product[] = json?.data ?? [];
+      const mapped = items.map((p) => {
+        const priceNum = p.price ? parseFloat(String(p.price)) : 0;
+        const priceStr = Number.isInteger(priceNum)
+          ? `฿${priceNum}`
+          : `฿${priceNum.toFixed(2)}`;
+        return {
+          price: priceStr,
+          title: truncateText(p.name || "Untitled Product", MAX_TITLE_LENGTH),
+          jobTitle: truncateText(
+            p.description || "No description provided",
+            MAX_DESC_LENGTH
+          ),
+          image: p.imageUrl || DEFAULT_IMAGE,
+          sellerName: p.seller?.name || "Unknown Seller",
+          sellerImage: p.seller?.profileImg || DEFAULT_IMAGE,
+          sellerId: p.seller?.id || "",
+          productId: String(p.id),
+          isOwnProduct: currentUser ? p.seller?.id === currentUser : false,
+        };
+      });
+      setMarketItems(mapped);
+    } catch (err) {
+      console.error("Error fetching products", err);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const handleChatClick = async (
+    sellerId: string,
+    productTitle: string,
+    productImage: string
+  ) => {
+    if (!sellerId) {
+      alert("Seller information not available");
+      return;
+    }
+
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        alert("You need to be logged in to chat");
+        return;
+      }
+
+      // Create or get existing chat with seller
+      const response = await fetch(`${API_BASE_URL}/api/chats/direct`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ otherUserId: sellerId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create chat: ${response.status}`);
+      }
+
+      const chatData = await response.json();
+      const chatId = chatData.id || chatData.data?.id;
+
+      if (!chatId) {
+        throw new Error("Invalid chat response");
+      }
+
+      // Send automatic message with product info and image
+      const autoMessage = `สนใจ ${productTitle}\n${productImage}`;
+      try {
+        await fetch(`${API_BASE_URL}/api/chats/${chatId}/messages`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ content: autoMessage, type: "text" }),
+        });
+      } catch (msgErr) {
+        console.error("Failed to send auto message:", msgErr);
+        // Continue anyway - chat window will open
+      }
+
+      // Open chat window with this chat
+      setSelectedChatUserId(chatId);
+      setChatOpen(true);
+    } catch (error) {
+      console.error("Error opening chat:", error);
+      alert("Failed to open chat. Please try again.");
+    }
+  };
 
   return (
     <div className="flex h-screen bg-white text-gray-800 overflow-hidden">
@@ -527,7 +658,18 @@ export default function MarketMainPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Markets</h1>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setIsEditMode(false);
+              setEditingProductId(null);
+              setFormData({
+                name: "",
+                description: "",
+                price: "",
+                image: "/noobcat.png",
+              });
+              setSelectedImageFile(null);
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-2 bg-black text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
           >
             <svg
@@ -559,15 +701,63 @@ export default function MarketMainPage() {
                 image={item.image}
                 sellerName={item.sellerName}
                 sellerImage={item.sellerImage}
+                sellerId={item.sellerId}
+                productId={item.productId}
+                isOwnProduct={item.isOwnProduct}
+                onChatClick={handleChatClick}
+                onEditClick={async (productId) => {
+                  try {
+                    // Fetch product details
+                    const token =
+                      typeof window !== "undefined"
+                        ? localStorage.getItem("token")
+                        : null;
+                    const res = await fetch(
+                      `${API_BASE_URL}/api/products/${productId}`,
+                      {
+                        headers: token
+                          ? { Authorization: `Bearer ${token}` }
+                          : undefined,
+                      }
+                    );
+
+                    if (res.ok) {
+                      const json = await res.json();
+                      const product = json.data || json;
+
+                      // Set form data for editing
+                      setFormData({
+                        name: product.name || "",
+                        description: product.description || "",
+                        price: product.price ? String(product.price) : "",
+                        image: product.imageUrl || "/noobcat.png",
+                      });
+                      setEditingProductId(productId);
+                      setIsEditMode(true);
+                      setIsModalOpen(true);
+                    } else {
+                      alert("Failed to load product details");
+                    }
+                  } catch (err) {
+                    console.error("Error loading product:", err);
+                    alert("Failed to load product");
+                  }
+                }}
               />
             ))}
           </div>
         </div>
       </main>
       {/* Chat Window */}
-      <div className="h-full">
-        <ChatWindow />
-      </div>
+      {chatOpen && selectedChatUserId && (
+        <ChatWindow
+          chatId={selectedChatUserId}
+          onClose={() => {
+            setChatOpen(false);
+            setSelectedChatUserId(null);
+          }}
+        />
+      )}
 
       {/* Add Product Modal */}
       {isModalOpen && (
@@ -577,7 +767,7 @@ export default function MarketMainPage() {
             backgroundColor: "rgba(0, 0, 0, 0.5)",
             backdropFilter: "blur(8px)",
           }}
-          onClick={() => setIsModalOpen(false)}
+          onClick={closeModal}
         >
           {/* Modal Content */}
           <div
@@ -682,10 +872,10 @@ export default function MarketMainPage() {
                 <div className="p-8 pb-0">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">
-                      Add Product
+                      {isEditMode ? "Edit Product" : "Add Product"}
                     </h2>
                     <button
-                      onClick={() => setIsModalOpen(false)}
+                      onClick={closeModal}
                       className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <svg
@@ -818,7 +1008,7 @@ export default function MarketMainPage() {
                 <div className="p-8 pt-4 bg-white border-t border-gray-100">
                   <div className="flex gap-3">
                     <button
-                      onClick={() => setIsModalOpen(false)}
+                      onClick={closeModal}
                       className="flex-1 px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors text-sm"
                     >
                       Cancel
@@ -827,7 +1017,7 @@ export default function MarketMainPage() {
                       onClick={handleSubmit}
                       className="flex-1 px-6 py-2.5 rounded-lg bg-black text-white font-medium hover:bg-gray-800 transition-colors text-sm"
                     >
-                      Add Product
+                      {isEditMode ? "Update Product" : "Add Product"}
                     </button>
                   </div>
                 </div>
