@@ -1362,15 +1362,16 @@
                                 "method": "GET",
                                 "header": [],
                                 "url": {
-                                    "raw": "{{baseUrl}}/api/users/me/likes",
+                                    "raw": "{{baseUrl}}/api/users/actor/{{user1ActorId}}/likes",
                                     "host": [
                                         "{{baseUrl}}"
                                     ],
                                     "path": [
                                         "api",
-                                        "users",
-                                        "me",
-                                        "likes"
+										"users",
+										"actor",
+										"{{user1ActorId}}",
+										"likes"
                                     ]
                                 }
                             },
@@ -1490,15 +1491,16 @@
                                 "method": "GET",
                                 "header": [],
                                 "url": {
-                                    "raw": "{{baseUrl}}/api/users/me/reposts",
+                                    "raw": "{{baseUrl}}/api/users/actor/{{user1ActorId}}/reposts",
                                     "host": [
                                         "{{baseUrl}}"
                                     ],
                                     "path": [
                                         "api",
-                                        "users",
-                                        "me",
-                                        "reposts"
+										"users",
+										"actor",
+										"{{user1ActorId}}",
+										"reposts"
                                     ]
                                 }
                             },
@@ -1653,15 +1655,16 @@
                                 "method": "GET",
                                 "header": [],
                                 "url": {
-                                    "raw": "{{baseUrl}}/api/users/me/saved",
+                                    "raw": "{{baseUrl}}/api/users/actor/{{user1ActorId}}/saved",
                                     "host": [
                                         "{{baseUrl}}"
                                     ],
                                     "path": [
                                         "api",
                                         "users",
-                                        "me",
-                                        "saved"
+										"actor",
+										"{{user1ActorId}}",
+										"saved"
                                     ]
                                 }
                             },

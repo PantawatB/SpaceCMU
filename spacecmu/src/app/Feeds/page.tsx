@@ -22,6 +22,7 @@ export default function FeedsMainPage() {
   const [reportPostId, setReportPostId] = useState<number | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
   const [savedPosts, setSavedPosts] = useState<Set<number>>(new Set());
+  const [repostedPosts, setRepostedPosts] = useState<Set<number>>(new Set());
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentPostId, setCommentPostId] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
@@ -229,6 +230,47 @@ export default function FeedsMainPage() {
     fetchPosts();
     fetchSidebarFriends(); 
   }, [feedMode, currentUser, activeProfile]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!currentUser || !token) return;
+  
+    const actorId = activeProfile === 1
+      ? currentUser.persona?.actorId
+      : currentUser.actorId;
+  
+    if (!actorId) return;
+  
+    const fetchInteractions = async (interactionType: 'likes' | 'reposts' | 'saved') => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/users/actor/${actorId}/${interactionType}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch ${interactionType}`);
+        
+        const response = await res.json();
+        const data = response.data || []; 
+        
+        if (Array.isArray(data)) {
+          const postIds = new Set(data.map((post: Post) => post.id));
+          
+          if (interactionType === 'likes') setLikedPosts(postIds);
+          if (interactionType === 'reposts') setRepostedPosts(postIds);
+          if (interactionType === 'saved') setSavedPosts(postIds);
+        } else {
+            console.error(`Fetched ${interactionType} data is not an array:`, data);
+        }
+  
+      } catch (err) {
+        console.error(`Error fetching ${interactionType}:`, err);
+      }
+    };
+  
+    fetchInteractions('likes');
+    fetchInteractions('reposts');
+    fetchInteractions('saved');
+  
+  }, [currentUser, activeProfile]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -472,28 +514,93 @@ export default function FeedsMainPage() {
     setPosting(false);
   };
 
-  const toggleLike = (postId: number) => {
-    setLikedPosts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
+  const handleInteraction = async (
+    postId: number,
+    action: 'like' | 'repost' | 'save',
+    stateSet: Set<number>,
+    setter: React.Dispatch<React.SetStateAction<Set<number>>>
+  ) => {
+    const token = localStorage.getItem('token');
+    if (!currentUser || !token) {
+      alert('Please login to interact.');
+      return;
+    }
+
+    const actorId = activeProfile === 1
+      ? currentUser.persona?.actorId
+      : currentUser.actorId;
+
+    if (!actorId) {
+      console.error('Could not find active actorId');
+      return;
+    }
+
+    const countProperty: keyof Post = 
+      action === 'like' ? 'likeCount' :
+      action === 'repost' ? 'repostCount' :
+      'saveCount';
+
+    const isCurrentlyActive = stateSet.has(postId);
+    const method = isCurrentlyActive ? 'DELETE' : 'POST';
+    const url = `${API_BASE_URL}/api/posts/${postId}/${action}`; 
+
+    const oldStateSet = new Set(stateSet);
+    const oldPostsState = [...posts];
+
+    const newSet = new Set(stateSet);
+    if (isCurrentlyActive) {
+      newSet.delete(postId);
+    } else {
+      newSet.add(postId);
+    }
+    setter(newSet);
+
+    setPosts(currentPosts => 
+      currentPosts.map(p => {
+        if (p.id === postId) {
+          const currentCount = (p[countProperty] as number) || 0;
+          const newCount = currentCount + (isCurrentlyActive ? -1 : 1);
+          
+          return {
+            ...p,
+            [countProperty]: newCount < 0 ? 0 : newCount,
+          };
+        }
+        return p;
+      })
+    );
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ actorId }), 
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to ${action} post`);
       }
-      return newSet;
-    });
+
+    } catch (err) {
+      console.error(err);
+      setter(oldStateSet); 
+      setPosts(oldPostsState);
+    }
+  };
+
+  const toggleLike = (postId: number) => {
+    handleInteraction(postId, 'like', likedPosts, setLikedPosts);
   };
 
   const toggleSave = (postId: number) => {
-    setSavedPosts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
-      }
-      return newSet;
-    });
+    handleInteraction(postId, 'save', savedPosts, setSavedPosts);
+  };
+
+  const toggleRepost = (postId: number) => {
+    handleInteraction(postId, 'repost', repostedPosts, setRepostedPosts);
   };
 
   const handleReportClick = (postId: number) => {
@@ -680,7 +787,7 @@ export default function FeedsMainPage() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill={likedPosts.has(post.id) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                       </svg>
-                      Like
+                      Like {post.likeCount && post.likeCount > 0 ? `(${post.likeCount})` : ''}
                     </button>
                     <button 
                       onClick={() => handleCommentClick(post.id)}
@@ -691,11 +798,13 @@ export default function FeedsMainPage() {
                       </svg>
                       Comment
                     </button>
-                    <button className="flex items-center gap-1.5 hover:text-green-500 transition">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <button 
+                      onClick={() => toggleRepost(post.id)}
+                      className={`flex items-center gap-1.5 hover:text-green-500 transition ${repostedPosts.has(post.id) ? 'text-green-500' : ''}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill={repostedPosts.has(post.id) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
                       </svg>
-                      Repost
+                      Repost {post.repostCount && post.repostCount > 0 ? `(${post.repostCount})` : ''}
                     </button>
                   </div>
                   <button 
@@ -705,7 +814,7 @@ export default function FeedsMainPage() {
                     <svg xmlns="http://www.w3.org/2000/svg" fill={savedPosts.has(post.id) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
                     </svg>
-                    Save
+                    Save {post.saveCount && post.saveCount > 0 ? `(${post.saveCount})` : ''}
                   </button>
                 </div>
                 
@@ -803,8 +912,10 @@ export default function FeedsMainPage() {
                     </svg>
                     Comment
                   </button>
-                  <button className="flex items-center gap-1.5 hover:text-green-500 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <button 
+                onClick={() => toggleRepost(i)}
+                className={`flex items-center gap-1.5 hover:text-green-500 transition ${repostedPosts.has(i) ? 'text-green-500' : ''}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill={repostedPosts.has(i) ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
                     </svg>
                     Repost
