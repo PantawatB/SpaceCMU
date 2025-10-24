@@ -26,6 +26,11 @@ export default function FeedsMainPage() {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentPostId, setCommentPostId] = useState<number | string | null>(null);
   const [commentText, setCommentText] = useState("");
+  const mockAuthors = [
+    { name: "Kamado Tanjiro", avatar: "/tanjiro.jpg", bio: "65, Engineering" },
+    { name: "Nezuko", avatar: "/nezuko.jpg", bio: "Demon Slayer Corps" },
+    { name: "Zenitsu", avatar: "/zenitsu.jpg", bio: "Thunder Breathing User" },
+  ];
   const [comments, setComments] = useState<{postId: number | string, text: string, author: string, avatar?: string}[]>([
     { postId: 0, text: "This is amazing!", author: "Nezuko", avatar: "/nezuko.jpg"},
     { postId: 0, text: "Love this post!", author: "Zenitsu", avatar: "/zenitsu.jpg" },
@@ -740,6 +745,93 @@ export default function FeedsMainPage() {
     }
   };
 
+  const handleDeletePost = async (postIdToDelete: string | number) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!currentUser || !token) {
+      alert('Please login to delete posts.');
+      return;
+    }
+
+    setOpenDropdownId(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postIdToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        if (res.status === 403) {
+            throw new Error("You are not authorized to delete this post.");
+        }
+        throw new Error('Failed to delete post. Please try again.');
+      }
+
+      setPosts(currentPosts => currentPosts.filter(p => p.id != postIdToDelete)); 
+      alert('Post deleted successfully.');
+
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert('An unknown error occurred while deleting the post.');
+      }
+    }
+  };
+
+  const handleDeleteComment = async (commentIdToDelete: string) => {
+    if (!window.confirm("Are you sure you want to delete this comment?")) {
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!currentUser || !token) {
+      alert('Please login to delete comments.');
+      return;
+    }
+
+    if (commentPostId === null) {
+        console.error("Cannot delete comment: commentPostId is null.");
+        return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${commentPostId}/comments/${commentIdToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        if (res.status === 403) { 
+            throw new Error(errorData?.message || "You are not authorized to delete this comment.");
+        }
+        throw new Error(errorData?.message || 'Failed to delete comment.');
+      }
+
+      setCurrentComments(prevComments =>
+        prevComments.filter(comment => comment.id !== commentIdToDelete)
+      );
+
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert('An unknown error occurred while deleting the comment.');
+      }
+    }
+  };
+
   return (
     <div className="flex h-screen bg-white text-gray-800">
       {/* Sidebar (Left) */}
@@ -930,6 +1022,17 @@ export default function FeedsMainPage() {
                   </button>
                   {openDropdownId === post.id && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                      {(post.actorId === currentUser?.actorId || post.actorId === currentUser?.persona?.actorId) && (
+                          <button
+                            onClick={() => handleDeletePost(post.id)}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                            Delete Post
+                          </button>
+                        )}
                       <button
                         onClick={() => handleReportClick(post.id)}
                         className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
@@ -947,51 +1050,45 @@ export default function FeedsMainPage() {
           })}
 
           {/* Mock Posts - Show after API posts */}
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={`mock-${i}`}
-              className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <Image
-                  src={
-                    i % 2 === 0
-                      ? (currentUser?.profileImg ?? "/tanjiro.jpg")
-                      : (currentUser?.persona?.avatarUrl ?? "/noobcat.png")
-                  }
-                  alt={i % 2 === 0 ? (currentUser?.name ?? "avatar") : (currentUser?.persona?.displayName ?? "avatar")}
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                />
-                <div>
-                  <div className="font-bold">
-                    {i % 2 === 0
-                      ? (currentUser?.name ?? "Kamado Tanjiro")
-                      : (currentUser?.persona?.displayName ?? "Noobcat")}
-                  </div>
-                  {/* <div className="text-xs text-gray-400">
-                    {i % 2 === 0 ? "65,Engineering" : "Anonymous"}
-                  </div> */}
-                  {/* <div className="text-xs text-gray-400">{i + 1} hours ago</div> */}
+          {[...Array(8)].map((_, i) => {
+        const mockAuthor = mockAuthors[i % mockAuthors.length];
+        const mockImage = i % 2 === 0 ? "/tanjiro_with_family.webp" : "/cat-post.jpg";
+        const mockContent = i % 2 === 0
+              ? "I love my family so much!"
+              : "Just chilling and enjoying life.";
+
+        return (
+          <div
+            key={`mock-${i}`}
+            className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <Image
+                src={mockAuthor.avatar} 
+                alt={mockAuthor.name}   
+                width={40}
+                height={40}
+                className="rounded-full object-cover"
+              />
+              <div>
+                <div className="font-bold">
+                  {mockAuthor.name}
                 </div>
+                 <div className="text-xs text-gray-400">{i + 1} hours ago</div> 
               </div>
-              <div className="mb-2 mt-2 text-base font-semibold">
-                {i % 2 === 0
-                  ? "I love my family so much!"
-                  : "Just chilling and enjoying life."}
-              </div>
-              <div className="flex gap-3 mb-2">
-                <Image
-                  src={
-                    i % 2 === 0 ? "/tanjiro_with_family.webp" : "/cat-post.jpg"
-                  }
-                  alt="avatar"
-                  width={480}
-                  height={40}
-                  className="object-cover"
-                />
-              </div>
+            </div>
+            <div className="mb-2 mt-2 text-base font-semibold">
+              {mockContent} 
+            </div>
+            <div className="flex gap-3 mb-2">
+              <Image
+                src={mockImage}
+                alt="mock post image"
+                width={480}
+                height={40}
+                className="object-cover rounded-lg"
+              />
+            </div>
 
               {/* Post actions */}
               <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
@@ -1057,7 +1154,7 @@ export default function FeedsMainPage() {
                 )}
               </div>
             </div>
-          ))}
+          );})}
         </section>
         {/* Share something bar - fixed bottom, larger size, toggle show/hide with arrow icon */}
         <div
@@ -1322,11 +1419,16 @@ export default function FeedsMainPage() {
               )}
               {!commentsLoading && currentComments.map((comment) => {
                 const authorAvatar = comment.author.type === 'user'
-                  ? (comment.author.profileImg ?? "/tanjiro.jpg") 
-                  : (comment.author.avatarUrl ?? "/noobcat.png"); 
+                  ? (comment.author.profileImg ?? "/tanjiro.jpg")
+                  : (comment.author.avatarUrl ?? "/noobcat.png");
+
+                const canDelete =
+                  currentUser?.isAdmin || 
+                  comment.author.actorId === currentUser?.actorId ||
+                  comment.author.actorId === currentUser?.persona?.actorId; 
 
                 return (
-                  <div key={comment.id} className="flex gap-3 p-4 bg-gray-50 rounded-xl">
+                  <div key={comment.id} className="flex gap-3 p-4 bg-gray-50 rounded-xl relative group">
                     <Image
                       src={authorAvatar}
                       alt={comment.author.name}
@@ -1345,6 +1447,19 @@ export default function FeedsMainPage() {
                       </div>
                       <p className="text-sm text-gray-700">{comment.content}</p>
                     </div>
+
+                    {/* 🟢 Delete Button - Show conditionally */}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" // Hidden until hover
+                        title="Delete comment"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 );
               })}
