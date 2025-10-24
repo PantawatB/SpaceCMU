@@ -7,9 +7,9 @@ import {
   updateUser,
   searchUsers,
   resolveUserActorMapping,
-  getMyReposts,
-  getMyLikedPosts,
-  getMySavedPosts,
+  getRepostsByActor,
+  getLikedPostsByActor,
+  getSavedPostsByActor,
   listAllUsers,
 } from "../controllers/userController";
 import { authenticateToken } from "../middleware/auth";
@@ -33,14 +33,14 @@ router.get("/me/actor", authenticateToken, getCurrentUserActor);
 // PUT /api/users/me
 router.put("/me", authenticateToken, updateUser);
 
-// GET /api/users/me/reposts
-router.get("/me/reposts", authenticateToken, getMyReposts);
+// GET /api/users/actor/:actorId/reposts
+router.get("/actor/:actorId/reposts", authenticateToken, getRepostsByActor);
 
-// GET /api/users/me/likes
-router.get("/me/likes", authenticateToken, getMyLikedPosts);
+// GET /api/users/actor/:actorId/likes
+router.get("/actor/:actorId/likes", authenticateToken, getLikedPostsByActor);
 
-// GET /api/users/me/saved
-router.get("/me/saved", authenticateToken, getMySavedPosts);
+// GET /api/users/actor/:actorId/saved
+router.get("/actor/:actorId/saved", authenticateToken, getSavedPostsByActor);
 
 // GET /api/users/all
 router.get("/all", authenticateToken, listAllUsers);
