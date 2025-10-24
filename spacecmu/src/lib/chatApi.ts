@@ -134,3 +134,46 @@ export async function sendMessageRest(
     throw error;
   }
 }
+
+/**
+ * Get unread messages count
+ */
+export async function getUnreadCount(): Promise<number> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chats/unread-count`, {
+      headers: authHeader(),
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Could not fetch unread count (HTTP ${response.status})`);
+      return 0;
+    }
+
+    const data = await response.json();
+    return data.unreadCount || 0;
+  } catch (error) {
+    console.error("Failed to fetch unread count:", error);
+    return 0;
+  }
+}
+
+/**
+ * Mark chat messages as read
+ */
+export async function markChatAsRead(chatId: string): Promise<void> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/chats/${chatId}/mark-read`,
+      {
+        method: "POST",
+        headers: authHeader(),
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`⚠️ Could not mark chat as read (HTTP ${response.status})`);
+    }
+  } catch (error) {
+    console.error("Failed to mark chat as read:", error);
+  }
+}

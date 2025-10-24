@@ -386,6 +386,7 @@ export async function listFriends(req: Request, res: Response) {
             name: friend.user.name,
             type: "user",
             profileImg: friend.user.profileImg,
+            bannerImg: friend.user.bannerImg,
             bio: friend.user.bio,
           };
         }
@@ -395,6 +396,7 @@ export async function listFriends(req: Request, res: Response) {
             name: friend.persona.displayName,
             type: "persona",
             profileImg: friend.persona.avatarUrl,
+            bannerImg: friend.persona.bannerImg,
             bio: friend.persona.bio,
           };
         }

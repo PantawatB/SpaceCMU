@@ -452,7 +452,37 @@ export async function getRepostsByActor(
       .orderBy("post.createdAt", "DESC")
       .getMany();
 
-    return res.json({ data: repostedPosts });
+    // Serialize posts with author info
+    const serializedPosts = repostedPosts.map((post) => {
+      const author = post.actor;
+      let displayName = "Unknown";
+      let avatar = null;
+
+      if (author) {
+        if (author.user) {
+          displayName = author.user.name || "Unknown User";
+          avatar = author.user.profileImg;
+        } else if (author.persona) {
+          displayName = author.persona.displayName || "Unknown Persona";
+          avatar = author.persona.avatarUrl;
+        }
+      }
+
+      return {
+        id: post.id,
+        content: post.content,
+        imageUrl: post.imageUrl,
+        visibility: post.visibility,
+        createdAt: post.createdAt,
+        author: {
+          id: author?.id,
+          displayName,
+          avatar,
+        },
+      };
+    });
+
+    return res.json({ data: serializedPosts });
   } catch (err) {
     console.error("getRepostsByActor error:", err);
     return res.status(500).json({ message: "Failed to fetch reposts" });
@@ -493,7 +523,37 @@ export async function getLikedPostsByActor( // เปลี่ยนชื่อ
       .orderBy("post.createdAt", "DESC")
       .getMany();
 
-    return res.json({ data: likedPosts });
+    // Serialize posts with author info
+    const serializedPosts = likedPosts.map((post) => {
+      const author = post.actor;
+      let displayName = "Unknown";
+      let avatar = null;
+
+      if (author) {
+        if (author.user) {
+          displayName = author.user.name || "Unknown User";
+          avatar = author.user.profileImg;
+        } else if (author.persona) {
+          displayName = author.persona.displayName || "Unknown Persona";
+          avatar = author.persona.avatarUrl;
+        }
+      }
+
+      return {
+        id: post.id,
+        content: post.content,
+        imageUrl: post.imageUrl,
+        visibility: post.visibility,
+        createdAt: post.createdAt,
+        author: {
+          id: author?.id,
+          displayName,
+          avatar,
+        },
+      };
+    });
+
+    return res.json({ data: serializedPosts });
   } catch (err) {
     console.error("getLikedPostsByActor error:", err);
     return res.status(500).json({ message: "Failed to fetch liked posts" });
@@ -582,7 +642,37 @@ export async function getSavedPostsByActor(
       .orderBy("post.createdAt", "DESC")
       .getMany();
 
-    return res.json({ data: savedPosts });
+    // Serialize posts with author info
+    const serializedPosts = savedPosts.map((post) => {
+      const author = post.actor;
+      let displayName = "Unknown";
+      let avatar = null;
+
+      if (author) {
+        if (author.user) {
+          displayName = author.user.name || "Unknown User";
+          avatar = author.user.profileImg;
+        } else if (author.persona) {
+          displayName = author.persona.displayName || "Unknown Persona";
+          avatar = author.persona.avatarUrl;
+        }
+      }
+
+      return {
+        id: post.id,
+        content: post.content,
+        imageUrl: post.imageUrl,
+        visibility: post.visibility,
+        createdAt: post.createdAt,
+        author: {
+          id: author?.id,
+          displayName,
+          avatar,
+        },
+      };
+    });
+
+    return res.json({ data: serializedPosts });
   } catch (err) {
     console.error("getSavedPostsByActor error:", err);
     return res.status(500).json({ message: "Failed to fetch saved posts" });

@@ -43,6 +43,7 @@ interface FriendCardProps {
   bio: string;
   followed: boolean;
   avatarUrl?: string | null;
+  bannerUrl?: string | null;
   isFriend?: boolean;
   readonlyFriendLabel?: boolean;
   onFollow: () => void;
@@ -54,6 +55,7 @@ function FriendCard({
   bio,
   followed,
   avatarUrl,
+  bannerUrl,
   isFriend,
   readonlyFriendLabel,
   onFollow,
@@ -62,7 +64,16 @@ function FriendCard({
 }: FriendCardProps) {
   return (
     <div className="relative rounded-xl overflow-hidden flex flex-col items-center shadow-lg bg-white font-Roboto-light mb-6">
-      <div className="h-24 w-full bg-gray-500"></div>
+      <div className="h-24 w-full bg-gradient-to-r from-blue-400 to-purple-500 relative">
+        {bannerUrl ? (
+          <Image
+            src={normalizeImageUrl(bannerUrl)}
+            alt="Banner"
+            fill
+            className="object-cover"
+          />
+        ) : null}
+      </div>
       <div className="top-24 z-10 flex items-center flex-col gap-4 px-5 py-5">
         <div className="-mt-16">
           {avatarUrl ? (
@@ -610,6 +621,7 @@ export default function FriendsMainPage() {
         name: string;
         type: string;
         profileImg?: string | null;
+        bannerImg?: string | null;
         bio?: string | null;
       }[] = await res.json();
       const transformed: FriendCardProps[] = data.map((u) => ({
@@ -625,7 +637,8 @@ export default function FriendsMainPage() {
           if (uid) handleStartChat(uid);
           else console.warn("No userId for friend", u);
         },
-        avatarUrl: u.profileImg, // Map profileImg to avatarUrl
+        avatarUrl: u.profileImg,
+        bannerUrl: u.bannerImg,
       }));
 
       setFriends(transformed);

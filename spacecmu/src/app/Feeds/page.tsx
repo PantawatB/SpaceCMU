@@ -31,23 +31,7 @@ export default function FeedsMainPage() {
     { name: "Nezuko", avatar: "/nezuko.jpg", bio: "Demon Slayer Corps" },
     { name: "Zenitsu", avatar: "/zenitsu.jpg", bio: "Thunder Breathing User" },
   ];
-  const [comments, setComments] = useState<
-    { postId: number | string; text: string; author: string; avatar?: string }[]
-  >([
-    {
-      postId: 0,
-      text: "This is amazing!",
-      author: "Nezuko",
-      avatar: "/nezuko.jpg",
-    },
-    {
-      postId: 0,
-      text: "Love this post!",
-      author: "Zenitsu",
-      avatar: "/zenitsu.jpg",
-    },
-    { postId: 1, text: "So cute!", author: "Inosuke", avatar: "/inosuke.jpeg" },
-  ]);
+
   type ApiComment = {
     id: string;
     content: string;
@@ -669,30 +653,7 @@ export default function FeedsMainPage() {
     setCurrentComments([]);
     setCommentText("");
 
-    if (typeof postId === "number") {
-      console.log("Showing mock comments for mock post ID:", postId);
-      const mockCommentsForPost = comments.filter(
-        (comment) => comment.postId === postId
-      );
-
-      const formattedMockComments: ApiComment[] = mockCommentsForPost.map(
-        (mockComment, index) => ({
-          id: `mock-${postId}-${index}`,
-          content: mockComment.text,
-          createdAt: new Date().toISOString(),
-          author: {
-            type: "user",
-            actorId: `mock-actor-${index}`,
-            name: mockComment.author,
-            profileImg: mockComment.avatar ?? "/tanjiro.jpg",
-            avatarUrl: undefined,
-          },
-        })
-      );
-
-      setCurrentComments(formattedMockComments);
-      setCommentsLoading(false);
-    } else {
+    if (typeof postId === "string") {
       await fetchCommentsForPost(postId);
     }
   };
@@ -1689,8 +1650,10 @@ export default function FeedsMainPage() {
                 currentComments.map((comment) => {
                   const authorAvatar =
                     comment.author.type === "user"
-                      ? comment.author.profileImg ?? "/tanjiro.jpg"
-                      : comment.author.avatarUrl ?? "/noobcat.png";
+                      ? normalizeImageUrl(comment.author.profileImg) ??
+                        "/tanjiro.jpg"
+                      : normalizeImageUrl(comment.author.avatarUrl) ??
+                        "/noobcat.png";
 
                   const canDelete =
                     currentUser?.isAdmin ||

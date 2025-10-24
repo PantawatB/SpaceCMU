@@ -794,3 +794,69 @@ export async function getPostSavers(
     return res.status(500).json({ message: "Failed to get post savers" });
   }
 }
+
+/**
+ * 📌 ดึงโพสต์ทั้งหมดของ Actor ตาม actorId
+ */
+export async function getPostsByActor(req: Request, res: Response) {
+  try {
+    const { actorId } = req.params;
+
+    if (!actorId) {
+      return res.status(400).json({ message: "actorId is required" });
+    }
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const posts = await postRepo
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.actor", "actor")
+      .leftJoinAndSelect("actor.user", "user_author")
+      .leftJoinAndSelect("actor.persona", "persona_author")
+      .leftJoinAndSelect("post.likedBy", "likedBy")
+      .leftJoinAndSelect("post.comments", "comments")
+      .leftJoinAndSelect("post.repostedBy", "repostedBy")
+      .where("actor.id = :actorId", { actorId })
+      .orderBy("post.createdAt", "DESC")
+      .getMany();
+
+    // Serialize posts with author info
+    const serializedPosts = posts.map((post) => {
+      const author = post.actor;
+      let displayName = "Unknown";
+      let avatar = null;
+
+      if (author) {
+        if (author.user) {
+          displayName = author.user.name || "Unknown User";
+          avatar = author.user.profileImg;
+        } else if (author.persona) {
+          displayName = author.persona.displayName || "Unknown Persona";
+          avatar = author.persona.avatarUrl;
+        }
+      }
+
+      return {
+        id: post.id,
+        actorId: author?.id,
+        actorType: author?.user ? "user" : "persona",
+        content: post.content,
+        imageUrl: post.imageUrl,
+        visibility: post.visibility,
+        likes: post.likedBy?.length || 0,
+        comments: post.comments?.length || 0,
+        shares: post.repostedBy?.length || 0,
+        createdAt: post.createdAt,
+        author: {
+          id: author?.id,
+          displayName,
+          avatar,
+        },
+      };
+    });
+
+    return res.json({ data: serializedPosts });
+  } catch (err) {
+    console.error("getPostsByActor error:", err);
+    return res.status(500).json({ message: "Failed to fetch posts" });
+  }
+}

@@ -2,7 +2,7 @@
 
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ChatWindow from "@/components/ChatWindow";
 import { normalizeImageUrl } from "@/utils/apiConfig";
 
@@ -13,6 +13,7 @@ type Persona = {
   bio?: string;
   friendCount?: number;
   bannerImg?: string;
+  actorId?: string;
 };
 type CurrentUser = {
   id?: string;
@@ -21,6 +22,7 @@ type CurrentUser = {
   profileImg?: string;
   bannerImg?: string;
   bio?: string | null;
+  actorId?: string;
   persona?: Persona;
   friendCount?: number;
 } | null;
@@ -36,6 +38,24 @@ type Product = {
     id: string;
     name: string;
     profileImg?: string;
+  };
+};
+
+type Post = {
+  id: string;
+  actorId: string;
+  actorType: "user" | "persona";
+  content: string;
+  imageUrl?: string;
+  visibility: "public" | "friends";
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  createdAt: string;
+  author?: {
+    id: string;
+    displayName: string;
+    avatar?: string;
   };
 };
 
@@ -204,6 +224,10 @@ export default function ProfileMainPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
   const [activeProfile, setActiveProfile] = useState<number>(0);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [myPosts, setMyPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
+  const [repostedPosts, setRepostedPosts] = useState<Post[]>([]);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
 
   // Initialize activeProfile from localStorage after hydration
   useEffect(() => {
@@ -224,6 +248,16 @@ export default function ProfileMainPage() {
     "posts" | "market" | "reposts" | "likes" | "saved"
   >("posts");
 
+  // Product edit modal states
+  const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productFormData, setProductFormData] = useState({
+    name: "",
+    description: "",
+    price: "",
+    image: "/noobcat.png",
+  });
+
   // hover states
   const [hoverBanner, setHoverBanner] = useState(false);
   const [hoverAvatar, setHoverAvatar] = useState(false);
@@ -235,6 +269,9 @@ export default function ProfileMainPage() {
   const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  // Product image upload
+  const productFileInputRef = useRef<HTMLInputElement>(null);
 
   // handle file selection
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -511,6 +548,127 @@ export default function ProfileMainPage() {
     }
   };
 
+  // Handle edit product
+  const handleEditProduct = async (productId: string) => {
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const product = json.data || json;
+
+        setProductFormData({
+          name: product.name || "",
+          description: product.description || "",
+          price: product.price ? String(product.price) : "",
+          image: product.imageUrl || "/noobcat.png",
+        });
+        setEditingProductId(productId);
+        setIsEditProductModalOpen(true);
+      } else {
+        alert("Failed to load product details");
+      }
+    } catch (err) {
+      console.error("Error loading product:", err);
+      alert("Failed to load product");
+    }
+  };
+
+  // Handle save product
+  const handleSaveProduct = async () => {
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return;
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/products/${editingProductId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: productFormData.name,
+            description: productFormData.description,
+            price: parseFloat(productFormData.price),
+            imageUrl: productFormData.image,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to update product");
+      }
+
+      alert("Product updated successfully!");
+      setIsEditProductModalOpen(false);
+      setEditingProductId(null);
+
+      // Refresh products
+      const actorId =
+        activeProfile === 0
+          ? currentUser?.actorId
+          : currentUser?.persona?.actorId;
+      if (actorId) {
+        const productsRes = await fetch(
+          `${API_BASE_URL}/api/products/actor/${actorId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (productsRes.ok) {
+          const productsData = await productsRes.json();
+          setMyProducts(productsData.data || productsData || []);
+        }
+      }
+    } catch (err) {
+      console.error("Error updating product:", err);
+      alert("Failed to update product");
+    }
+  };
+
+  // Handle product image upload
+  const handleProductImageSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE_URL}/api/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const imageUrl = data.url || data.imageUrl;
+        setProductFormData({ ...productFormData, image: imageUrl });
+      } else {
+        alert("Failed to upload image");
+      }
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      alert("Failed to upload image");
+    }
+  };
+
   useEffect(() => {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -522,6 +680,10 @@ export default function ProfileMainPage() {
         });
         if (!res.ok) throw new Error("Failed to fetch current user");
         const data = await res.json();
+        console.log("👤 Current User Data:", data);
+        console.log("🆔 User ID:", data.id);
+        console.log("🎭 Actor ID:", data.actorId);
+        console.log("👻 Persona:", data.persona);
         setCurrentUser(data);
       } catch (err) {
         console.error(err);
@@ -556,6 +718,139 @@ export default function ProfileMainPage() {
     };
     fetchMyProducts();
   }, [currentUser]);
+
+  // Fetch user's posts
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token || !currentUser) return;
+
+    const actorId =
+      activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
+
+    if (!actorId) {
+      console.log(
+        "⚠️ No actorId found. activeProfile:",
+        activeProfile,
+        "currentUser:",
+        currentUser
+      );
+      return;
+    }
+
+    console.log("🔍 Fetching posts for actorId:", actorId);
+
+    const fetchMyPosts = async () => {
+      try {
+        const url = `${API_BASE_URL}/api/posts/actor/${actorId}`;
+        console.log("📡 Request URL:", url);
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        console.log("📥 Response status:", res.status);
+
+        if (res.ok) {
+          const json = await res.json();
+          console.log("✅ Posts received:", json);
+          setMyPosts(json.data || json);
+        } else {
+          console.error("❌ Response not OK:", await res.text());
+        }
+      } catch (err) {
+        console.error("❌ Error fetching posts:", err);
+      }
+    };
+    fetchMyPosts();
+  }, [currentUser, activeProfile]);
+
+  // Fetch user's liked posts
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token || !currentUser) return;
+
+    const actorId =
+      activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
+    if (!actorId) return;
+
+    const fetchLikes = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/users/actor/${actorId}/likes`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setLikedPosts(json.data || json);
+        }
+      } catch (err) {
+        console.error("Error fetching liked posts:", err);
+      }
+    };
+    fetchLikes();
+  }, [currentUser, activeProfile]);
+
+  // Fetch user's reposts
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token || !currentUser) return;
+
+    const actorId =
+      activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
+    if (!actorId) return;
+
+    const fetchReposts = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/users/actor/${actorId}/reposts`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setRepostedPosts(json.data || json);
+        }
+      } catch (err) {
+        console.error("Error fetching reposts:", err);
+      }
+    };
+    fetchReposts();
+  }, [currentUser, activeProfile]);
+
+  // Fetch user's saved posts
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token || !currentUser) return;
+
+    const actorId =
+      activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
+    if (!actorId) return;
+
+    const fetchSaved = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/users/actor/${actorId}/saved`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setSavedPosts(json.data || json);
+        }
+      } catch (err) {
+        console.error("Error fetching saved posts:", err);
+      }
+    };
+    fetchSaved();
+  }, [currentUser, activeProfile]);
 
   // Listen for activeProfile changes from Sidebar
   useEffect(() => {
@@ -595,6 +890,11 @@ export default function ProfileMainPage() {
   };
 
   const displayed = activeProfile === 0 ? publicProfile : anonymousProfile;
+
+  console.log("🎯 Active Profile:", activeProfile);
+  console.log("📋 Public Profile:", publicProfile);
+  console.log("👻 Anonymous Profile:", anonymousProfile);
+  console.log("✨ Displayed Profile:", displayed);
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
@@ -903,24 +1203,139 @@ export default function ProfileMainPage() {
             {/* Tab Content */}
             <div className="p-8">
               {activeTab === "posts" && (
-                <div className="text-center text-gray-500 py-12">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                    />
-                  </svg>
-                  <p className="text-lg font-medium">No posts yet</p>
-                  <p className="text-sm mt-1">Your posts will appear here</p>
-                </div>
+                <>
+                  {myPosts.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {myPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          className="bg-gray-50 rounded-2xl p-6 shadow"
+                        >
+                          {/* Post Header */}
+                          <div className="flex items-center gap-3 mb-2">
+                            <Image
+                              src={
+                                normalizeImageUrl(post.author?.avatar) ||
+                                "/noobcat.png"
+                              }
+                              alt={post.author?.displayName || "User"}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-bold">
+                                {post.author?.displayName || "Anonymous"}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(post.createdAt).toLocaleString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Post Content */}
+                          <div className="mb-2 mt-2 text-base font-semibold">
+                            {post.content}
+                          </div>
+                          {/* Post Image */}
+                          {post.imageUrl && (
+                            <div className="flex gap-3 mb-2">
+                              <Image
+                                src={normalizeImageUrl(post.imageUrl)}
+                                alt="post image"
+                                width={480}
+                                height={40}
+                                className="object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          {/* Post Stats */}
+                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                />
+                              </svg>
+                              {post.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+                                />
+                              </svg>
+                              {post.comments || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                                />
+                              </svg>
+                              {post.shares || 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-12">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">No posts yet</p>
+                      <p className="text-sm mt-1">
+                        Your posts will appear here
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               {activeTab === "market" && (
                 <>
@@ -929,7 +1344,7 @@ export default function ProfileMainPage() {
                       {myProducts.map((product) => (
                         <article
                           key={product.id}
-                          className="bg-white rounded-xl shadow-md border border-gray-100 flex flex-col hover:shadow-lg transition-shadow"
+                          className="bg-white rounded-xl shadow-md w-full max-w-[300px] mx-auto mb-8 border border-gray-100 flex flex-col h-[380px] overflow-hidden"
                         >
                           {/* Product Image */}
                           <div className="w-full h-48">
@@ -945,23 +1360,64 @@ export default function ProfileMainPage() {
                             />
                           </div>
                           {/* Card Content */}
-                          <div className="flex-1 flex flex-col p-4">
-                            <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
-                              {product.name}
-                            </h3>
-                            <p className="text-sm text-gray-500 mb-2 line-clamp-2">
-                              {product.description || "No description"}
-                            </p>
-                            {/* Price */}
-                            <div className="mt-auto flex items-center justify-between">
-                              <span className="text-lg font-semibold text-orange-600">
-                                ฿{product.price}
-                              </span>
-                              {product.status === "sold" && (
-                                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
-                                  Sold
+                          <div className="p-4 pb-4 flex flex-col flex-1">
+                            <div>
+                              <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
+                                {product.name}
+                              </h3>
+                              <p className="text-sm text-gray-500 mb-2 line-clamp-2 overflow-hidden break-words whitespace-normal">
+                                {product.description || "No description"}
+                              </p>
+                            </div>
+
+                            {/* Footer - pinned to bottom: price above seller row */}
+                            <div className="mt-auto flex flex-col gap-3">
+                              {/* Price (pinned just above seller row) */}
+                              <div className="flex items-center justify-start">
+                                <span className="text-md font-semibold text-orange-600 truncate max-w-full">
+                                  ฿{product.price}
                                 </span>
-                              )}
+                              </div>
+
+                              {/* Seller row with Edit button */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-8 h-8 flex-shrink-0">
+                                    <Image
+                                      src={
+                                        normalizeImageUrl(
+                                          activeProfile === 0
+                                            ? currentUser?.profileImg
+                                            : currentUser?.persona?.avatarUrl
+                                        ) || "/noobcat.png"
+                                      }
+                                      alt={
+                                        activeProfile === 0
+                                          ? currentUser?.name || "User"
+                                          : currentUser?.persona?.displayName ||
+                                            "Persona"
+                                      }
+                                      width={32}
+                                      height={32}
+                                      className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
+                                      {activeProfile === 0
+                                        ? currentUser?.name || "User"
+                                        : currentUser?.persona?.displayName ||
+                                          "Persona"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleEditProduct(product.id)}
+                                  className="bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </article>
@@ -992,68 +1448,397 @@ export default function ProfileMainPage() {
                 </>
               )}
               {activeTab === "reposts" && (
-                <div className="text-center text-gray-500 py-12">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                    />
-                  </svg>
-                  <p className="text-lg font-medium">No reposts yet</p>
-                  <p className="text-sm mt-1">Your reposts will appear here</p>
-                </div>
+                <>
+                  {repostedPosts.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {repostedPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          className="bg-gray-50 rounded-2xl p-6 shadow"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <Image
+                              src={
+                                normalizeImageUrl(post.author?.avatar) ||
+                                "/noobcat.png"
+                              }
+                              alt={post.author?.displayName || "User"}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-bold">
+                                {post.author?.displayName || "Anonymous"}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(post.createdAt).toLocaleString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mb-2 mt-2 text-base font-semibold">
+                            {post.content}
+                          </div>
+                          {post.imageUrl && (
+                            <div className="flex gap-3 mb-2">
+                              <Image
+                                src={normalizeImageUrl(post.imageUrl)}
+                                alt="post image"
+                                width={480}
+                                height={40}
+                                className="object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                />
+                              </svg>
+                              {post.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+                                />
+                              </svg>
+                              {post.comments || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                                />
+                              </svg>
+                              {post.shares || 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-12">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">No reposts yet</p>
+                      <p className="text-sm mt-1">
+                        Your reposts will appear here
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               {activeTab === "likes" && (
-                <div className="text-center text-gray-500 py-12">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                    />
-                  </svg>
-                  <p className="text-lg font-medium">No liked posts yet</p>
-                  <p className="text-sm mt-1">
-                    Posts you like will appear here
-                  </p>
-                </div>
+                <>
+                  {likedPosts.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {likedPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          className="bg-gray-50 rounded-2xl p-6 shadow"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <Image
+                              src={
+                                normalizeImageUrl(post.author?.avatar) ||
+                                "/noobcat.png"
+                              }
+                              alt={post.author?.displayName || "User"}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-bold">
+                                {post.author?.displayName || "Anonymous"}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(post.createdAt).toLocaleString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mb-2 mt-2 text-base font-semibold">
+                            {post.content}
+                          </div>
+                          {post.imageUrl && (
+                            <div className="flex gap-3 mb-2">
+                              <Image
+                                src={normalizeImageUrl(post.imageUrl)}
+                                alt="post image"
+                                width={480}
+                                height={40}
+                                className="object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                />
+                              </svg>
+                              {post.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+                                />
+                              </svg>
+                              {post.comments || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                                />
+                              </svg>
+                              {post.shares || 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-12">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">No liked posts yet</p>
+                      <p className="text-sm mt-1">
+                        Posts you like will appear here
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
               {activeTab === "saved" && (
-                <div className="text-center text-gray-500 py-12">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                    />
-                  </svg>
-                  <p className="text-lg font-medium">No saved posts yet</p>
-                  <p className="text-sm mt-1">
-                    Posts you save will appear here
-                  </p>
-                </div>
+                <>
+                  {savedPosts.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {savedPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          className="bg-gray-50 rounded-2xl p-6 shadow"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <Image
+                              src={
+                                normalizeImageUrl(post.author?.avatar) ||
+                                "/noobcat.png"
+                              }
+                              alt={post.author?.displayName || "User"}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-bold">
+                                {post.author?.displayName || "Anonymous"}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(post.createdAt).toLocaleString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mb-2 mt-2 text-base font-semibold">
+                            {post.content}
+                          </div>
+                          {post.imageUrl && (
+                            <div className="flex gap-3 mb-2">
+                              <Image
+                                src={normalizeImageUrl(post.imageUrl)}
+                                alt="post image"
+                                width={480}
+                                height={40}
+                                className="object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                />
+                              </svg>
+                              {post.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+                                />
+                              </svg>
+                              {post.comments || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                                />
+                              </svg>
+                              {post.shares || 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-12">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">No saved posts yet</p>
+                      <p className="text-sm mt-1">
+                        Posts you save will appear here
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1324,6 +2109,277 @@ export default function ProfileMainPage() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {isEditProductModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+          }}
+          onClick={() => setIsEditProductModalOpen(false)}
+        >
+          {/* Modal Content */}
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col md:flex-row flex-1 min-h-0">
+              {/* Left Side - Preview Card */}
+              <div className="md:w-1/2 bg-gray-50 p-8 flex items-center justify-center border-r border-gray-200">
+                <div className="w-full max-w-[280px]">
+                  <h3 className="text-sm font-semibold text-gray-500 mb-4 text-center">
+                    Preview
+                  </h3>
+                  <article
+                    className="bg-white rounded-xl shadow-md border border-gray-100 flex flex-col"
+                    style={{ minHeight: 350 }}
+                  >
+                    {/* Product Image */}
+                    <div className="w-full h-[160px]">
+                      <Image
+                        src={
+                          normalizeImageUrl(productFormData.image) ||
+                          "/noobcat.png"
+                        }
+                        alt="Preview"
+                        width={300}
+                        height={160}
+                        className="w-full h-full object-cover rounded-t-xl"
+                      />
+                    </div>
+                    {/* Card Content */}
+                    <div className="flex-1 flex flex-col p-4 pb-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">
+                          {productFormData.name || "Product Name"}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-2 line-clamp-2 overflow-hidden break-words whitespace-normal">
+                          {productFormData.description ||
+                            "Product description will appear here..."}
+                        </p>
+                      </div>
+
+                      {/* Footer pinned to bottom */}
+                      <div className="mt-auto flex flex-col gap-3">
+                        <div className="flex items-center justify-start">
+                          <span className="text-sm font-semibold text-orange-600 truncate max-w-full">
+                            {productFormData.price
+                              ? `฿${productFormData.price}`
+                              : "฿0"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-8 h-8 flex-shrink-0">
+                              <Image
+                                src={
+                                  normalizeImageUrl(
+                                    activeProfile === 0
+                                      ? currentUser?.profileImg
+                                      : currentUser?.persona?.avatarUrl
+                                  ) || "/noobcat.png"
+                                }
+                                alt="You"
+                                width={32}
+                                height={32}
+                                className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full"
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
+                              You
+                            </span>
+                          </div>
+                          <button className="bg-black text-white rounded-xl px-4 py-2 text-sm font-medium">
+                            Chat
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+
+              {/* Right Side - Form */}
+              <div className="md:w-1/2 flex flex-col min-h-0">
+                <div className="p-8 pb-0">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Edit Product
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setIsEditProductModalOpen(false);
+                        setEditingProductId(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className="w-6 h-6"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-8">
+                  <div className="space-y-5">
+                    {/* Product Name */}
+                    <div>
+                      <label
+                        htmlFor="product-name"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Product Name
+                      </label>
+                      <input
+                        type="text"
+                        id="product-name"
+                        value={productFormData.name}
+                        onChange={(e) =>
+                          setProductFormData({
+                            ...productFormData,
+                            name: e.target.value,
+                          })
+                        }
+                        placeholder="Enter product name"
+                        maxLength={60}
+                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label
+                        htmlFor="product-description"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Description
+                      </label>
+                      <textarea
+                        id="product-description"
+                        value={productFormData.description}
+                        onChange={(e) =>
+                          setProductFormData({
+                            ...productFormData,
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="Enter product description"
+                        rows={4}
+                        maxLength={240}
+                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                      />
+                    </div>
+
+                    {/* Price */}
+                    <div>
+                      <label
+                        htmlFor="product-price"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Price (฿)
+                      </label>
+                      <input
+                        type="number"
+                        id="product-price"
+                        value={productFormData.price}
+                        onChange={(e) =>
+                          setProductFormData({
+                            ...productFormData,
+                            price: e.target.value,
+                          })
+                        }
+                        placeholder="Enter price"
+                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+
+                    {/* Image Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Product Image
+                      </label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
+                        <div
+                          onClick={() => productFileInputRef.current?.click()}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter")
+                              productFileInputRef.current?.click();
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-10 h-10 mx-auto mb-2 text-gray-400"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                            />
+                          </svg>
+                          <p className="text-sm text-gray-500">
+                            Click to upload image
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            PNG, JPG, WEBP up to 10MB
+                          </p>
+                        </div>
+                        <input
+                          ref={productFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProductImageSelect}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons - Fixed at bottom */}
+                <div className="p-8 pt-4 bg-white border-t border-gray-100">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setIsEditProductModalOpen(false);
+                        setEditingProductId(null);
+                      }}
+                      className="flex-1 px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveProduct}
+                      className="flex-1 px-6 py-2.5 rounded-lg bg-black text-white font-medium hover:bg-gray-800 transition-colors text-sm"
+                    >
+                      Update Product
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

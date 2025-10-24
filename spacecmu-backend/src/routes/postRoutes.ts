@@ -18,6 +18,7 @@ import {
   getPostLikers,
   getPostReposters,
   getPostSavers,
+  getPostsByActor,
 } from "../controllers/postController";
 
 const router = Router();
@@ -30,6 +31,9 @@ router.get("/", listPosts);
 // 📌 Protected endpoints (ต้อง login)
 // Feed ของเพื่อน
 router.get("/feed/friends/:actorId", authenticateToken, getFriendFeed);
+
+// 📌 Get posts by actor
+router.get("/actor/:actorId", authenticateToken, getPostsByActor);
 
 // 📌 Get single post (must be after specific routes)
 router.get("/:id", getPost);

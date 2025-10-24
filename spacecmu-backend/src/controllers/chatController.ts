@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AppDataSource } from "../ormconfig";
 import { Chat, ChatType } from "../entities/Chat";
-import { Message, MessageType } from "../entities/Message";
+import { Message, MessageType, MessageStatus } from "../entities/Message";
 import { ChatParticipant } from "../entities/ChatParticipant";
 import { sanitizeUser, createResponse, listResponse } from "../utils/serialize";
 import { User } from "../entities/User";
@@ -873,6 +873,96 @@ export async function getChatParticipants(
     );
   } catch (error) {
     console.error("Error getting chat participants:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/**
+ * Get unread messages count for the authenticated user
+ */
+export async function getUnreadCount(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user!;
+    const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
+    const messageRepo = AppDataSource.getRepository(Message);
+
+    // Get all chats where user is a participant
+    const participations = await chatParticipantRepo.find({
+      where: { user: { id: user.id } },
+      relations: ["chat"],
+    });
+
+    const chatIds = participations.map((p) => p.chat.id);
+
+    if (chatIds.length === 0) {
+      return res.json({ unreadCount: 0 });
+    }
+
+    // Count messages that are:
+    // 1. In user's chats
+    // 2. Not sent by the user
+    // 3. Status is not 'read'
+    const unreadCount = await messageRepo
+      .createQueryBuilder("message")
+      .where("message.chatId IN (:...chatIds)", { chatIds })
+      .andWhere("message.senderId != :userId", { userId: user.id })
+      .andWhere("message.status != :readStatus", { readStatus: "read" })
+      .getCount();
+
+    return res.json({ unreadCount });
+  } catch (error) {
+    console.error("Error getting unread count:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+/**
+ * Mark messages as read when user opens a chat
+ */
+export async function markChatAsRead(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user!;
+    const { chatId } = req.params;
+    const messageRepo = AppDataSource.getRepository(Message);
+    const chatRepo = AppDataSource.getRepository(Chat);
+
+    // Verify chat exists and user is a participant
+    const chat = await chatRepo.findOne({
+      where: { id: chatId },
+      relations: ["participants", "participants.user"],
+    });
+
+    if (!chat) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+
+    const isParticipant = chat.participants.some((p) => p.user.id === user.id);
+
+    if (!isParticipant) {
+      return res
+        .status(403)
+        .json({ message: "Not a participant of this chat" });
+    }
+
+    // Mark all unread messages in this chat as read
+    await messageRepo
+      .createQueryBuilder()
+      .update(Message)
+      .set({ status: MessageStatus.READ })
+      .where("chatId = :chatId", { chatId })
+      .andWhere("senderId != :userId", { userId: user.id })
+      .andWhere("status != :readStatus", { readStatus: MessageStatus.READ })
+      .execute();
+
+    return res.json({ message: "Messages marked as read" });
+  } catch (error) {
+    console.error("Error marking messages as read:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

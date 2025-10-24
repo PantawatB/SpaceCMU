@@ -1,5 +1,5 @@
 // Use Docker host IP for backend
-export const API_BASE_URL = "http://26.171.147.78:3000";
+export const API_BASE_URL = "http://26.171.147.78:3001";
 
 /**
  * Convert old localhost URLs to current API base URL

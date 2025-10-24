@@ -10,6 +10,8 @@ import {
   deleteMessage,
   clearChatMessages,
   getChatParticipants,
+  getUnreadCount,
+  markChatAsRead,
 } from "../controllers/chatController";
 
 const router = Router();
@@ -19,6 +21,8 @@ router.use(authenticateToken);
 
 // Chat management
 router.get("/", getMyChats); // GET /api/chats - Get all user's chats
+router.get("/unread-count", getUnreadCount); // GET /api/chats/unread-count - Get unread messages count
+router.post("/:chatId/mark-read", markChatAsRead); // POST /api/chats/:chatId/mark-read - Mark chat messages as read
 router.post(
   "/direct",
   (req, res, next) => {
