@@ -415,6 +415,14 @@ export async function undoLikePost(
     if (!actorId) {
       return res.status(400).json({ message: "actorId is required" });
     }
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to perform action with this actor" });
+    }
+
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
       where: { id: postId },
@@ -502,6 +510,13 @@ export async function undoRepost(
     if (!actorId) {
       return res.status(400).json({ message: "actorId is required" });
     }
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to perform action with this actor" });
+    }
 
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
@@ -585,6 +600,13 @@ export async function unsavePost(
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     if (!actorId) {
       return res.status(400).json({ message: "actorId is required" });
+    }
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to perform action with this actor" });
     }
 
     const postRepo = AppDataSource.getRepository(Post);

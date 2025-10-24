@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../entities/User";
 import { Persona } from "../entities/Persona";
 import { Actor } from "../entities/Actor";
-import { Post } from "../entities/Post"; // Import Post entity
+import { Post } from "../entities/Post";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { sanitizeUserProfile, createResponse } from "../utils/serialize";
 import { generateRandomPersonaName } from "../utils/personaGenerator";
@@ -421,20 +421,24 @@ export async function resolveUserActorMapping(
 /**
  * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Repost
  */
-export async function getMyReposts(
+export async function getRepostsByActor(
   req: Request & { user?: User },
   res: Response
 ) {
   try {
     const user = req.user;
+    const { actorId } = req.params;
+
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId)
+      return res.status(400).json({ message: "Actor ID is required" });
 
-    const actorIds: string[] = [];
-    if (user.actor?.id) actorIds.push(user.actor.id);
-    if (user.persona?.actor?.id) actorIds.push(user.persona.actor.id);
-
-    if (actorIds.length === 0) {
-      return res.json({ data: [] });
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to view this actor's reposts" });
     }
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -444,13 +448,13 @@ export async function getMyReposts(
       .leftJoinAndSelect("author_actor.user", "author_user")
       .leftJoinAndSelect("author_actor.persona", "author_persona")
       .innerJoin("post.repostedBy", "reposting_actor")
-      .where("reposting_actor.id IN (:...actorIds)", { actorIds })
+      .where("reposting_actor.id = :actorId", { actorId })
       .orderBy("post.createdAt", "DESC")
       .getMany();
 
     return res.json({ data: repostedPosts });
   } catch (err) {
-    console.error("getMyReposts error:", err);
+    console.error("getRepostsByActor error:", err);
     return res.status(500).json({ message: "Failed to fetch reposts" });
   }
 }
@@ -458,20 +462,24 @@ export async function getMyReposts(
 /**
  * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Like
  */
-export async function getMyLikedPosts(
+export async function getLikedPostsByActor( // เปลี่ยนชื่อฟังก์ชันให้ชัดเจนขึ้น
   req: Request & { user?: User },
   res: Response
 ) {
   try {
     const user = req.user;
+    const { actorId } = req.params; // รับ actorId จาก URL params
+
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId)
+      return res.status(400).json({ message: "Actor ID is required" });
 
-    const actorIds: string[] = [];
-    if (user.actor?.id) actorIds.push(user.actor.id);
-    if (user.persona?.actor?.id) actorIds.push(user.persona.actor.id);
-
-    if (actorIds.length === 0) {
-      return res.json({ data: [] });
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to view this actor's liked posts" });
     }
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -481,13 +489,13 @@ export async function getMyLikedPosts(
       .leftJoinAndSelect("author_actor.user", "author_user")
       .leftJoinAndSelect("author_actor.persona", "author_persona")
       .innerJoin("post.likedBy", "liking_actor")
-      .where("liking_actor.id IN (:...actorIds)", { actorIds })
+      .where("liking_actor.id = :actorId", { actorId })
       .orderBy("post.createdAt", "DESC")
       .getMany();
 
     return res.json({ data: likedPosts });
   } catch (err) {
-    console.error("getMyLikedPosts error:", err);
+    console.error("getLikedPostsByActor error:", err);
     return res.status(500).json({ message: "Failed to fetch liked posts" });
   }
 }
@@ -542,20 +550,25 @@ export async function getCurrentUserActor(
 /**
  * 📌 ดึงรายการโพสต์ที่ user คนปัจจุบันเคย Save (พร้อมค้นหาจากชื่อคนโพส)
  */
-export async function getMySavedPosts(
+export async function getSavedPostsByActor(
   req: Request & { user?: User },
   res: Response
 ) {
   try {
     const user = req.user;
+    const { actorId } = req.params; // 1. รับ actorId จาก URL params
+
     if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!actorId)
+      return res.status(400).json({ message: "Actor ID is required" });
 
-    const actorIds: string[] = [];
-    if (user.actor?.id) actorIds.push(user.actor.id);
-    if (user.persona?.actor?.id) actorIds.push(user.persona.actor.id);
-
-    if (actorIds.length === 0) {
-      return res.json({ data: [] });
+    // 2. ตรวจสอบว่า user ที่ login เป็นเจ้าของ actorId นี้
+    const isOwnerOfActor =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+    if (!isOwnerOfActor) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to view this actor's saved posts" });
     }
 
     const postRepo = AppDataSource.getRepository(Post);
@@ -565,13 +578,13 @@ export async function getMySavedPosts(
       .leftJoinAndSelect("author_actor.user", "author_user")
       .leftJoinAndSelect("author_actor.persona", "author_persona")
       .innerJoin("post.savedBy", "saving_actor")
-      .where("saving_actor.id IN (:...actorIds)", { actorIds })
+      .where("saving_actor.id = :actorId", { actorId }) // 3. ค้นหาด้วย actorId เดียว
       .orderBy("post.createdAt", "DESC")
       .getMany();
 
     return res.json({ data: savedPosts });
   } catch (err) {
-    console.error("getMySavedPosts error:", err);
+    console.error("getSavedPostsByActor error:", err);
     return res.status(500).json({ message: "Failed to fetch saved posts" });
   }
 }
