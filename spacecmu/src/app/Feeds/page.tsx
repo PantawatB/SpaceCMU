@@ -24,13 +24,29 @@ export default function FeedsMainPage() {
   const [savedPosts, setSavedPosts] = useState<Set<number>>(new Set());
   const [repostedPosts, setRepostedPosts] = useState<Set<number>>(new Set());
   const [showCommentModal, setShowCommentModal] = useState(false);
-  const [commentPostId, setCommentPostId] = useState<number | null>(null);
+  const [commentPostId, setCommentPostId] = useState<number | string | null>(null);
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<{postId: number, text: string, author: string, avatar?: string}[]>([
+  const [comments, setComments] = useState<{postId: number | string, text: string, author: string, avatar?: string}[]>([
     { postId: 0, text: "This is amazing!", author: "Nezuko", avatar: "/nezuko.jpg"},
     { postId: 0, text: "Love this post!", author: "Zenitsu", avatar: "/zenitsu.jpg" },
     { postId: 1, text: "So cute!", author: "Inosuke", avatar: "/inosuke.jpeg" },
   ]);
+  type ApiComment = {
+    id: string;
+    content: string;
+    createdAt: string;
+    author: {
+      type: 'user' | 'persona';
+      actorId: string;
+      name: string;
+      profileImg?: string | null;
+      avatarUrl?: string | null;  
+    };
+  };
+
+  const [currentComments, setCurrentComments] = useState<ApiComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentPosting, setCommentPosting] = useState(false);
   
   // Active profile mode: 0 = public, 1 = anonymous
   const [activeProfile, setActiveProfile] = useState<number>(0);
@@ -611,35 +627,117 @@ export default function FeedsMainPage() {
   };
 
   const handleReportSubmit = () => {
-    // TODO: Send report to API
     console.log(`Reporting post ${reportPostId} with feedback: ${reportText}`);
     setShowReportModal(false);
     setReportText("");
     setReportPostId(null);
   };
 
-  const handleCommentClick = (postId: number) => {
+  const handleCommentClick = async (postId: string | number) => {
     setCommentPostId(postId);
     setShowCommentModal(true);
+    setCurrentComments([]);
+    setCommentText(""); 
+
+    if (typeof postId === 'number') {
+      console.log("Showing mock comments for mock post ID:", postId);
+      const mockCommentsForPost = comments.filter(comment => comment.postId === postId);
+      
+      const formattedMockComments: ApiComment[] = mockCommentsForPost.map((mockComment, index) => ({
+        id: `mock-${postId}-${index}`, 
+        content: mockComment.text,
+        createdAt: new Date().toISOString(), 
+        author: {
+          type: 'user', 
+          actorId: `mock-actor-${index}`,
+          name: mockComment.author,
+          profileImg: mockComment.avatar ?? "/tanjiro.jpg", 
+          avatarUrl: undefined 
+        }
+      }));
+      
+      setCurrentComments(formattedMockComments); 
+      setCommentsLoading(false); 
+    } else {
+      await fetchCommentsForPost(postId); 
+    }
   };
 
-  const handleCommentSubmit = () => {
+  const fetchCommentsForPost = async (postId: string | number) => {
+    setCommentsLoading(true);
+    setCurrentComments([]); 
+    try {
+      if (typeof postId !== 'string') {
+          console.warn("fetchCommentsForPost called with non-string postId:", postId);
+          setCommentsLoading(false);
+          return; 
+      }
+      
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`);
+      if (!res.ok) throw new Error('Failed to fetch comments');
+      const response = await res.json();
+      const data = response.data || [];
+      if (Array.isArray(data)) {
+        setCurrentComments(data as ApiComment[]);
+      } else {
+        console.error('API Comments data is not an array:', data);
+        setCurrentComments([]);
+      }
+    } catch (err) {
+      console.error("API Fetch Error:", err);
+      setCurrentComments([]); 
+
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleCommentSubmit = async () => {
     if (!commentText.trim() || commentPostId === null) return;
-    const newComment = {
-      postId: commentPostId,
-      text: commentText,
-      author: activeProfile === 0 
-        ? (currentUser?.name ?? "Anonymous")
-        : (currentUser?.persona?.displayName ?? "Anonymous"),
-      avatar: activeProfile === 0
-        ? (currentUser?.profileImg ?? "/tanjiro.jpg")
-        : (currentUser?.persona?.avatarUrl ?? "/noobcat.png"),
-      time: "Just now"
-    };
-    setComments([newComment, ...comments]);
-    setCommentText("");
-    setShowCommentModal(false);
-    setCommentPostId(null);
+
+    const token = localStorage.getItem('token');
+    if (!currentUser || !token) {
+      alert('Please login to comment');
+      return;
+    }
+
+    const actorId = activeProfile === 1
+      ? currentUser.persona?.actorId
+      : currentUser.actorId;
+
+    if (!actorId) {
+      console.error('Could not find active actorId for commenting');
+      return;
+    }
+
+    setCommentPosting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${commentPostId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: commentText,
+          actorId: actorId,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to post comment');
+      }
+
+      setCommentText("");
+      await fetchCommentsForPost(commentPostId); 
+
+    } catch (err) {
+      console.error(err);
+      alert('Failed to post comment. Please try again.');
+    } finally {
+      setCommentPosting(false);
+    }
   };
 
   return (
@@ -1217,27 +1315,40 @@ export default function FeedsMainPage() {
             
             {/* Comments List - Scrollable */}
             <div className="flex-1 overflow-y-auto mb-6 space-y-4">
-              {comments
-                .filter(comment => comment.postId === commentPostId)
-                .map((comment, idx) => (
-                  <div key={idx} className="flex gap-3 p-4 bg-gray-50 rounded-xl">
+              {commentsLoading && (
+                <div className="text-center text-gray-400 py-8">
+                  Loading comments...
+                </div>
+              )}
+              {!commentsLoading && currentComments.map((comment) => {
+                const authorAvatar = comment.author.type === 'user'
+                  ? (comment.author.profileImg ?? "/tanjiro.jpg") 
+                  : (comment.author.avatarUrl ?? "/noobcat.png"); 
+
+                return (
+                  <div key={comment.id} className="flex gap-3 p-4 bg-gray-50 rounded-xl">
                     <Image
-                      src={comment.avatar ?? "/tanjiro.jpg"}
-                      alt={comment.author}
+                      src={authorAvatar}
+                      alt={comment.author.name}
                       width={40}
                       height={40}
                       className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">{comment.author}</span>
-                       
+                        <span className="font-semibold text-sm">{comment.author.name}</span>
+                        <span className="text-xs text-gray-400">
+                          · {new Date(comment.createdAt).toLocaleString('en-US', {
+                              month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                            })}
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-700">{comment.text}</p>
+                      <p className="text-sm text-gray-700">{comment.content}</p>
                     </div>
                   </div>
-                ))}
-              {comments.filter(comment => comment.postId === commentPostId).length === 0 && (
+                );
+              })}
+              {!commentsLoading && currentComments.length === 0 && (
                 <div className="text-center text-gray-400 py-8">
                   No comments yet. Be the first to comment!
                 </div>
@@ -1282,10 +1393,10 @@ export default function FeedsMainPage() {
                   <div className="flex justify-end mt-3">
                     <button
                       onClick={handleCommentSubmit}
-                      disabled={!commentText.trim()}
+                      disabled={!commentText.trim() || commentPosting} 
                       className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-full font-semibold text-sm transition"
                     >
-                      Post Comment
+                      {commentPosting ? 'Posting...' : 'Post Comment'}
                     </button>
                   </div>
                 </div>
