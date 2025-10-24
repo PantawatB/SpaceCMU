@@ -135,12 +135,12 @@ export async function deletePost(
   res: Response
 ) {
   try {
-    const { postId } = req.params;
+    const { id } = req.params;
     const user = req.user;
 
     const postRepo = AppDataSource.getRepository(Post);
     const post = await postRepo.findOne({
-      where: { id: postId },
+      where: { id },
       relations: ["actor"],
     });
 
