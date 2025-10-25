@@ -116,6 +116,7 @@ export default function FeedsMainPage() {
     visibility: "public" | "friends";
     location?: string | null;
     author: {
+      type?: "user" | "persona";
       name?: string;
       profileImg?: string | null;
       avatarUrl?: string | null;
@@ -236,7 +237,19 @@ export default function FeedsMainPage() {
 
         // ตรวจสอบว่าข้อมูลเป็น array
         if (Array.isArray(data)) {
-          setPosts(data);
+          // กรองโพสต์ตาม activeProfile
+          // activeProfile = 0 (Public): แสดงเฉพาะโพสต์จาก User
+          // activeProfile = 1 (Anonymous): แสดงเฉพาะโพสต์จาก Persona
+          const filteredPosts = data.filter((post) => {
+            if (activeProfile === 0) {
+              // Public mode: แสดงเฉพาะโพสต์ที่มี author.type === "user"
+              return post.author?.type === "user";
+            } else {
+              // Anonymous mode: แสดงเฉพาะโพสต์ที่มี author.type === "persona"
+              return post.author?.type === "persona";
+            }
+          });
+          setPosts(filteredPosts);
         } else {
           console.error("Posts data is not an array:", data);
           setPosts([]);
@@ -517,6 +530,7 @@ export default function FeedsMainPage() {
         content: postText,
         imageUrl,
         visibility: postMode,
+        isAnonymous: activeProfile === 1, // ส่ง isAnonymous = true เมื่ออยู่ในโหมด Anonymous
       };
 
       const res = await fetch(`${API_BASE_URL}/api/posts`, {
