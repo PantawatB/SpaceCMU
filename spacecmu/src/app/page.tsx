@@ -68,7 +68,7 @@ export default function HomePage() {
               width={30}
               height={30}
             />
-            Sign in with Google
+            Login with Google
         </button>
       </div>
     </div>
