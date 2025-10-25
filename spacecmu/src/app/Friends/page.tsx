@@ -76,17 +76,20 @@ function FriendCard({
       </div>
       <div className="top-24 z-10 flex items-center flex-col gap-4 px-5 py-5">
         <div className="-mt-16">
-          {avatarUrl ? (
-            <Image
-              src={normalizeImageUrl(avatarUrl)}
-              alt="Profile Avatar"
-              width={75}
-              height={75}
-              className="rounded-full border-2 border-white shadow object-cover"
-            />
-          ) : (
-            <div className="w-[75px] h-[75px] rounded-full border-2 border-white shadow bg-gray-200" />
-          )}
+          {/* Ensure avatar is clipped into a perfect circle regardless of source image aspect */}
+          <div className="w-[75px] h-[75px] rounded-full border-2 border-white shadow overflow-hidden">
+            {avatarUrl ? (
+              <Image
+                src={normalizeImageUrl(avatarUrl)}
+                alt="Profile Avatar"
+                width={75}
+                height={75}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-200" />
+            )}
+          </div>
         </div>
         <div className="flex items-center flex-col">
           <p title="name" className="text-black font-Roboto-md">
@@ -1055,10 +1058,12 @@ export default function FriendsMainPage() {
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
-      {/* Sidebar */}
-      <Sidebar menuItems={menuItems} />
-      {/* Main Content */}
-      <main className="flex-1 p-8">
+      {/* Sidebar (sticky to viewport so it doesn't move when right column scrolls) */}
+      <div className="sticky top-0 self-start h-screen">
+        <Sidebar menuItems={menuItems} />
+      </div>
+      {/* Main Content (make this column scroll internally) */}
+      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
         {/* Search bar */}
         <div className="mb-6">
           <div className="relative w-full">
