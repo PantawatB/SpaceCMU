@@ -5,6 +5,7 @@ import { Persona } from "./entities/Persona";
 import { Post } from "./entities/Post";
 import { FriendRequest } from "./entities/FriendRequest";
 import { Report } from "./entities/Report";
+import { BanAppeal } from "./entities/BanAppeal";
 import { Comment } from "./entities/Comment";
 import { Chat } from "./entities/Chat";
 import { Message } from "./entities/Message";
@@ -31,6 +32,7 @@ export const AppDataSource = new DataSource({
     Post,
     FriendRequest,
     Report,
+    BanAppeal,
     Comment,
     Chat,
     Message,

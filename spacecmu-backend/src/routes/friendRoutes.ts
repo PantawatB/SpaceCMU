@@ -1,5 +1,5 @@
 import { Router, RequestHandler } from "express";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, checkBanned } from "../middleware/auth";
 import {
   sendFriendRequest,
   acceptFriendRequest,
@@ -17,7 +17,8 @@ const router = Router();
 // Middleware ที่จะทำงานกับทุก Route ในไฟล์นี้
 router.use(
   authenticateToken as RequestHandler,
-  updateLastActive as RequestHandler
+  updateLastActive as RequestHandler,
+  checkBanned as RequestHandler
 );
 
 // --- ⚙️ Friend Requests ---

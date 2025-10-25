@@ -1,10 +1,10 @@
 "use client";
 
 import Sidebar from "../../components/Sidebar";
+import BannedWarning from "../../components/BannedWarning";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { API_BASE_URL, normalizeImageUrl } from "../../utils/apiConfig";
-import ChatWindow from "@/components/ChatWindow";
 
 // Interface for search user result from /api/users/search
 interface SearchUser {
@@ -38,7 +38,7 @@ interface FriendRequestsApiResponse {
 
 // Friend card component
 interface FriendCardProps {
-  id: string;
+  id: string; // actorId for friend operations and chat creation
   name: string;
   bio: string;
   followed: boolean;
@@ -64,7 +64,8 @@ function FriendCard({
 }: FriendCardProps) {
   return (
     <div className="relative rounded-xl overflow-hidden flex flex-col items-center shadow-lg bg-white font-Roboto-light mb-6">
-      <div className="h-24 w-full bg-gradient-to-r from-blue-400 to-purple-500 relative">
+      {/* Banner with increased height to accommodate profile image overlap */}
+      <div className="h-32 w-full bg-gradient-to-r from-blue-400 to-purple-500 relative">
         {bannerUrl ? (
           <Image
             src={normalizeImageUrl(bannerUrl)}
@@ -74,22 +75,21 @@ function FriendCard({
           />
         ) : null}
       </div>
-      <div className="top-24 z-10 flex items-center flex-col gap-4 px-5 py-5">
-        <div className="-mt-16">
-          {/* Ensure avatar is clipped into a perfect circle regardless of source image aspect */}
-          <div className="w-[75px] h-[75px] rounded-full border-2 border-white shadow overflow-hidden">
-            {avatarUrl ? (
-              <Image
-                src={normalizeImageUrl(avatarUrl)}
-                alt="Profile Avatar"
-                width={75}
-                height={75}
-                className="object-cover w-full h-full"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200" />
-            )}
-          </div>
+      <div className="flex items-center flex-col gap-4 px-5 py-5 w-full">
+        {/* Profile image positioned to overlap banner */}
+        <div className="-mt-12 mb-2 relative z-10">
+          {avatarUrl ? (
+            <Image
+              src={normalizeImageUrl(avatarUrl)}
+              alt="Profile Avatar"
+              width={75}
+              height={75}
+              className="rounded-full border-4 border-white shadow-lg object-cover"
+              style={{ width: "75px", height: "75px" }}
+            />
+          ) : (
+            <div className="w-[75px] h-[75px] rounded-full border-4 border-white shadow-lg bg-gray-200" />
+          )}
         </div>
         <div className="flex items-center flex-col">
           <p title="name" className="text-black font-Roboto-md">
@@ -294,6 +294,8 @@ function HorizontalScrollSection({
 
 export default function FriendsMainPage() {
   const [friendRequests, setFriendRequests] = useState<FriendCardProps[]>([]);
+  const [rawFriendRequests, setRawFriendRequests] =
+    useState<FriendRequestsApiResponse>({ incoming: [], outgoing: [] });
   const [friends, setFriends] = useState<FriendCardProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -345,15 +347,10 @@ export default function FriendsMainPage() {
     };
   }, []);
 
-  // Helper: extract ID (prefer actorId since backend accepts it)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getUserId = (x: any): string | undefined =>
-    x?.actorId ?? x?.id ?? x?._id ?? x?.userId ?? x?.user?.id;
-
   // Function to start chat with a friend
-  const handleStartChat = async (friendIdOrActorId: string) => {
+  const handleStartChat = async (otherActorId: string) => {
     try {
-      console.log("🚀 Starting chat with ID:", friendIdOrActorId);
+      console.log("🚀 Starting chat with Actor ID:", otherActorId);
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) {
@@ -361,9 +358,37 @@ export default function FriendsMainPage() {
         return;
       }
 
-      // Backend accepts both otherUserId (User.id) OR otherActorId (Actor.id)
-      // We send actorId since that's what we have from friends list
-      const payload = { otherActorId: friendIdOrActorId };
+      // Get current user's actorId based on active profile
+      const meRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!meRes.ok) {
+        throw new Error("Failed to fetch current user info");
+      }
+
+      const meData: { actorId?: string; persona?: { actorId?: string } } =
+        await meRes.json();
+
+      // ✅ Use the appropriate actorId based on active profile
+      const myActorId =
+        activeProfile === 1 && meData.persona?.actorId
+          ? meData.persona.actorId
+          : meData.actorId;
+
+      if (!myActorId) {
+        throw new Error("Could not determine your actor ID");
+      }
+
+      console.log("👤 My Actor ID:", myActorId);
+      console.log("👥 Other Actor ID:", otherActorId);
+
+      // ✅ Backend now requires both myActorId and otherActorId
+      const payload = { myActorId, otherActorId };
       console.log("📦 [Chat] create payload:", payload);
       console.log(
         "📤 Sending API request to:",
@@ -390,14 +415,20 @@ export default function FriendsMainPage() {
       const chatData = await response.json();
       console.log("Chat created/retrieved:", chatData);
 
-      // Backend returns { id, type, otherUser } directly
+      // Backend returns { id, type, myActorId, otherActorId }
       const chatId = chatData.id || chatData.data?.chat?.id;
       if (!chatId) {
         console.error("No chat ID in response:", chatData);
         throw new Error("Invalid chat response");
       }
 
-      // Set the friend for chat and open chat window
+      // Dispatch custom event to open chat in GlobalChat
+      const openChatEvent = new CustomEvent("openChat", {
+        detail: { chatId },
+      });
+      window.dispatchEvent(openChatEvent);
+
+      // Clear states
       setSelectedFriendForChat(chatId);
       setChatOpen(true);
     } catch (error) {
@@ -441,26 +472,27 @@ export default function FriendsMainPage() {
         (u) => {
           // Debug logging for each search result
           console.log("🔍 [Search Result] User:", {
-            id: u.id, // Should be User.id (for chat creation)
-            actorId: u.actorId, // Should be Actor.id (for friend operations)
+            id: u.id, // User.id (for chat creation)
+            actorId: u.actorId, // Actor.id (for friend operations)
             name: u.name,
             type: u.type || "unknown",
           });
 
           return {
-            id: u.actorId ?? u.id, // Card display uses actorId for friend operations
+            id: u.actorId ?? u.id, // actorId for friend operations and chat creation
             name: u.name ?? "Unknown User",
             bio: u.bio ?? "No bio available",
             followed: false,
-            avatarUrl: u.profileImg ?? null,
+            avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
             isFriend: currentFriendIds.has(u.actorId ?? u.id),
             readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
             onFollow: () => sendFriendRequest(u.actorId),
             onRemove: () => unfriend(u.actorId),
             onMessage: () => {
-              const uid = getUserId(u);
-              if (uid) handleStartChat(uid);
-              else console.warn("No userId for", u);
+              // ✅ Use actorId for chat creation (supports separate User/Persona chats)
+              const actorId = u.actorId ?? u.id;
+              if (actorId) handleStartChat(actorId);
+              else console.warn("No actorId for", u);
             },
           };
         }
@@ -543,20 +575,25 @@ export default function FriendsMainPage() {
 
       const data: FriendRequestsApiResponse = await response.json();
 
+      // ✅ Store raw data for filtering
+      setRawFriendRequests(data);
+
       // Transform incoming friend requests to match FriendCardProps interface
       const transformedRequests: FriendCardProps[] = data.incoming.map(
         (request) => ({
-          id: request.id,
+          id: request.from?.actorId ?? request.id, // ✅ Use actorId for chat creation
           name: request.from?.name ?? "Unknown",
           bio: "No bio available",
           followed: request.status === "pending",
-          avatarUrl: request.from?.profileImg || null,
+          avatarUrl: request.from?.profileImg
+            ? normalizeImageUrl(request.from.profileImg)
+            : null,
           onFollow: () => handleAcceptRequest(request.id),
           onRemove: () => handleRejectRequest(request.id),
           onMessage: () => {
-            const uid = getUserId(request.from ?? request);
-            if (uid) handleStartChat(uid);
-            else console.warn("No userId for request", request);
+            const actorId = request.from?.actorId;
+            if (actorId) handleStartChat(actorId);
+            else console.warn("No actorId for request", request);
           },
         })
       );
@@ -636,12 +673,13 @@ export default function FriendsMainPage() {
         onFollow: () => {},
         onRemove: () => unfriend(u.actorId),
         onMessage: () => {
-          const uid = getUserId(u);
-          if (uid) handleStartChat(uid);
-          else console.warn("No userId for friend", u);
+          // ✅ Use actorId for chat creation (supports separate User/Persona chats)
+          const actorId = u.actorId;
+          if (actorId) handleStartChat(actorId);
+          else console.warn("No actorId for friend", u);
         },
-        avatarUrl: u.profileImg,
-        bannerUrl: u.bannerImg,
+        avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
+        bannerUrl: u.bannerImg ? normalizeImageUrl(u.bannerImg) : null,
       }));
 
       setFriends(transformed);
@@ -706,6 +744,7 @@ export default function FriendsMainPage() {
   const sendFriendRequest = async (toActorId?: string) => {
     if (!toActorId) return;
     try {
+      console.log("📤 Sending friend request to actor:", toActorId);
       const token = localStorage.getItem("token");
       if (!token) {
         alert("You need to be logged in to send friend requests");
@@ -741,17 +780,41 @@ export default function FriendsMainPage() {
         return;
       }
 
+      console.log("👤 My Actor ID:", fromActorId);
+      console.log("👥 Target Actor ID:", toActorId);
+
+      // Check if trying to add yourself
+      if (fromActorId === toActorId) {
+        alert("You cannot send a friend request to yourself!");
+        return;
+      }
+
+      const payload = { fromActorId, toActorId };
+      console.log("📦 Friend request payload:", payload);
+
       const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ fromActorId, toActorId }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        console.warn("Failed to send friend request", res.status);
+        const errorData = await res
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        console.error(
+          "❌ Failed to send friend request:",
+          res.status,
+          errorData
+        );
+        alert(
+          `Failed to send friend request: ${
+            errorData.message || "Unknown error"
+          }`
+        );
       } else {
         // Refresh friend requests so pending requests appear
         await fetchFriendRequests();
@@ -863,26 +926,46 @@ export default function FriendsMainPage() {
         name: u.name ?? "Unknown",
         bio: u.bio ?? "No bio available",
         followed: false,
-        avatarUrl: u.profileImg ?? null,
+        avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
         isFriend: false,
         readonlyFriendLabel: false,
         onFollow: () => sendFriendRequest(u.actorId ?? u.id),
         onRemove: () => unfriend(u.actorId ?? u.id),
         onMessage: () => {
-          const uid = getUserId(u);
-          if (uid) handleStartChat(uid);
-          else console.warn("No userId for user", u);
+          // ✅ Use actorId for chat creation (supports separate User/Persona chats)
+          const actorId = u.actorId ?? u.id;
+          if (actorId) handleStartChat(actorId);
+          else console.warn("No actorId for user", u);
         },
       }));
 
       const friendActorIds = friendIds ?? new Set(friends.map((f) => f.id));
-      const enriched = mapped.map((item) => ({
-        ...item,
-        isFriend: friendActorIds.has(item.id),
-        readonlyFriendLabel: friendActorIds.has(item.id),
-      }));
 
-      setPeopleYouMayKnow(enriched);
+      // ✅ Collect pending request actor IDs from raw data
+      const pendingRequestIds = new Set([
+        ...rawFriendRequests.incoming.map((r) => r.from.actorId),
+        ...rawFriendRequests.outgoing.map((r) => r.to.actorId),
+      ]);
+
+      console.log("🔍 Friend actor IDs:", Array.from(friendActorIds));
+      console.log("🔍 Pending request IDs:", Array.from(pendingRequestIds));
+      console.log(
+        "🔍 People before filtering:",
+        mapped.map((p) => ({ id: p.id, name: p.name }))
+      );
+
+      // ✅ Filter out friends AND pending requests from "People you may know"
+      const nonFriends = mapped.filter(
+        (item) =>
+          !friendActorIds.has(item.id) && !pendingRequestIds.has(item.id)
+      );
+
+      console.log(
+        "🔍 People after filtering:",
+        nonFriends.map((p) => ({ id: p.id, name: p.name }))
+      );
+
+      setPeopleYouMayKnow(nonFriends);
     } catch (err) {
       console.error("Error fetching people you may know:", err);
     }
@@ -891,11 +974,25 @@ export default function FriendsMainPage() {
   // Fetch friend requests and friends on component mount and when activeProfile changes
   useEffect(() => {
     const load = async () => {
+      console.log(
+        "🔄 Active profile changed to:",
+        activeProfile === 1 ? "Persona" : "User"
+      );
+      // Clear existing data first
+      setFriendRequests([]);
+      setFriends([]);
+      setPeopleYouMayKnow([]);
+
       // fetch friends first so we can mark existing friends correctly
       const currentFriends = await fetchFriends();
       const friendIds = new Set(currentFriends.map((f) => f.id));
       await fetchPeopleYouMayKnow(friendIds);
-      fetchFriendRequests();
+      await fetchFriendRequests(); // ✅ Make sure to await
+
+      console.log(
+        "✅ Data refreshed for",
+        activeProfile === 1 ? "Persona" : "User"
+      );
     };
     load();
   }, [activeProfile]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1058,6 +1155,7 @@ export default function FriendsMainPage() {
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
+      <BannedWarning />
       {/* Sidebar (sticky to viewport so it doesn't move when right column scrolls) */}
       <div className="sticky top-0 self-start h-screen">
         <Sidebar menuItems={menuItems} />
@@ -1136,16 +1234,6 @@ export default function FriendsMainPage() {
           )}
         </div>
       </main>
-      {/* Chat Window */}
-      {chatOpen && selectedFriendForChat && (
-        <ChatWindow
-          chatId={selectedFriendForChat}
-          onClose={() => {
-            setChatOpen(false);
-            setSelectedFriendForChat(null);
-          }}
-        />
-      )}
     </div>
   );
 }

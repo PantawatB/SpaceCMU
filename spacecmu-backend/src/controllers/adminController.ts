@@ -105,6 +105,33 @@ export async function banUser(req: Request, res: Response) {
 }
 
 /**
+ * 📌 ปลดแบน user
+ */
+export async function unbanUser(req: Request, res: Response) {
+  try {
+    const { userId } = req.params;
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOneBy({ id: userId });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (!user.isBanned) {
+      return res.status(400).json({ message: "User is not banned" });
+    }
+
+    user.isBanned = false;
+    await userRepo.save(user);
+
+    return res.json({ message: "User unbanned", user });
+  } catch (err) {
+    console.error("unbanUser error:", err);
+    return res.status(500).json({ message: "Failed to unban user" });
+  }
+}
+
+/**
  * 📌 ลบโพสต์ (takedown post)
  */
 export async function takedownPost(req: Request, res: Response) {
@@ -157,5 +184,88 @@ export async function reviewReport(req: Request, res: Response) {
   } catch (err) {
     console.error("reviewReport error:", err);
     return res.status(500).json({ message: "Failed to review report" });
+  }
+}
+
+/**
+ * 📌 ตั้ง user ให้เป็น admin
+ */
+export async function promoteToAdmin(req: Request, res: Response) {
+  try {
+    const { userId } = req.params;
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOneBy({ id: userId });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.isAdmin) {
+      return res.status(400).json({ message: "User is already an admin" });
+    }
+
+    user.isAdmin = true;
+    await userRepo.save(user);
+
+    return res.json({ message: "User promoted to admin", user });
+  } catch (err) {
+    console.error("promoteToAdmin error:", err);
+    return res.status(500).json({ message: "Failed to promote user" });
+  }
+}
+
+/**
+ * 📌 ลบสิทธิ์ admin
+ */
+export async function revokeAdmin(req: Request, res: Response) {
+  try {
+    const { userId } = req.params;
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOneBy({ id: userId });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (!user.isAdmin) {
+      return res.status(400).json({ message: "User is not an admin" });
+    }
+
+    user.isAdmin = false;
+    await userRepo.save(user);
+
+    return res.json({ message: "Admin privileges revoked", user });
+  } catch (err) {
+    console.error("revokeAdmin error:", err);
+    return res.status(500).json({ message: "Failed to revoke admin" });
+  }
+}
+
+/**
+ * 📌 ลบ user
+ */
+export async function deleteUser(req: Request, res: Response) {
+  try {
+    const { userId } = req.params;
+    const currentUser = (req as any).user; // Current admin user object
+
+    // Prevent self-deletion
+    if (userId === currentUser?.id) {
+      return res.status(400).json({ message: "You cannot delete yourself" });
+    }
+
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOneBy({ id: userId });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await userRepo.remove(user);
+
+    return res.json({ message: "User deleted successfully", userId });
+  } catch (err) {
+    console.error("deleteUser error:", err);
+    return res.status(500).json({ message: "Failed to delete user" });
   }
 }

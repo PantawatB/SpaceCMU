@@ -9,6 +9,7 @@ export interface Message {
   sender: {
     id: string;
     name: string;
+    actorId?: string; // ✅ Add actorId to identify which actor sent the message
   };
   createdAt: string;
   updatedAt?: string;
@@ -23,6 +24,7 @@ export interface Chat {
     name: string;
     email: string;
     profileImg?: string;
+    actorId?: string; // ✅ Include actorId to identify which actor (User or Persona)
   }>;
   lastMessage?: {
     content: string;

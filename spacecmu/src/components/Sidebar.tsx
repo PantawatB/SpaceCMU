@@ -29,6 +29,7 @@ type CurrentUser = {
   studentId?: string;
   profileImg?: string;
   bannerImg?: string;
+  isAdmin?: boolean;
   persona?: Persona;
 } | null;
 
@@ -314,6 +315,47 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                 <span className="text-sm">{item.name}</span>
               </button>
             )
+          )}
+
+          {/* Admin Link - Only show if user is admin */}
+          {currentUser?.isAdmin && (
+            <Link
+              href="/Admin"
+              className={`flex items-center gap-3 w-full rounded-lg px-3 py-2 transition font-medium text-left relative overflow-hidden group ${
+                pathname === "/Admin"
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg border border-transparent font-semibold"
+                  : "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 hover:from-purple-200 hover:to-pink-200"
+              }`}
+            >
+              <span className="w-5 h-5 flex items-center justify-center relative z-10">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className={`w-5 h-5 ${
+                    pathname === "/Admin" ? "drop-shadow-md" : ""
+                  }`}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+                  />
+                </svg>
+              </span>
+              <span
+                className={`relative z-10 font-bold ${
+                  pathname === "/Admin" ? "text-base tracking-wide" : "text-sm"
+                }`}
+              >
+                Admin
+              </span>
+              {pathname === "/Admin" && (
+                <span className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-20 group-hover:opacity-30 transition-opacity"></span>
+              )}
+            </Link>
           )}
         </nav>
       </div>

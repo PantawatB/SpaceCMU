@@ -1,6 +1,6 @@
 "use client";
 import Sidebar from "../../components/Sidebar";
-import ChatWindow from "@/components/ChatWindow";
+import BannedWarning from "../../components/BannedWarning";
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "@/utils/apiConfig";
 
@@ -234,6 +234,7 @@ export default function SettingPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
+      <BannedWarning />
       {/* Sidebar */}
       <Sidebar menuItems={menuItems} />
 
@@ -539,9 +540,6 @@ export default function SettingPage() {
           </div>
         )}
       </main>
-
-      {/* Chat Window */}
-      <ChatWindow />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Sidebar from "../../components/Sidebar";
-import ChatWindow from "@/components/ChatWindow";
+import BannedWarning from "../../components/BannedWarning";
 import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 
 // MarketCard component
@@ -90,18 +90,59 @@ function MarketCard({
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (isOwnProduct && onEditClick) {
-                  onEditClick(productId);
-                } else {
-                  onChatClick(sellerId, title, image);
-                }
-              }}
-              className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
-            >
-              {isOwnProduct ? "Edit" : "Chat"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (isOwnProduct && onEditClick) {
+                    onEditClick(productId);
+                  } else {
+                    onChatClick(sellerId, title, image);
+                  }
+                }}
+                className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                {isOwnProduct ? "Edit" : "Chat"}
+              </button>
+              {isOwnProduct && (
+                <button
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Are you sure you want to delete this product?"
+                      )
+                    ) {
+                      return;
+                    }
+
+                    try {
+                      const token = localStorage.getItem("token");
+                      const res = await fetch(
+                        `${API_BASE_URL}/api/products/${productId}`,
+                        {
+                          method: "DELETE",
+                          headers: token
+                            ? { Authorization: `Bearer ${token}` }
+                            : undefined,
+                        }
+                      );
+
+                      if (res.ok) {
+                        alert("Product deleted successfully!");
+                        window.location.reload();
+                      } else {
+                        alert("Failed to delete product");
+                      }
+                    } catch (err) {
+                      console.error("Error deleting product:", err);
+                      alert("Error deleting product");
+                    }
+                  }}
+                  className="bg-red-600 text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -493,7 +534,12 @@ export default function MarketMainPage() {
     price: string | number | null;
     description: string | null;
     imageUrl: string | null;
-    seller?: { id: string; name: string; profileImg?: string | null } | null;
+    seller?: {
+      id: string;
+      name: string;
+      profileImg?: string | null;
+      actorId?: string | null;
+    } | null;
   };
 
   const [marketItems, setMarketItems] = useState<
@@ -562,7 +608,7 @@ export default function MarketMainPage() {
           image: p.imageUrl || DEFAULT_IMAGE,
           sellerName: p.seller?.name || "Unknown Seller",
           sellerImage: p.seller?.profileImg || DEFAULT_IMAGE,
-          sellerId: p.seller?.id || "",
+          sellerId: p.seller?.actorId || p.seller?.id || "",
           productId: String(p.id),
           isOwnProduct: currentUser ? p.seller?.id === currentUser : false,
         };
@@ -595,6 +641,35 @@ export default function MarketMainPage() {
         return;
       }
 
+      // Get current user's actor ID
+      const userResponse = await fetch(`${API_BASE_URL}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!userResponse.ok) {
+        throw new Error("Failed to get user info");
+      }
+
+      const userData = await userResponse.json();
+      const activeProfileMode = localStorage.getItem("activeProfile");
+      const isPersona = activeProfileMode === "1";
+
+      // Get my actor ID based on profile mode
+      const myActorId =
+        isPersona && userData.persona?.actorId
+          ? userData.persona.actorId
+          : userData.actorId;
+
+      if (!myActorId) {
+        alert("Unable to get your profile information");
+        return;
+      }
+
+      // sellerId is the seller's actorId
+      const otherActorId = sellerId;
+
       // Create or get existing chat with seller
       const response = await fetch(`${API_BASE_URL}/api/chats/direct`, {
         method: "POST",
@@ -602,10 +677,15 @@ export default function MarketMainPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ otherUserId: sellerId }),
+        body: JSON.stringify({
+          myActorId,
+          otherActorId,
+        }),
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Chat creation error:", errorData);
         throw new Error(`Failed to create chat: ${response.status}`);
       }
 
@@ -632,7 +712,13 @@ export default function MarketMainPage() {
         // Continue anyway - chat window will open
       }
 
-      // Open chat window with this chat
+      // Dispatch custom event to open chat in GlobalChat
+      const openChatEvent = new CustomEvent("openChat", {
+        detail: { chatId },
+      });
+      window.dispatchEvent(openChatEvent);
+
+      // Update states
       setSelectedChatUserId(chatId);
       setChatOpen(true);
     } catch (error) {
@@ -643,6 +729,7 @@ export default function MarketMainPage() {
 
   return (
     <div className="flex h-screen bg-white text-gray-800 overflow-hidden">
+      <BannedWarning />
       {/* Sidebar */}
       <Sidebar menuItems={menuItems} />
       {/* Main Content */}
@@ -762,9 +849,14 @@ export default function MarketMainPage() {
                       setFormData({
                         name: product.name || "",
                         // always coerce to string so subsequent FormData.append won't receive a number
-                        description: product.description != null ? String(product.description) : "",
+                        description:
+                          product.description != null
+                            ? String(product.description)
+                            : "",
                         price: product.price ? String(product.price) : "",
-                        image: product.imageUrl || "/noobcat.png",
+                        image: product.imageUrl
+                          ? normalizeImageUrl(product.imageUrl)
+                          : "/noobcat.png",
                       });
                       setEditingProductId(productId);
                       setIsEditMode(true);
@@ -782,16 +874,6 @@ export default function MarketMainPage() {
           </div>
         </div>
       </main>
-      {/* Chat Window */}
-      {chatOpen && selectedChatUserId && (
-        <ChatWindow
-          chatId={selectedChatUserId}
-          onClose={() => {
-            setChatOpen(false);
-            setSelectedChatUserId(null);
-          }}
-        />
-      )}
 
       {/* Add Product Modal */}
       {isModalOpen && (
@@ -843,7 +925,7 @@ export default function MarketMainPage() {
                     {/* Product Image */}
                     <div className="w-full h-[160px]">
                       <Image
-                        src={formData.image}
+                        src={normalizeImageUrl(formData.image)}
                         alt="Preview"
                         width={300}
                         height={160}

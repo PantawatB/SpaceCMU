@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from "typeorm";
 import { User } from "./User";
+import { Actor } from "./Actor";
 
 export enum MessageType {
   TEXT = "text",
@@ -43,6 +44,14 @@ export class Message {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "senderId" })
   sender!: User;
+
+  /**
+   * ✅ Actor (User or Persona) who sent the message
+   * This allows tracking which identity sent the message
+   */
+  @ManyToOne(() => Actor, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "senderActorId" })
+  senderActor?: Actor;
 
   /**
    * Type of message (text, image, file, system)

@@ -29,6 +29,9 @@ export async function getMyChats(
         "chat.createdBy",
         "chat.participants",
         "chat.participants.user",
+        "chat.participants.actor", // ✅ Include actor to show correct profile
+        "chat.participants.actor.user",
+        "chat.participants.actor.persona",
       ],
       order: { chat: { updatedAt: "DESC" } },
     });
@@ -37,12 +40,32 @@ export async function getMyChats(
       id: p.chat.id,
       type: p.chat.type,
       name: p.chat.name,
-      participants: p.chat.participants?.map((participant: any) => ({
-        id: participant.user.id,
-        name: participant.user.name,
-        email: participant.user.email,
-        profileImg: participant.user.profileImg,
-      })),
+      participants: p.chat.participants?.map((participant: any) => {
+        // ✅ Get profile info from actor if available, otherwise from user
+        let participantInfo = {
+          id: participant.user.id,
+          name: participant.user.name,
+          email: participant.user.email,
+          profileImg: participant.user.profileImg,
+          actorId: undefined as string | undefined,
+        };
+
+        if (participant.actor) {
+          if (participant.actor.user) {
+            // Actor is a User
+            participantInfo.name = participant.actor.user.name;
+            participantInfo.profileImg = participant.actor.user.profileImg;
+            participantInfo.actorId = participant.actor.id;
+          } else if (participant.actor.persona) {
+            // Actor is a Persona (Anonymous User)
+            participantInfo.name = participant.actor.persona.displayName;
+            participantInfo.profileImg = participant.actor.persona.profileImg;
+            participantInfo.actorId = participant.actor.id;
+          }
+        }
+
+        return participantInfo;
+      }),
       lastMessage: p.chat.lastMessage
         ? {
             id: p.chat.lastMessage.id,
@@ -92,92 +115,115 @@ export async function createDirectChat(
       name: currentUser.name,
     });
 
-    // Validate request body - accept either otherUserId or otherActorId
-    const { otherUserId, otherActorId } = req.body || {};
-    if ((!otherUserId && !otherActorId) || (otherUserId && otherActorId)) {
-      console.log(
-        "❌ Invalid parameters: must provide exactly one of otherUserId or otherActorId"
-      );
+    // ✅ NOW REQUIRED: both myActorId and otherActorId to create actor-based chats
+    const { myActorId, otherActorId } = req.body || {};
+
+    if (!myActorId || !otherActorId) {
+      console.log("❌ Missing required parameters: myActorId and otherActorId");
       return res.status(400).json({
-        message: "Provide exactly one of otherUserId or otherActorId",
+        message: "Both myActorId and otherActorId are required",
       });
     }
 
-    console.log(
-      "🔍 Looking for other user with:",
-      otherUserId ? `userId: ${otherUserId}` : `actorId: ${otherActorId}`
-    );
-
-    // Get repositories
-    const userRepo = AppDataSource.getRepository(User);
-    let otherUser: User | null = null;
-
-    if (otherUserId) {
-      // Direct user ID lookup
-      otherUser = await userRepo.findOne({ where: { id: otherUserId } });
-      console.log(
-        "✅ Direct user lookup result:",
-        otherUser ? "Found" : "Not found"
-      );
-    } else {
-      // Actor ID lookup - resolve to user
-      const actorRepo = AppDataSource.getRepository(Actor);
-      const actor = await actorRepo.findOne({
-        where: { id: otherActorId },
-        relations: ["user"],
-      });
-      console.log("🎭 Actor lookup result:", actor ? "Found" : "Not found");
-
-      if (actor && actor.user) {
-        otherUser = actor.user;
-        console.log("✅ Found user via actor:", {
-          actorId: actor.id,
-          userId: actor.user.id,
-          userName: actor.user.name,
-        });
-      }
-    }
-
-    if (!otherUser) {
-      console.log("❌ Other user not found after resolution");
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log("[createDirectChat] resolved otherUserId:", otherUser?.id);
-    console.log("✅ Other user found:", {
-      id: otherUser.id,
-      name: otherUser.name,
+    console.log("🔍 Creating chat between actors:", {
+      myActorId,
+      otherActorId,
     });
 
-    // Get additional repositories
+    // Get repositories
+    const actorRepo = AppDataSource.getRepository(Actor);
     const chatRepo = AppDataSource.getRepository(Chat);
     const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
 
-    // Check for existing direct chat between these two users
-    console.log("🔍 Checking for existing chat between users...");
+    // Verify both actors exist and current user owns myActorId
+    const myActor = await actorRepo.findOne({
+      where: { id: myActorId },
+      relations: ["user", "persona", "persona.user"],
+    });
+
+    if (!myActor) {
+      console.log("❌ My actor not found");
+      return res.status(404).json({ message: "Your actor not found" });
+    }
+
+    // Verify ownership
+    const isMyActor =
+      (myActor.user && myActor.user.id === currentUser.id) ||
+      (myActor.persona &&
+        myActor.persona.user &&
+        myActor.persona.user.id === currentUser.id);
+
+    if (!isMyActor) {
+      console.log("❌ Not authorized to use this actor");
+      return res
+        .status(403)
+        .json({ message: "Not authorized to use this actor" });
+    }
+
+    const otherActor = await actorRepo.findOne({
+      where: { id: otherActorId },
+      relations: ["user", "persona"],
+    });
+
+    if (!otherActor) {
+      console.log("❌ Other actor not found");
+      console.log("   Searching for actor ID:", otherActorId);
+      console.log("   Actor type:", typeof otherActorId);
+
+      // Debug: Try to find all actors to see what's available
+      const allActors = await actorRepo.find({ take: 10 });
+      console.log(
+        "   Available actors (first 10):",
+        allActors.map((a) => ({
+          id: a.id,
+          hasUser: !!a.user,
+          hasPersona: !!a.persona,
+        }))
+      );
+
+      return res.status(404).json({ message: "Other actor not found" });
+    }
+
+    console.log("✅ Both actors found:", {
+      myActor: { id: myActor.id, type: myActor.user ? "user" : "persona" },
+      otherActor: {
+        id: otherActor.id,
+        type: otherActor.user ? "user" : "persona",
+      },
+    });
+
+    // ✅ Check for existing direct chat between these TWO SPECIFIC ACTORS
+    // This ensures User-to-User and Persona-to-User are separate chats
+    console.log(
+      "🔍 Checking for existing chat between these specific actors..."
+    );
 
     const existingParticipations = await chatParticipantRepo.find({
       where: { user: { id: currentUser.id } },
-      relations: ["chat", "user"],
+      relations: ["chat", "actor"],
     });
 
     let existingChat = null;
     for (const participation of existingParticipations) {
       const chat = participation.chat;
-      if (chat.type === ChatType.DIRECT) {
+      if (
+        chat.type === ChatType.DIRECT &&
+        participation.actor?.id === myActorId
+      ) {
         // Get all participants in this chat
         const allParticipants = await chatParticipantRepo.find({
           where: { chat: { id: chat.id } },
-          relations: ["user"],
+          relations: ["actor"],
         });
 
-        // Check if this is a direct chat with the target user
+        // Check if this is a direct chat with the exact same actor pair
         if (allParticipants.length === 2) {
           const otherParticipant = allParticipants.find(
-            (p: any) => p.user.id !== currentUser.id
+            (p: any) => p.actor?.id !== myActorId
           );
-          if (otherParticipant && otherParticipant.user.id === otherUser.id) {
+          if (otherParticipant && otherParticipant.actor?.id === otherActorId) {
             existingChat = chat;
+            console.log("✅ Found existing chat between these specific actors");
             break;
           }
         }
@@ -185,19 +231,17 @@ export async function createDirectChat(
     }
 
     if (existingChat) {
-      console.log("✅ Found existing chat:", existingChat.id);
+      console.log("✅ Returning existing chat:", existingChat.id);
       const response = {
         id: existingChat.id,
         type: existingChat.type,
-        otherUser: {
-          id: otherUser.id,
-          name: otherUser.name,
-        },
+        myActorId,
+        otherActorId,
       };
       return res.status(200).json(response);
     }
 
-    console.log("🆕 Creating new chat...");
+    console.log("🆕 Creating new actor-based chat...");
 
     // Use transaction to ensure atomicity
     const savedChat = await AppDataSource.transaction(async (manager) => {
@@ -210,21 +254,40 @@ export async function createDirectChat(
       const savedChat = await manager.save(Chat, newChat);
       console.log("✅ Chat created with ID:", savedChat.id);
 
-      // Add both users as participants with error handling
+      // Add both actors as participants
       try {
         const participant1 = manager.create(ChatParticipant, {
           chat: savedChat,
           user: currentUser,
+          actor: myActor, // ✅ Store actor reference
         });
         await manager.save(ChatParticipant, participant1);
-        console.log("✅ Participant 1 added");
+        console.log("✅ Participant 1 (my actor) added");
+
+        // Get the user who owns the other actor
+        let otherUser = null;
+        if (otherActor.user) {
+          otherUser = otherActor.user;
+        } else if (otherActor.persona) {
+          const personaRepo = manager.getRepository("Persona");
+          const personaWithUser = await personaRepo.findOne({
+            where: { id: otherActor.persona.id },
+            relations: ["user"],
+          });
+          otherUser = personaWithUser?.user;
+        }
+
+        if (!otherUser) {
+          throw new Error("Could not resolve user for other actor");
+        }
 
         const participant2 = manager.create(ChatParticipant, {
           chat: savedChat,
           user: otherUser,
+          actor: otherActor, // ✅ Store actor reference
         });
         await manager.save(ChatParticipant, participant2);
-        console.log("✅ Participant 2 added");
+        console.log("✅ Participant 2 (other actor) added");
 
         return savedChat;
       } catch (participantError) {
@@ -236,10 +299,8 @@ export async function createDirectChat(
     const response = {
       id: savedChat.id,
       type: savedChat.type,
-      otherUser: {
-        id: otherUser.id,
-        name: otherUser.name,
-      },
+      myActorId,
+      otherActorId,
     };
 
     console.log("✅ Returning response:", response);
@@ -429,8 +490,14 @@ export async function getChatMessages(
       .createQueryBuilder("message")
       .where("message.chat = :chatId", { chatId })
       .leftJoinAndSelect("message.sender", "sender")
+      .leftJoinAndSelect("message.senderActor", "senderActor")
+      .leftJoinAndSelect("senderActor.user", "senderActorUser")
+      .leftJoinAndSelect("senderActor.persona", "senderActorPersona")
       .leftJoinAndSelect("message.replyTo", "replyTo")
       .leftJoinAndSelect("replyTo.sender", "replyToSender")
+      .leftJoinAndSelect("replyTo.senderActor", "replyToSenderActor")
+      .leftJoinAndSelect("replyToSenderActor.user", "replyToActorUser")
+      .leftJoinAndSelect("replyToSenderActor.persona", "replyToActorPersona")
       .orderBy("message.createdAt", "ASC");
 
     // If requesting updates since a specific time (real-time polling)
@@ -472,28 +539,52 @@ export async function getChatMessages(
     return res.json({
       message: "Chat messages retrieved",
       data: {
-        messages: messages.map((msg) => ({
-          id: msg.id,
-          content: msg.content,
-          type: msg.type,
-          imageUrl: msg.fileUrl, // Include image URL for image messages
-          sender: {
-            id: msg.sender.id,
-            name: msg.sender.name,
-          },
-          replyTo: msg.replyTo
-            ? {
-                id: msg.replyTo.id,
-                content: msg.replyTo.content,
-                sender: {
-                  id: msg.replyTo.sender.id,
-                  name: msg.replyTo.sender.name,
-                },
-              }
-            : null,
-          createdAt: msg.createdAt,
-          updatedAt: msg.updatedAt,
-        })),
+        messages: messages.map((msg) => {
+          // ✅ Get sender name from actor if available
+          let senderName = msg.sender.name;
+          if (msg.senderActor) {
+            if (msg.senderActor.user) {
+              senderName = msg.senderActor.user.name;
+            } else if (msg.senderActor.persona) {
+              senderName = msg.senderActor.persona.displayName;
+            }
+          }
+
+          // ✅ Get reply sender name from actor if available
+          let replySenderName = msg.replyTo?.sender.name;
+          if (msg.replyTo?.senderActor) {
+            if (msg.replyTo.senderActor.user) {
+              replySenderName = msg.replyTo.senderActor.user.name;
+            } else if (msg.replyTo.senderActor.persona) {
+              replySenderName = msg.replyTo.senderActor.persona.displayName;
+            }
+          }
+
+          return {
+            id: msg.id,
+            content: msg.content,
+            type: msg.type,
+            imageUrl: msg.fileUrl,
+            sender: {
+              id: msg.sender.id,
+              name: senderName,
+              actorId: msg.senderActor?.id,
+            },
+            replyTo: msg.replyTo
+              ? {
+                  id: msg.replyTo.id,
+                  content: msg.replyTo.content,
+                  sender: {
+                    id: msg.replyTo.sender.id,
+                    name: replySenderName || msg.replyTo.sender.name,
+                    actorId: msg.replyTo.senderActor?.id,
+                  },
+                }
+              : null,
+            createdAt: msg.createdAt,
+            updatedAt: msg.updatedAt,
+          };
+        }),
         totalMessages,
         isRealTimeUpdate: !!(since || messageId),
         chatId,
@@ -551,12 +642,13 @@ export async function sendMessage(
     const messageRepo = AppDataSource.getRepository(Message);
     const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
 
-    // Verify user is a participant in this chat
+    // ✅ Find the participation to get the actor being used
     const participation = await chatParticipantRepo.findOne({
       where: {
         chat: { id: chatId },
         user: { id: user.id },
       },
+      relations: ["actor"],
     });
 
     if (!participation) {
@@ -581,10 +673,11 @@ export async function sendMessage(
       }
     }
 
-    // Create new message
+    // ✅ Create new message with senderActor
     const newMessage = messageRepo.create({
       chat,
       sender: user,
+      senderActor: participation.actor, // ✅ Store which actor sent this message
       content,
       type,
       fileUrl: imageUrl || null,
@@ -598,11 +691,28 @@ export async function sendMessage(
     chat.lastMessage = newMessage;
     await chatRepo.save(chat);
 
-    // Return the created message with relations
+    // ✅ Return the created message with actor info
     const savedMessage = await messageRepo.findOne({
       where: { id: newMessage.id },
-      relations: ["sender", "replyTo", "replyTo.sender"],
+      relations: [
+        "sender",
+        "senderActor",
+        "senderActor.user",
+        "senderActor.persona",
+        "replyTo",
+        "replyTo.sender",
+      ],
     });
+
+    // ✅ Get actor display name
+    let senderName = savedMessage!.sender.name;
+    if (savedMessage!.senderActor) {
+      if (savedMessage!.senderActor.user) {
+        senderName = savedMessage!.senderActor.user.name;
+      } else if (savedMessage!.senderActor.persona) {
+        senderName = savedMessage!.senderActor.persona.displayName;
+      }
+    }
 
     return res.status(201).json({
       message: "Message sent successfully",
@@ -612,7 +722,8 @@ export async function sendMessage(
         type: savedMessage!.type,
         sender: {
           id: savedMessage!.sender.id,
-          name: savedMessage!.sender.name,
+          name: senderName,
+          actorId: savedMessage!.senderActor?.id,
         },
         replyTo: savedMessage!.replyTo
           ? {

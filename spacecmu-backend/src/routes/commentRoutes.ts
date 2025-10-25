@@ -1,5 +1,5 @@
 import { Router, RequestHandler } from "express";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, checkBanned } from "../middleware/auth";
 import {
   createCommentOnPost,
   listCommentsForPost,
@@ -18,6 +18,7 @@ router.get("/:postId/comments", listCommentsForPost);
 router.post(
   "/:postId/comments",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   createCommentOnPost as RequestHandler
 );
 
@@ -26,6 +27,7 @@ router.post(
 router.put(
   "/:postId/comments/:commentId",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   updateComment as RequestHandler
 );
 

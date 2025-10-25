@@ -8,13 +8,15 @@ import {
   Unique,
 } from "typeorm";
 import { User } from "./User";
+import { Actor } from "./Actor";
 
 /**
  * ChatParticipant entity represents users in a chat
  * Junction table for many-to-many relationship between users and chats
+ * ✅ Now tracks which Actor (User or Persona) is participating
  */
 @Entity()
-@Unique(["chat", "user"]) // Prevent duplicate participants
+@Unique(["chat", "user", "actor"]) // Prevent duplicate participants
 export class ChatParticipant {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -32,6 +34,14 @@ export class ChatParticipant {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userId" })
   user!: User;
+
+  /**
+   * ✅ The actor (User or Persona) participating in the chat
+   * This allows separate chats for User vs Persona of the same person
+   */
+  @ManyToOne(() => Actor, { nullable: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "actorId" })
+  actor?: Actor;
 
   /**
    * When the user joined the chat

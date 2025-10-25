@@ -1,5 +1,5 @@
 import { Router, RequestHandler } from "express";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, checkBanned } from "../middleware/auth";
 import { upload } from "../middleware/upload";
 import * as productController from "../controllers/productController";
 
@@ -13,22 +13,26 @@ router.get("/:id", productController.getProductById);
 router.post(
   "/",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   upload.single("image"),
   productController.createProduct as RequestHandler
 );
 router.patch(
   "/:id/status",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   productController.updateProductStatus as RequestHandler
 );
 router.put(
   "/:id/image",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   productController.updateProductImage as RequestHandler
 );
 router.put(
   "/:id",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   upload.single("image"),
   productController.updateProduct as RequestHandler
 );

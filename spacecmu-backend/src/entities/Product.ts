@@ -30,7 +30,7 @@ export class Product {
   @Column({ type: "enum", enum: ["active", "sold"], default: "active" })
   status!: "active" | "sold";
 
-  @ManyToOne(() => User, { eager: true })
+  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
   seller!: User;
 
   @OneToMany(() => ProductImage, (image) => image.product)

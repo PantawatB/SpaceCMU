@@ -28,12 +28,13 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentActorId, setCurrentActorId] = useState<string | null>(null); // ✅ Track current actor ID
   const [uploadingImage, setUploadingImage] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get current user ID from backend
+  // Get current user ID and actor ID from backend
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -51,7 +52,26 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
           const userData = await response.json();
           const userId = userData.id || userData.data?.id;
           setCurrentUserId(userId);
+
+          // ✅ Get activeProfile from localStorage
+          const activeProfile = localStorage.getItem("activeProfile");
+          const isPersona = activeProfile === "1";
+
+          // ✅ Determine current actorId based on profile
+          const actorId =
+            isPersona && userData.persona?.actorId
+              ? userData.persona.actorId
+              : userData.actorId;
+
+          setCurrentActorId(actorId);
           console.log("✅ Current user ID:", userId);
+          console.log(
+            "✅ Current actor ID:",
+            actorId,
+            "(Profile:",
+            isPersona ? "Persona" : "User",
+            ")"
+          );
         }
       } catch (error) {
         console.error("Error fetching current user:", error);
@@ -68,6 +88,34 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
       setIsChatOpen(true);
     }
   }, [chatId]);
+
+  // Listen for open chat events from other pages
+  useEffect(() => {
+    const handleOpenChat = (event: CustomEvent) => {
+      const { chatId: eventChatId } = event.detail;
+      if (eventChatId) {
+        setSelectedChat(eventChatId);
+        setIsChatOpen(true);
+        // Scroll chat window into view
+        setTimeout(() => {
+          const chatElement = document.querySelector(
+            '[data-chat-window="true"]'
+          );
+          if (chatElement) {
+            chatElement.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+            });
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener("openChat", handleOpenChat as EventListener);
+    return () => {
+      window.removeEventListener("openChat", handleOpenChat as EventListener);
+    };
+  }, []);
 
   // Fetch chats when component mounts or chat window opens
   useEffect(() => {
@@ -296,7 +344,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-20">
+    <div className="fixed bottom-6 right-6 z-20" data-chat-window="true">
       {!selectedChat && (
         <div
           className={`bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
@@ -421,8 +469,8 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
       )}
 
       {selectedChat && (
-        <div className="bg-white rounded-2xl shadow-2xl w-80 h-[520px] flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <div className="bg-white rounded-2xl shadow-2xl w-80 h-[600px] flex flex-col">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelectedChat(null)}
@@ -508,9 +556,12 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50 min-h-0">
             {messages.map((msg) => {
-              const isMine = msg.sender.id === currentUserId;
+              // ✅ Use actorId for message ownership if available, fallback to userId
+              const isMine = msg.sender.actorId
+                ? msg.sender.actorId === currentActorId
+                : msg.sender.id === currentUserId;
 
               // Check if message contains image URL
               const lines = msg.content.split("\n");
@@ -556,7 +607,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={imageUrl}
+                                  src={normalizeImageUrl(imageUrl)}
                                   alt="Shared image"
                                   className="w-full h-auto max-w-[200px] object-cover rounded-lg"
                                   onError={(e) => {
@@ -601,7 +652,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-gray-100 bg-white rounded-b-2xl">
+          <div className="px-4 py-3 border-t border-gray-100 bg-white rounded-b-2xl flex-shrink-0">
             <div className="flex items-center gap-2">
               {/* Image Upload Button */}
               <button
