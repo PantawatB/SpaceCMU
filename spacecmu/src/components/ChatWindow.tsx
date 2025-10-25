@@ -89,6 +89,34 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
     }
   }, [chatId]);
 
+  // Listen for open chat events from other pages
+  useEffect(() => {
+    const handleOpenChat = (event: CustomEvent) => {
+      const { chatId: eventChatId } = event.detail;
+      if (eventChatId) {
+        setSelectedChat(eventChatId);
+        setIsChatOpen(true);
+        // Scroll chat window into view
+        setTimeout(() => {
+          const chatElement = document.querySelector(
+            '[data-chat-window="true"]'
+          );
+          if (chatElement) {
+            chatElement.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+            });
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener("openChat", handleOpenChat as EventListener);
+    return () => {
+      window.removeEventListener("openChat", handleOpenChat as EventListener);
+    };
+  }, []);
+
   // Fetch chats when component mounts or chat window opens
   useEffect(() => {
     if (isChatOpen && chats.length === 0) {
@@ -316,7 +344,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-20">
+    <div className="fixed bottom-6 right-6 z-20" data-chat-window="true">
       {!selectedChat && (
         <div
           className={`bg-white rounded-2xl shadow-2xl transition-all duration-300 ${
@@ -441,8 +469,8 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
       )}
 
       {selectedChat && (
-        <div className="bg-white rounded-2xl shadow-2xl w-80 h-[520px] flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <div className="bg-white rounded-2xl shadow-2xl w-80 h-[600px] flex flex-col">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelectedChat(null)}
@@ -528,7 +556,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50 min-h-0">
             {messages.map((msg) => {
               // ✅ Use actorId for message ownership if available, fallback to userId
               const isMine = msg.sender.actorId
@@ -624,7 +652,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-gray-100 bg-white rounded-b-2xl">
+          <div className="px-4 py-3 border-t border-gray-100 bg-white rounded-b-2xl flex-shrink-0">
             <div className="flex items-center gap-2">
               {/* Image Upload Button */}
               <button

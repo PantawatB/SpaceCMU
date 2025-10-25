@@ -874,7 +874,7 @@ export async function reportPost(
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const { postId } = req.params;
+    const { id } = req.params;
     const { reason } = req.body;
 
     if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
@@ -882,7 +882,7 @@ export async function reportPost(
     }
 
     const postRepo = AppDataSource.getRepository(Post);
-    const post = await postRepo.findOne({ where: { id: postId } });
+    const post = await postRepo.findOne({ where: { id } });
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });

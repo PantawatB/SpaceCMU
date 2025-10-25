@@ -5,7 +5,6 @@ import Sidebar from "../../components/Sidebar";
 import BannedWarning from "../../components/BannedWarning";
 import Image from "next/image";
 import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
-import ChatWindow from "@/components/ChatWindow";
 
 export default function FeedsMainPage() {
   const [feedMode, setFeedMode] = useState("Global");
@@ -100,6 +99,7 @@ export default function FeedsMainPage() {
     name?: string | null;
     bio?: string | null;
     isAdmin?: boolean;
+    isBanned?: boolean;
     profileImg?: string | null;
     friendCount?: number;
     actorId?: string | null;
@@ -1047,7 +1047,8 @@ export default function FeedsMainPage() {
                       <div className="flex gap-6">
                         <button
                           onClick={() => toggleLike(post.id)}
-                          className={`flex items-center gap-1.5 hover:text-pink-500 transition ${
+                          disabled={currentUser?.isBanned}
+                          className={`flex items-center gap-1.5 hover:text-pink-500 transition disabled:opacity-50 disabled:cursor-not-allowed ${
                             likedPosts.has(post.id) ? "text-pink-500" : ""
                           }`}
                         >
@@ -1074,7 +1075,8 @@ export default function FeedsMainPage() {
                         </button>
                         <button
                           onClick={() => handleCommentClick(post.id)}
-                          className="flex items-center gap-1.5 hover:text-blue-500 transition"
+                          disabled={currentUser?.isBanned}
+                          className="flex items-center gap-1.5 hover:text-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1097,7 +1099,8 @@ export default function FeedsMainPage() {
                         </button>
                         <button
                           onClick={() => toggleRepost(post.id)}
-                          className={`flex items-center gap-1.5 hover:text-green-500 transition ${
+                          disabled={currentUser?.isBanned}
+                          className={`flex items-center gap-1.5 hover:text-green-500 transition disabled:opacity-50 disabled:cursor-not-allowed ${
                             repostedPosts.has(post.id) ? "text-green-500" : ""
                           }`}
                         >
@@ -1127,7 +1130,8 @@ export default function FeedsMainPage() {
                       </div>
                       <button
                         onClick={() => toggleSave(post.id)}
-                        className={`flex items-center gap-1.5 hover:text-yellow-500 transition ${
+                        disabled={currentUser?.isBanned}
+                        className={`flex items-center gap-1.5 hover:text-yellow-500 transition disabled:opacity-50 disabled:cursor-not-allowed ${
                           savedPosts.has(post.id) ? "text-yellow-500" : ""
                         }`}
                       >
@@ -1430,6 +1434,11 @@ export default function FeedsMainPage() {
           </button>
           {showShareBar && (
             <div className="bg-gray-50 rounded-xl shadow-lg px-8 py-5 flex flex-col gap-3 w-full max-w-3xl">
+              {currentUser?.isBanned && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm mb-2">
+                  ⚠️ You cannot create posts while banned
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 {activeProfile === 0 ? (
                   currentUser?.profileImg ? (
@@ -1469,10 +1478,15 @@ export default function FeedsMainPage() {
 
                 <input
                   type="text"
-                  placeholder="Share something"
+                  placeholder={
+                    currentUser?.isBanned
+                      ? "You cannot post while banned"
+                      : "Share something"
+                  }
                   value={postText}
                   onChange={(e) => setPostText(e.target.value)}
-                  className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg"
+                  disabled={currentUser?.isBanned}
+                  className="flex-1 px-5 py-3 rounded-full bg-white text-gray-500 border-none outline-none text-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
               {imagePreview && (
@@ -1512,8 +1526,16 @@ export default function FeedsMainPage() {
                     </select>
                     {/* ปุ่มอัปโหลดรูปภาพแบบ custom อยู่ขวาของ select */}
                     <label
-                      className="ml-4 cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition"
-                      title="Add image"
+                      className={`ml-4 cursor-pointer flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition ${
+                        currentUser?.isBanned
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                      title={
+                        currentUser?.isBanned
+                          ? "Cannot upload while banned"
+                          : "Add image"
+                      }
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1542,6 +1564,7 @@ export default function FeedsMainPage() {
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={currentUser?.isBanned}
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -1563,8 +1586,8 @@ export default function FeedsMainPage() {
                 </div>
                 <button
                   onClick={handleSend}
-                  disabled={posting}
-                  className="bg-black text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-800 transition"
+                  disabled={posting || currentUser?.isBanned}
+                  className="bg-black text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {posting ? "Sending..." : "Send"}
                 </button>
@@ -1606,9 +1629,6 @@ export default function FeedsMainPage() {
           </ul>
         </div>
       </aside>
-
-      {/* Chat Window */}
-      <ChatWindow />
 
       {/* Report Modal */}
       {showReportModal && (
@@ -1796,6 +1816,11 @@ export default function FeedsMainPage() {
 
             {/* Write Comment Section */}
             <div className="border-t border-gray-200 pt-4">
+              {currentUser?.isBanned && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm mb-3">
+                  ⚠️ You cannot comment while banned
+                </div>
+              )}
               <div className="flex items-start gap-3">
                 {activeProfile === 0 ? (
                   currentUser?.profileImg ? (
@@ -1836,14 +1861,23 @@ export default function FeedsMainPage() {
                   <textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                    placeholder={
+                      currentUser?.isBanned
+                        ? "You cannot comment while banned"
+                        : "Write a comment..."
+                    }
+                    disabled={currentUser?.isBanned}
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                     rows={3}
                   />
                   <div className="flex justify-end mt-3">
                     <button
                       onClick={handleCommentSubmit}
-                      disabled={!commentText.trim() || commentPosting}
+                      disabled={
+                        !commentText.trim() ||
+                        commentPosting ||
+                        currentUser?.isBanned
+                      }
                       className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-full font-semibold text-sm transition"
                     >
                       {commentPosting ? "Posting..." : "Post Comment"}

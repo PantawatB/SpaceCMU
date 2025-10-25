@@ -89,7 +89,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
     const productRepo = AppDataSource.getRepository(Product);
     const products = await productRepo.find({
       order: { createdAt: "DESC" },
-      relations: ["seller"],
+      relations: ["seller", "seller.actor"],
       select: [
         "id",
         "name",

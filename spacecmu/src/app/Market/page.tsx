@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Sidebar from "../../components/Sidebar";
 import BannedWarning from "../../components/BannedWarning";
-import ChatWindow from "@/components/ChatWindow";
 import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 
 // MarketCard component
@@ -535,7 +534,12 @@ export default function MarketMainPage() {
     price: string | number | null;
     description: string | null;
     imageUrl: string | null;
-    seller?: { id: string; name: string; profileImg?: string | null } | null;
+    seller?: {
+      id: string;
+      name: string;
+      profileImg?: string | null;
+      actorId?: string | null;
+    } | null;
   };
 
   const [marketItems, setMarketItems] = useState<
@@ -604,7 +608,7 @@ export default function MarketMainPage() {
           image: p.imageUrl || DEFAULT_IMAGE,
           sellerName: p.seller?.name || "Unknown Seller",
           sellerImage: p.seller?.profileImg || DEFAULT_IMAGE,
-          sellerId: p.seller?.id || "",
+          sellerId: p.seller?.actorId || p.seller?.id || "",
           productId: String(p.id),
           isOwnProduct: currentUser ? p.seller?.id === currentUser : false,
         };
@@ -637,6 +641,35 @@ export default function MarketMainPage() {
         return;
       }
 
+      // Get current user's actor ID
+      const userResponse = await fetch(`${API_BASE_URL}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!userResponse.ok) {
+        throw new Error("Failed to get user info");
+      }
+
+      const userData = await userResponse.json();
+      const activeProfileMode = localStorage.getItem("activeProfile");
+      const isPersona = activeProfileMode === "1";
+
+      // Get my actor ID based on profile mode
+      const myActorId =
+        isPersona && userData.persona?.actorId
+          ? userData.persona.actorId
+          : userData.actorId;
+
+      if (!myActorId) {
+        alert("Unable to get your profile information");
+        return;
+      }
+
+      // sellerId is the seller's actorId
+      const otherActorId = sellerId;
+
       // Create or get existing chat with seller
       const response = await fetch(`${API_BASE_URL}/api/chats/direct`, {
         method: "POST",
@@ -644,10 +677,15 @@ export default function MarketMainPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ otherUserId: sellerId }),
+        body: JSON.stringify({
+          myActorId,
+          otherActorId,
+        }),
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Chat creation error:", errorData);
         throw new Error(`Failed to create chat: ${response.status}`);
       }
 
@@ -674,7 +712,13 @@ export default function MarketMainPage() {
         // Continue anyway - chat window will open
       }
 
-      // Open chat window with this chat
+      // Dispatch custom event to open chat in GlobalChat
+      const openChatEvent = new CustomEvent("openChat", {
+        detail: { chatId },
+      });
+      window.dispatchEvent(openChatEvent);
+
+      // Update states
       setSelectedChatUserId(chatId);
       setChatOpen(true);
     } catch (error) {
@@ -830,16 +874,6 @@ export default function MarketMainPage() {
           </div>
         </div>
       </main>
-      {/* Chat Window */}
-      {chatOpen && selectedChatUserId && (
-        <ChatWindow
-          chatId={selectedChatUserId}
-          onClose={() => {
-            setChatOpen(false);
-            setSelectedChatUserId(null);
-          }}
-        />
-      )}
 
       {/* Add Product Modal */}
       {isModalOpen && (

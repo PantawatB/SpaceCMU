@@ -1,7 +1,6 @@
 "use client";
 import Sidebar from "../../components/Sidebar";
 import BannedWarning from "../../components/BannedWarning";
-import ChatWindow from "@/components/ChatWindow";
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "@/utils/apiConfig";
 
@@ -541,9 +540,6 @@ export default function SettingPage() {
           </div>
         )}
       </main>
-
-      {/* Chat Window */}
-      <ChatWindow />
     </div>
   );
 }

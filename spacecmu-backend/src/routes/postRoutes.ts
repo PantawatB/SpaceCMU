@@ -1,5 +1,5 @@
 import { Router, RequestHandler } from "express";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, checkBanned } from "../middleware/auth";
 import {
   createPost,
   updatePost,
@@ -19,6 +19,7 @@ import {
   getPostReposters,
   getPostSavers,
   getPostsByActor,
+  reportPost,
 } from "../controllers/postController";
 
 const router = Router();
@@ -50,11 +51,13 @@ router.get("/:id", getPost);
 router.post(
   "/",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   createPost as RequestHandler
 );
 router.put(
   "/:id",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   updatePost as RequestHandler
 );
 router.delete(
@@ -67,31 +70,37 @@ router.delete(
 router.post(
   "/:id/like",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   likePost as RequestHandler
 );
 router.delete(
   "/:id/like",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   undoLikePost as RequestHandler
 );
 router.post(
   "/:id/repost",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   repostPost as RequestHandler
 );
 router.delete(
   "/:id/repost",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   undoRepost as RequestHandler
 );
 router.post(
   "/:id/save",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   savePost as RequestHandler
 );
 router.delete(
   "/:id/save",
   authenticateToken as RequestHandler,
+  checkBanned as RequestHandler,
   unsavePost as RequestHandler
 );
 
@@ -106,6 +115,13 @@ router.get(
   "/:id/savers",
   authenticateToken as RequestHandler,
   getPostSavers as RequestHandler
+);
+
+// POST /api/posts/:id/report - Report a post
+router.post(
+  "/:id/report",
+  authenticateToken as RequestHandler,
+  reportPost as RequestHandler
 );
 
 export default router;

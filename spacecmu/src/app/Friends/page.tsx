@@ -5,7 +5,6 @@ import BannedWarning from "../../components/BannedWarning";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { API_BASE_URL, normalizeImageUrl } from "../../utils/apiConfig";
-import ChatWindow from "@/components/ChatWindow";
 
 // Interface for search user result from /api/users/search
 interface SearchUser {
@@ -423,7 +422,13 @@ export default function FriendsMainPage() {
         throw new Error("Invalid chat response");
       }
 
-      // Set the friend for chat and open chat window
+      // Dispatch custom event to open chat in GlobalChat
+      const openChatEvent = new CustomEvent("openChat", {
+        detail: { chatId },
+      });
+      window.dispatchEvent(openChatEvent);
+
+      // Clear states
       setSelectedFriendForChat(chatId);
       setChatOpen(true);
     } catch (error) {
@@ -1229,16 +1234,6 @@ export default function FriendsMainPage() {
           )}
         </div>
       </main>
-      {/* Chat Window */}
-      {chatOpen && selectedFriendForChat && (
-        <ChatWindow
-          chatId={selectedFriendForChat}
-          onClose={() => {
-            setChatOpen(false);
-            setSelectedFriendForChat(null);
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -4,7 +4,6 @@ import Sidebar from "../../components/Sidebar";
 import BannedWarning from "../../components/BannedWarning";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
-import ChatWindow from "@/components/ChatWindow";
 import { normalizeImageUrl } from "@/utils/apiConfig";
 
 type Persona = {
@@ -2086,8 +2085,6 @@ export default function ProfileMainPage() {
           </div>
         </section>
       </main>
-      {/* Chat Window */}
-      <ChatWindow />
 
       {/* Edit Banner Modal */}
       {editingBanner && (
