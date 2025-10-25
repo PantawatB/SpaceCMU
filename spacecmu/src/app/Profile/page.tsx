@@ -278,7 +278,7 @@ export default function ProfileMainPage() {
     name: "",
     description: "",
     price: "",
-    image: "/noobcat.png",
+    image: "",
   });
 
   // hover states
@@ -295,6 +295,7 @@ export default function ProfileMainPage() {
 
   // Product image upload
   const productFileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
 
   // handle file selection
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,8 +368,6 @@ export default function ProfileMainPage() {
       });
 
       if (!uploadRes || !uploadRes.ok) {
-        const errorText = await uploadRes?.text();
-        console.error("Upload error:", errorText);
         throw new Error("Failed to upload banner image");
       }
 
@@ -421,10 +420,7 @@ export default function ProfileMainPage() {
 
       closeBannerModal();
       alert("Banner updated successfully!");
-      // Reload to refresh posts in feed with new banner
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to update banner");
     }
   };
@@ -509,10 +505,7 @@ export default function ProfileMainPage() {
 
       closeAvatarModal();
       alert("Profile picture updated successfully!");
-      // Reload to refresh posts in feed with new avatar
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to update profile picture");
     }
   };
@@ -563,10 +556,7 @@ export default function ProfileMainPage() {
 
       setEditingName(false);
       alert("Name updated successfully!");
-      // Reload to refresh posts in feed with new name
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to update name");
     }
   };
@@ -611,44 +601,31 @@ export default function ProfileMainPage() {
 
       setEditingBio(false);
       alert("Bio updated successfully!");
-      // Reload to refresh any cached data
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to update bio");
     }
   };
 
   // Handle edit product
-  const handleEditProduct = async (productId: string) => {
-    try {
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) return;
-
-      const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const product = json.data || json;
-
-        setProductFormData({
-          name: product.name || "",
-          description: product.description || "",
-          price: product.price ? String(product.price) : "",
-          image: product.imageUrl || "/noobcat.png",
-        });
-        setEditingProductId(productId);
-        setIsEditProductModalOpen(true);
-      } else {
-        alert("Failed to load product details");
-      }
-    } catch (err) {
-      console.error("Error loading product:", err);
-      alert("Failed to load product");
+  const handleEditProduct = (productId: string) => {
+    // Find the product from the local state (myProducts)
+    const product = myProducts.find((p) => p.id === productId);
+    
+    if (!product) {
+      alert("Product not found");
+      return;
     }
+
+    // Set the form data with the product's current values
+    setProductFormData({
+      name: product.name || "",
+      description: product.description || "",
+      price: product.price ? String(product.price) : "",
+      image: product.imageUrl || "",
+    });
+    
+    setEditingProductModalId(productId);
+    setIsEditProductModalOpen(true);
   };
 
   // Handle save product
@@ -658,20 +635,44 @@ export default function ProfileMainPage() {
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) return;
 
+      // Step 1: Update image first (if image URL exists and is not the original)
+      const originalProduct = myProducts.find((p) => p.id === editingProductId);
+      const imageChanged = originalProduct && productFormData.image !== originalProduct.imageUrl;
+
+      if (imageChanged && productFormData.image) {
+        const imageRes = await fetch(
+          `${API_BASE_URL}/api/products/${editingProductId}/image`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              imageUrl: productFormData.image,
+            }),
+          }
+        );
+
+        if (!imageRes.ok) {
+          throw new Error("Failed to update product image");
+        }
+      }
+
+      // Step 2: Update other product details
+      const formData = new FormData();
+      formData.append("name", productFormData.name);
+      formData.append("description", productFormData.description);
+      formData.append("price", productFormData.price);
+
       const res = await fetch(
         `${API_BASE_URL}/api/products/${editingProductId}`,
         {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            name: productFormData.name,
-            description: productFormData.description,
-            price: parseFloat(productFormData.price),
-            imageUrl: productFormData.image,
-          }),
+          body: formData,
         }
       );
 
@@ -683,25 +684,21 @@ export default function ProfileMainPage() {
       setIsEditProductModalOpen(false);
       setEditingProductId(null);
 
-      // Refresh products
-      const actorId =
-        activeProfile === 0
-          ? currentUser?.actorId
-          : currentUser?.persona?.actorId;
-      if (actorId) {
-        const productsRes = await fetch(
-          `${API_BASE_URL}/api/products/actor/${actorId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+      // Refresh products - use the same method as initial fetch
+      const productsRes = await fetch(`${API_BASE_URL}/api/products`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (productsRes.ok) {
+        const json = await productsRes.json();
+        const products = json.data || json;
+        // Filter products owned by current user
+        const myItems = products.filter(
+          (p: Product) => p.seller?.id === currentUser?.id
         );
-        if (productsRes.ok) {
-          const productsData = await productsRes.json();
-          setMyProducts(productsData.data || productsData || []);
-        }
+        setMyProducts(myItems);
       }
-    } catch (err) {
-      console.error("Error updating product:", err);
+    } catch {
       alert("Failed to update product");
     }
   };
@@ -713,10 +710,16 @@ export default function ProfileMainPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setIsUploadingProductImage(true);
+
     try {
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) return;
+      if (!token) {
+        alert("Please log in to upload images");
+        setIsUploadingProductImage(false);
+        return;
+      }
 
       const formData = new FormData();
       formData.append("file", file);
@@ -730,13 +733,366 @@ export default function ProfileMainPage() {
       if (res.ok) {
         const data = await res.json();
         const imageUrl = data.url || data.imageUrl;
-        setProductFormData({ ...productFormData, image: imageUrl });
+        
+        // Use functional update to avoid stale state
+        setProductFormData((prev) => ({
+          ...prev,
+          image: imageUrl,
+        }));
+        
+        alert("Image uploaded successfully!");
       } else {
-        alert("Failed to upload image");
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Failed to upload image: ${errorData.message || res.statusText}`);
+      }
+    } catch {
+      alert("Failed to upload image. Please check your connection.");
+    } finally {
+      setIsUploadingProductImage(false);
+      // Reset the file input so the same file can be selected again if needed
+      if (e.target) {
+        e.target.value = "";
+      }
+    }
+  };
+
+  // Handle delete product
+  const handleDeleteProduct = async (productId: string) => {
+    const confirmed = confirm("Are you sure you want to delete this product?");
+    if (!confirmed) return;
+
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete product");
+      }
+
+      // Remove from local state
+      setMyProducts((prev) => prev.filter((p) => p.id !== productId));
+
+      alert("Product deleted successfully");
+    } catch {
+      alert("Failed to delete product");
+    }
+  };
+
+  // --- Post Interaction Handlers ---
+  // States for tracking post interactions
+  const [likedPostsSet, setLikedPostsSet] = useState<Set<string>>(new Set());
+  const [savedPostsSet, setSavedPostsSet] = useState<Set<string>>(new Set());
+  const [repostedPostsSet, setRepostedPostsSet] = useState<Set<string>>(new Set());
+
+  // Comment modal states
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentPostId, setCommentPostId] = useState<string | number | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [currentComments, setCurrentComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentPosting, setCommentPosting] = useState(false);
+
+  // Report modal states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportText, setReportText] = useState("");
+
+  type Comment = {
+    id: string;
+    content: string;
+    authorId: string;
+    author?: {
+      type?: "user" | "persona";
+      name?: string;
+      profileImg?: string | null;
+      avatarUrl?: string | null;
+      avatar?: string | null; // เพิ่ม avatar field จาก API
+      actorId?: string;
+    };
+    authorName?: string;
+    authorAvatar?: string;
+    createdAt: string;
+  };
+
+  const handleInteraction = async (
+    postId: string,
+    action: "like" | "repost" | "save",
+    stateSet: Set<string>,
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    updatePostsInTab: (postId: string, countProperty: string, delta: number) => void
+  ) => {
+    const token = localStorage.getItem("token");
+    if (!currentUser || !token) {
+      alert("Please login to interact.");
+      return;
+    }
+
+    const actorId =
+      activeProfile === 1 ? currentUser.persona?.actorId : currentUser.actorId;
+
+    if (!actorId) {
+      return;
+    }
+
+    const countProperty =
+      action === "like"
+        ? "likeCount"
+        : action === "repost"
+        ? "repostCount"
+        : "saveCount";
+
+    const isCurrentlyActive = stateSet.has(postId);
+    const method = isCurrentlyActive ? "DELETE" : "POST";
+    const url = `${API_BASE_URL}/api/posts/${postId}/${action}`;
+
+    const oldStateSet = new Set(stateSet);
+    const newSet = new Set(stateSet);
+    if (isCurrentlyActive) {
+      newSet.delete(postId);
+    } else {
+      newSet.add(postId);
+    }
+    setter(newSet);
+
+    // Optimistically update UI
+    const delta = isCurrentlyActive ? -1 : 1;
+    updatePostsInTab(postId, countProperty, delta);
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ actorId }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to ${action} post`);
       }
     } catch (err) {
-      console.error("Error uploading image:", err);
-      alert("Failed to upload image");
+      console.error(err);
+      // Revert on error
+      setter(oldStateSet);
+      updatePostsInTab(postId, countProperty, -delta);
+    }
+  };
+
+  const updatePostsInAllTabs = (postId: number | string, countProperty: string, delta: number) => {
+    const updateFn = (posts: Post[]) =>
+      posts.map((p) => {
+        if (String(p.id) === String(postId)) {
+          const currentCount = (p as Record<string, unknown>)[countProperty] as number || 0;
+          const newCount = currentCount + delta;
+          return { ...p, [countProperty]: newCount < 0 ? 0 : newCount };
+        }
+        return p;
+      });
+
+    setMyPosts(updateFn);
+    setLikedPosts(updateFn);
+    setRepostedPosts(updateFn);
+    setSavedPosts(updateFn);
+  };
+
+  const toggleLike = (postId: string) => {
+    handleInteraction(postId, "like", likedPostsSet, setLikedPostsSet, updatePostsInAllTabs);
+  };
+
+  const toggleSave = (postId: string) => {
+    handleInteraction(postId, "save", savedPostsSet, setSavedPostsSet, updatePostsInAllTabs);
+  };
+
+  const toggleRepost = (postId: string) => {
+    handleInteraction(postId, "repost", repostedPostsSet, setRepostedPostsSet, updatePostsInAllTabs);
+  };
+
+  const handleReportClick = (postId: string) => {
+    setReportPostId(postId);
+    setShowReportModal(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (reportPostId === null) {
+      setShowReportModal(false);
+      setReportText("");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    try {
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/posts/${reportPostId}/report`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ feedback: reportText }),
+        });
+      }
+    } catch {
+      // Error submitting report
+    } finally {
+      setShowReportModal(false);
+      setReportText("");
+      setReportPostId(null);
+    }
+  };
+
+  const handleCommentClick = async (postId: string | number) => {
+    setCommentPostId(postId);
+    setShowCommentModal(true);
+    setCurrentComments([]);
+    setCommentText("");
+
+    if (typeof postId === "string") {
+      await fetchCommentsForPost(postId);
+    }
+  };
+
+  const fetchCommentsForPost = async (postId: string | number) => {
+    setCommentsLoading(true);
+    setCurrentComments([]);
+    try {
+      if (typeof postId !== "string") {
+        setCommentsLoading(false);
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setCommentsLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });        if (res.ok) {
+          const data = await res.json();
+          setCurrentComments(data.data || data || []);
+        }
+      } catch {
+        // Error fetching comments
+      }
+    setCommentsLoading(false);
+  };
+
+  const handleCommentSubmit = async () => {
+    const token = localStorage.getItem("token");
+    if (!commentPostId || !token || !currentUser) {
+      return;
+    }
+
+    const actorId =
+      activeProfile === 1 ? currentUser.persona?.actorId : currentUser.actorId;
+
+    if (!actorId) {
+      return;
+    }
+
+    setCommentPosting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${commentPostId}/comments`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: commentText,
+          actorId: actorId,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to submit comment");
+      }
+
+      setCommentText("");
+      if (typeof commentPostId === "string") {
+        await fetchCommentsForPost(commentPostId);
+      }
+
+      // Update comment count
+      updatePostsInAllTabs(Number(commentPostId), "commentCount", 1);
+    } catch {
+      alert("Failed to submit comment");
+    } finally {
+      setCommentPosting(false);
+    }
+  };
+
+  const handleDeletePost = async (postIdToDelete: string | number) => {
+    const confirmed = confirm("Are you sure you want to delete this post?");
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postIdToDelete}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete post");
+      }
+
+      // Remove from all tab arrays
+      setMyPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setLikedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setRepostedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setSavedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+
+      alert("Post deleted successfully");
+    } catch {
+      alert("Failed to delete post");
+    }
+  };
+
+  const handleDeleteComment = async (commentIdToDelete: string) => {
+    const token = localStorage.getItem("token");
+    if (!token || !commentPostId) return;
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/posts/${commentPostId}/comments/${commentIdToDelete}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete comment");
+      }
+
+      // Remove from local state
+      setCurrentComments((prev) => prev.filter((c) => c.id !== commentIdToDelete));
+
+      // Decrement comment count
+      updatePostsInAllTabs(Number(commentPostId), "commentCount", -1);
+
+      alert("Comment deleted successfully");
+    } catch {
+      alert("Failed to delete comment");
     }
   };
 
@@ -752,8 +1108,8 @@ export default function ProfileMainPage() {
         if (!res.ok) throw new Error("Failed to fetch current user");
         const data = await res.json();
         setCurrentUser(data);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        // Error fetching user
       }
     };
     fetchMe();
@@ -779,8 +1135,8 @@ export default function ProfileMainPage() {
           );
           setMyProducts(myItems);
         }
-      } catch (err) {
-        console.error("Error fetching products:", err);
+      } catch {
+        // Error fetching products
       }
     };
     fetchMyProducts();
@@ -810,11 +1166,9 @@ export default function ProfileMainPage() {
         if (res.ok) {
           const json = await res.json();
           setMyPosts(json.data || json);
-        } else {
-          console.error("❌ Response not OK:", await res.text());
         }
-      } catch (err) {
-        console.error("❌ Error fetching posts:", err);
+      } catch {
+        // Error fetching posts
       }
     };
     fetchMyPosts();
@@ -842,8 +1196,8 @@ export default function ProfileMainPage() {
           const json = await res.json();
           setLikedPosts(json.data || json);
         }
-      } catch (err) {
-        console.error("Error fetching liked posts:", err);
+      } catch {
+        // Error fetching liked posts
       }
     };
     fetchLikes();
@@ -871,8 +1225,8 @@ export default function ProfileMainPage() {
           const json = await res.json();
           setRepostedPosts(json.data || json);
         }
-      } catch (err) {
-        console.error("Error fetching reposts:", err);
+      } catch {
+        // Error fetching reposts
       }
     };
     fetchReposts();
@@ -900,8 +1254,8 @@ export default function ProfileMainPage() {
           const json = await res.json();
           setSavedPosts(json.data || json);
         }
-      } catch (err) {
-        console.error("Error fetching saved posts:", err);
+      } catch {
+        // Error fetching saved posts
       }
     };
     fetchSaved();
@@ -1670,16 +2024,19 @@ export default function ProfileMainPage() {
                         >
                           {/* Product Image */}
                           <div className="w-full h-48">
-                            <Image
-                              src={
-                                normalizeImageUrl(product.imageUrl) ||
-                                "/noobcat.png"
-                              }
-                              alt={product.name}
-                              width={300}
-                              height={192}
-                              className="w-full h-full object-cover rounded-t-xl"
-                            />
+                            {product.imageUrl ? (
+                              <Image
+                                src={normalizeImageUrl(product.imageUrl)}
+                                alt={product.name}
+                                width={300}
+                                height={192}
+                                className="w-full h-full object-cover rounded-t-xl"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-t-xl">
+                                <span className="text-gray-400 text-sm">No image</span>
+                              </div>
+                            )}
                           </div>
                           {/* Card Content */}
                           <div className="p-4 pb-4 flex flex-col flex-1">
@@ -1705,24 +2062,28 @@ export default function ProfileMainPage() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div className="w-8 h-8 flex-shrink-0">
-                                    <Image
-                                      src={
-                                        normalizeImageUrl(
+                                    {(activeProfile === 0 ? currentUser?.profileImg : currentUser?.persona?.avatarUrl) ? (
+                                      <Image
+                                        src={
+                                          normalizeImageUrl(
+                                            activeProfile === 0
+                                              ? currentUser?.profileImg
+                                              : currentUser?.persona?.avatarUrl
+                                          )!
+                                        }
+                                        alt={
                                           activeProfile === 0
-                                            ? currentUser?.profileImg
-                                            : currentUser?.persona?.avatarUrl
-                                        ) || "/noobcat.png"
-                                      }
-                                      alt={
-                                        activeProfile === 0
-                                          ? currentUser?.name || "User"
-                                          : currentUser?.persona?.displayName ||
-                                            "Persona"
-                                      }
-                                      width={32}
-                                      height={32}
-                                      className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full"
-                                    />
+                                            ? currentUser?.name || "User"
+                                            : currentUser?.persona?.displayName ||
+                                              "Persona"
+                                        }
+                                        width={32}
+                                        height={32}
+                                        className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full rounded-full bg-gray-300 border border-gray-200"></div>
+                                    )}
                                   </div>
                                   <div className="flex flex-col min-w-0">
                                     <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
@@ -2381,16 +2742,19 @@ export default function ProfileMainPage() {
                   >
                     {/* Product Image */}
                     <div className="w-full h-[160px]">
-                      <Image
-                        src={
-                          normalizeImageUrl(productFormData.image) ||
-                          "/noobcat.png"
-                        }
-                        alt="Preview"
-                        width={300}
-                        height={160}
-                        className="w-full h-full object-cover rounded-t-xl"
-                      />
+                      {productFormData.image ? (
+                        <Image
+                          src={normalizeImageUrl(productFormData.image)}
+                          alt="Preview"
+                          width={300}
+                          height={160}
+                          className="w-full h-full object-cover rounded-t-xl"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-t-xl">
+                          <span className="text-gray-400 text-sm">No image</span>
+                        </div>
+                      )}
                     </div>
                     {/* Card Content */}
                     <div className="flex-1 flex flex-col p-4 pb-3">
@@ -2417,19 +2781,23 @@ export default function ProfileMainPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className="w-8 h-8 flex-shrink-0">
-                              <Image
-                                src={
-                                  normalizeImageUrl(
-                                    activeProfile === 0
-                                      ? currentUser?.profileImg
-                                      : currentUser?.persona?.avatarUrl
-                                  ) || "/noobcat.png"
-                                }
-                                alt="You"
-                                width={32}
-                                height={32}
-                                className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full"
-                              />
+                              {(activeProfile === 0 ? currentUser?.profileImg : currentUser?.persona?.avatarUrl) ? (
+                                <Image
+                                  src={
+                                    normalizeImageUrl(
+                                      activeProfile === 0
+                                        ? currentUser?.profileImg
+                                        : currentUser?.persona?.avatarUrl
+                                    )!
+                                  }
+                                  alt="You"
+                                  width={32}
+                                  height={32}
+                                  className="rounded-full object-cover aspect-square border border-gray-200 w-full h-full"
+                                />
+                              ) : (
+                                <div className="w-full h-full rounded-full bg-gray-300 border border-gray-200"></div>
+                              )}
                             </div>
                             <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
                               You
@@ -2553,44 +2921,62 @@ export default function ProfileMainPage() {
                     {/* Image Upload */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product Image
+                        Product Image {isUploadingProductImage && <span className="text-blue-500">(Uploading...)</span>}
                       </label>
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
+                      <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        isUploadingProductImage 
+                          ? 'border-blue-400 bg-blue-50 cursor-wait' 
+                          : 'border-gray-300 hover:border-gray-400 cursor-pointer'
+                      }`}>
                         <div
-                          onClick={() => productFileInputRef.current?.click()}
+                          onClick={() => !isUploadingProductImage && productFileInputRef.current?.click()}
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter")
+                            if (e.key === "Enter" && !isUploadingProductImage)
                               productFileInputRef.current?.click();
                           }}
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-10 h-10 mx-auto mb-2 text-gray-400"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                            />
-                          </svg>
-                          <p className="text-sm text-gray-500">
-                            Click to upload image
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            PNG, JPG, WEBP up to 10MB
-                          </p>
+                          {isUploadingProductImage ? (
+                            <>
+                              <div className="w-10 h-10 mx-auto mb-2">
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                              </div>
+                              <p className="text-sm text-blue-600 font-medium">
+                                Uploading image...
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-10 h-10 mx-auto mb-2 text-gray-400"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                                />
+                              </svg>
+                              <p className="text-sm text-gray-500">
+                                Click to upload image
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                PNG, JPG, WEBP up to 10MB
+                              </p>
+                            </>
+                          )}
                         </div>
                         <input
                           ref={productFileInputRef}
                           type="file"
                           accept="image/*"
                           onChange={handleProductImageSelect}
+                          disabled={isUploadingProductImage}
                           className="hidden"
                         />
                       </div>
