@@ -32,7 +32,7 @@ const createAbsoluteImageUrl = (req: Request, relativeUrl: string): string => {
 };
 
 // Validation helper
-const validateProduct = (name: string, price: any, description?: string) => {
+const validateProduct = (name: string, price: any, description?: any) => {
   const errors: any = {};
 
   // Name validation
@@ -52,11 +52,10 @@ const validateProduct = (name: string, price: any, description?: string) => {
     }
   }
 
-  // Description validation
+  // Description validation - coerce to string so numeric descriptions are accepted
   if (description !== undefined && description !== null) {
-    if (typeof description !== "string") {
-      errors.description = "Description must be a string";
-    } else if (description.length > 500) {
+    const descStr = String(description);
+    if (descStr.length > 500) {
       errors.description = "Description must not exceed 500 characters";
     } else {
       // Check for URLs and phone numbers
@@ -65,7 +64,16 @@ const validateProduct = (name: string, price: any, description?: string) => {
       const phonePattern =
         /(\+?\d{1,4}[\s\-]?)?(\(?\d{1,4}\)?[\s\-]?)?\d{1,4}[\s\-]?\d{1,4}[\s\-]?\d{1,9}/;
 
-      if (urlPattern.test(description) || phonePattern.test(description)) {
+      const trimmed = descStr.trim();
+      // allow pure-numeric descriptions (e.g. "12345") — treat those as non-phone here
+      const isOnlyDigits = /^\d+$/.test(trimmed);
+
+      // Determine if description contains a phone-like long digit run
+      const digitRuns = (trimmed.match(/\d+/g) || []).map((s) => s.length);
+      const longestRun = digitRuns.length ? Math.max(...digitRuns) : 0;
+      const looksLikePhone = longestRun >= 7; // require a long continuous run of digits to consider phone
+
+      if (urlPattern.test(descStr) || (!isOnlyDigits && looksLikePhone)) {
         errors.description =
           "Description must not contain URLs or phone numbers";
       }
