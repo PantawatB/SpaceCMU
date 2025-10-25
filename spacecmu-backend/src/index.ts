@@ -4,6 +4,9 @@ import path from "path";
 import { AppDataSource } from "./ormconfig";
 import dotenv from "dotenv";
 import cors from "cors";
+import session from "express-session";
+import passport from "passport";
+import { configureGoogleStrategy } from "./config/passport";
 
 // Import routes
 import userRoutes from "./routes/userRoutes";
@@ -15,6 +18,7 @@ import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
 import productRoutes from "./routes/productRoutes";
+import authRoutes from "./routes/authRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -51,6 +55,23 @@ async function bootstrap() {
 
     app.use(express.json());
 
+    if (!process.env.SESSION_SECRET) {
+      console.error("SESSION_SECRET is not set in environment variables!");
+      process.exit(1);
+    }
+    app.use(
+      session({
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: process.env.NODE_ENV === "production" },
+      })
+    );
+
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    configureGoogleStrategy();
     // Serve static files from public directory
     const baseDir = path.resolve(__dirname, "..");
     app.use(express.static(path.join(baseDir, "public")));
@@ -78,6 +99,7 @@ async function bootstrap() {
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
     app.use("/api/products", productRoutes);
+    app.use("/api/auth", authRoutes);
 
     const port = parseInt(process.env.PORT || "3000"); // เปลี่ยนเป็น 3000
     // Use 0.0.0.0 for Docker compatibility - allows external connections
