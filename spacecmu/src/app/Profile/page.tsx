@@ -2102,7 +2102,7 @@ export default function ProfileMainPage() {
                         unoptimized
                         className="w-full h-full object-cover"
                       />
-                    ) : (
+                                       ) : (
                       <Image
                         src={publicProfile.banner}
                         alt="current banner"
@@ -2113,7 +2113,7 @@ export default function ProfileMainPage() {
                     )
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200"></div>
-                  )}
+                                   )}
                 </div>
               </div>
               {/* New banner preview */}
