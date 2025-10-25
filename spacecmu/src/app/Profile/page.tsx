@@ -2113,7 +2113,7 @@ export default function ProfileMainPage() {
                     publicProfile.banner.startsWith("http") ? (
                       <Image
                         loader={({ src }) => src}
-                        src={publicProfile.banner}
+                        src={normalizeImageUrl(publicProfile.banner)}
                         alt="current banner"
                         width={300}
                         height={128}
@@ -2122,7 +2122,7 @@ export default function ProfileMainPage() {
                       />
                     ) : (
                       <Image
-                        src={publicProfile.banner}
+                        src={normalizeImageUrl(publicProfile.banner)}
                         alt="current banner"
                         width={300}
                         height={128}

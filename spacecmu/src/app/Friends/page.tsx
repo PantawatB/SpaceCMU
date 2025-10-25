@@ -295,6 +295,8 @@ function HorizontalScrollSection({
 
 export default function FriendsMainPage() {
   const [friendRequests, setFriendRequests] = useState<FriendCardProps[]>([]);
+  const [rawFriendRequests, setRawFriendRequests] =
+    useState<FriendRequestsApiResponse>({ incoming: [], outgoing: [] });
   const [friends, setFriends] = useState<FriendCardProps[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -476,7 +478,7 @@ export default function FriendsMainPage() {
             name: u.name ?? "Unknown User",
             bio: u.bio ?? "No bio available",
             followed: false,
-            avatarUrl: u.profileImg ?? null,
+            avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
             isFriend: currentFriendIds.has(u.actorId ?? u.id),
             readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
             onFollow: () => sendFriendRequest(u.actorId),
@@ -568,6 +570,9 @@ export default function FriendsMainPage() {
 
       const data: FriendRequestsApiResponse = await response.json();
 
+      // ✅ Store raw data for filtering
+      setRawFriendRequests(data);
+
       // Transform incoming friend requests to match FriendCardProps interface
       const transformedRequests: FriendCardProps[] = data.incoming.map(
         (request) => ({
@@ -575,7 +580,9 @@ export default function FriendsMainPage() {
           name: request.from?.name ?? "Unknown",
           bio: "No bio available",
           followed: request.status === "pending",
-          avatarUrl: request.from?.profileImg || null,
+          avatarUrl: request.from?.profileImg
+            ? normalizeImageUrl(request.from.profileImg)
+            : null,
           onFollow: () => handleAcceptRequest(request.id),
           onRemove: () => handleRejectRequest(request.id),
           onMessage: () => {
@@ -666,8 +673,8 @@ export default function FriendsMainPage() {
           if (actorId) handleStartChat(actorId);
           else console.warn("No actorId for friend", u);
         },
-        avatarUrl: u.profileImg,
-        bannerUrl: u.bannerImg,
+        avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
+        bannerUrl: u.bannerImg ? normalizeImageUrl(u.bannerImg) : null,
       }));
 
       setFriends(transformed);
@@ -790,11 +797,18 @@ export default function FriendsMainPage() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
+        const errorData = await res
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
         console.error(
           "❌ Failed to send friend request:",
           res.status,
-          errorText
+          errorData
+        );
+        alert(
+          `Failed to send friend request: ${
+            errorData.message || "Unknown error"
+          }`
         );
       } else {
         // Refresh friend requests so pending requests appear
@@ -907,7 +921,7 @@ export default function FriendsMainPage() {
         name: u.name ?? "Unknown",
         bio: u.bio ?? "No bio available",
         followed: false,
-        avatarUrl: u.profileImg ?? null,
+        avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
         isFriend: false,
         readonlyFriendLabel: false,
         onFollow: () => sendFriendRequest(u.actorId ?? u.id),
@@ -922,14 +936,24 @@ export default function FriendsMainPage() {
 
       const friendActorIds = friendIds ?? new Set(friends.map((f) => f.id));
 
+      // ✅ Collect pending request actor IDs from raw data
+      const pendingRequestIds = new Set([
+        ...rawFriendRequests.incoming.map((r) => r.from.actorId),
+        ...rawFriendRequests.outgoing.map((r) => r.to.actorId),
+      ]);
+
       console.log("🔍 Friend actor IDs:", Array.from(friendActorIds));
+      console.log("🔍 Pending request IDs:", Array.from(pendingRequestIds));
       console.log(
         "🔍 People before filtering:",
         mapped.map((p) => ({ id: p.id, name: p.name }))
       );
 
-      // ✅ Filter out friends completely from "People you may know"
-      const nonFriends = mapped.filter((item) => !friendActorIds.has(item.id));
+      // ✅ Filter out friends AND pending requests from "People you may know"
+      const nonFriends = mapped.filter(
+        (item) =>
+          !friendActorIds.has(item.id) && !pendingRequestIds.has(item.id)
+      );
 
       console.log(
         "🔍 People after filtering:",

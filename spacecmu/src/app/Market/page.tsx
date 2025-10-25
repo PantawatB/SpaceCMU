@@ -810,7 +810,9 @@ export default function MarketMainPage() {
                             ? String(product.description)
                             : "",
                         price: product.price ? String(product.price) : "",
-                        image: product.imageUrl || "/noobcat.png",
+                        image: product.imageUrl
+                          ? normalizeImageUrl(product.imageUrl)
+                          : "/noobcat.png",
                       });
                       setEditingProductId(productId);
                       setIsEditMode(true);
@@ -889,7 +891,7 @@ export default function MarketMainPage() {
                     {/* Product Image */}
                     <div className="w-full h-[160px]">
                       <Image
-                        src={formData.image}
+                        src={normalizeImageUrl(formData.image)}
                         alt="Preview"
                         width={300}
                         height={160}

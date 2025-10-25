@@ -20,10 +20,13 @@ export function configureGoogleStrategy() {
     !process.env.GOOGLE_CLIENT_SECRET ||
     !process.env.GOOGLE_CALLBACK_URL
   ) {
-    console.error(
-      "❌ Google OAuth environment variables not set! Check GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL in .env"
+    console.warn(
+      "⚠️  Google OAuth environment variables not set! Google login will be disabled."
     );
-    throw new Error("Missing Google OAuth environment variables.");
+    console.warn(
+      "   Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL in .env to enable."
+    );
+    return; // Don't throw error, just return without configuring
   }
 
   passport.use(

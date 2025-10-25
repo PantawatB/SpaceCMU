@@ -990,9 +990,12 @@ export default function FeedsMainPage() {
                 const authorName = isPublicPost
                   ? post.author.name
                   : post.author.displayName;
-                const authorAvatar = isPublicPost
+                const authorAvatarRaw = isPublicPost
                   ? post.author.profileImg
                   : post.author.avatarUrl;
+                const authorAvatar = authorAvatarRaw
+                  ? normalizeImageUrl(authorAvatarRaw)
+                  : null;
                 const fallbackAvatar = isPublicPost
                   ? "/tanjiro.jpg"
                   : "/noobcat.png";
@@ -1004,7 +1007,7 @@ export default function FeedsMainPage() {
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <Image
-                        src={normalizeImageUrl(authorAvatar) || fallbackAvatar}
+                        src={authorAvatar || fallbackAvatar}
                         alt={authorName ?? "avatar"}
                         width={40}
                         height={40}
