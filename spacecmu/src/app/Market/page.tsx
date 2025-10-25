@@ -90,18 +90,59 @@ function MarketCard({
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (isOwnProduct && onEditClick) {
-                  onEditClick(productId);
-                } else {
-                  onChatClick(sellerId, title, image);
-                }
-              }}
-              className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
-            >
-              {isOwnProduct ? "Edit" : "Chat"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (isOwnProduct && onEditClick) {
+                    onEditClick(productId);
+                  } else {
+                    onChatClick(sellerId, title, image);
+                  }
+                }}
+                className="card__btn bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                {isOwnProduct ? "Edit" : "Chat"}
+              </button>
+              {isOwnProduct && (
+                <button
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "Are you sure you want to delete this product?"
+                      )
+                    ) {
+                      return;
+                    }
+
+                    try {
+                      const token = localStorage.getItem("token");
+                      const res = await fetch(
+                        `${API_BASE_URL}/api/products/${productId}`,
+                        {
+                          method: "DELETE",
+                          headers: token
+                            ? { Authorization: `Bearer ${token}` }
+                            : undefined,
+                        }
+                      );
+
+                      if (res.ok) {
+                        alert("Product deleted successfully!");
+                        window.location.reload();
+                      } else {
+                        alert("Failed to delete product");
+                      }
+                    } catch (err) {
+                      console.error("Error deleting product:", err);
+                      alert("Error deleting product");
+                    }
+                  }}
+                  className="bg-red-600 text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -762,7 +803,10 @@ export default function MarketMainPage() {
                       setFormData({
                         name: product.name || "",
                         // always coerce to string so subsequent FormData.append won't receive a number
-                        description: product.description != null ? String(product.description) : "",
+                        description:
+                          product.description != null
+                            ? String(product.description)
+                            : "",
                         price: product.price ? String(product.price) : "",
                         image: product.imageUrl || "/noobcat.png",
                       });

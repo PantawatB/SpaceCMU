@@ -171,6 +171,7 @@ export async function listPosts(req: Request, res: Response) {
       .loadRelationCountAndMap("post.likeCount", "post.likedBy")
       .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
       .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .orderBy("post.createdAt", "DESC")
       .take(50)
       .getMany();
@@ -234,6 +235,7 @@ export async function getPublicFeed(req: Request, res: Response) {
       .loadRelationCountAndMap("post.likeCount", "post.likedBy")
       .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
       .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .where("post.visibility = :visibility", { visibility: "public" })
       .orderBy("post.createdAt", "DESC")
       .addOrderBy("post.id", "DESC")
@@ -318,6 +320,7 @@ export async function getFriendFeed(
       .loadRelationCountAndMap("post.likeCount", "post.likedBy")
       .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
       .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .where("actor.id IN (:...visibleActorIds)", { visibleActorIds })
       .andWhere(
         " (post.visibility = 'public' OR (post.visibility = 'friends' AND actor.id IN (:...friendActorIdsWithTarget))) ",
@@ -811,9 +814,9 @@ export async function getPostsByActor(req: Request, res: Response) {
       .leftJoinAndSelect("post.actor", "actor")
       .leftJoinAndSelect("actor.user", "user_author")
       .leftJoinAndSelect("actor.persona", "persona_author")
-      .leftJoinAndSelect("post.likedBy", "likedBy")
-      .leftJoinAndSelect("post.comments", "comments")
-      .leftJoinAndSelect("post.repostedBy", "repostedBy")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .where("actor.id = :actorId", { actorId })
       .orderBy("post.createdAt", "DESC")
       .getMany();
@@ -841,9 +844,9 @@ export async function getPostsByActor(req: Request, res: Response) {
         content: post.content,
         imageUrl: post.imageUrl,
         visibility: post.visibility,
-        likes: post.likedBy?.length || 0,
-        comments: post.comments?.length || 0,
-        shares: post.repostedBy?.length || 0,
+        likes: (post as any).likeCount || 0,
+        comments: (post as any).commentCount || 0,
+        shares: (post as any).repostCount || 0,
         createdAt: post.createdAt,
         author: {
           id: author?.id,

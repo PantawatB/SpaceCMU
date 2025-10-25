@@ -738,6 +738,12 @@ export default function FriendsMainPage() {
         return;
       }
 
+      // Check if trying to add yourself
+      if (fromActorId === toActorId) {
+        alert("You cannot send a friend request to yourself!");
+        return;
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
         method: "POST",
         headers: {

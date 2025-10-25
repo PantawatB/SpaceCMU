@@ -25,6 +25,7 @@ type CurrentUser = {
   actorId?: string;
   persona?: Persona;
   friendCount?: number;
+  isAdmin?: boolean;
 } | null;
 
 type Product = {
@@ -228,6 +229,28 @@ export default function ProfileMainPage() {
   const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [repostedPosts, setRepostedPosts] = useState<Post[]>([]);
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+
+  // Comment modal states
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentPostId, setCommentPostId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentPosting, setCommentPosting] = useState(false);
+
+  type ApiComment = {
+    id: string;
+    content: string;
+    createdAt: string;
+    author: {
+      type: "user" | "persona";
+      actorId: string;
+      name: string;
+      profileImg?: string | null;
+      avatarUrl?: string | null;
+    };
+  };
+
+  const [currentComments, setCurrentComments] = useState<ApiComment[]>([]);
 
   // Initialize activeProfile from localStorage after hydration
   useEffect(() => {
@@ -876,6 +899,309 @@ export default function ProfileMainPage() {
     fetchSaved();
   }, [currentUser, activeProfile]);
 
+  // Shared interaction handler for all tabs
+  const handlePostInteraction = async (
+    postId: string,
+    action: "like" | "repost" | "save",
+    isActive: boolean
+  ) => {
+    const token = localStorage.getItem("token");
+    if (!token || !currentUser) return;
+    const actorId =
+      activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
+    if (!actorId) return;
+
+    const method = isActive ? "DELETE" : "POST";
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/${action}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ actorId }),
+      });
+
+      if (res.ok) {
+        // Refresh the relevant lists
+        if (action === "like") {
+          const likeRes = await fetch(
+            `${API_BASE_URL}/api/users/actor/${actorId}/likes`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (likeRes.ok) {
+            const json = await likeRes.json();
+            setLikedPosts(json.data || json);
+          }
+        } else if (action === "repost") {
+          const repostRes = await fetch(
+            `${API_BASE_URL}/api/users/actor/${actorId}/reposts`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (repostRes.ok) {
+            const json = await repostRes.json();
+            setRepostedPosts(json.data || json);
+          }
+        } else if (action === "save") {
+          const saveRes = await fetch(
+            `${API_BASE_URL}/api/users/actor/${actorId}/saved`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (saveRes.ok) {
+            const json = await saveRes.json();
+            setSavedPosts(json.data || json);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Error toggling ${action}:`, err);
+    }
+  };
+
+  // Check if a post is liked/reposted/saved
+  const isPostLiked = (postId: string) =>
+    likedPosts.some((p) => p.id === postId);
+  const isPostReposted = (postId: string) =>
+    repostedPosts.some((p) => p.id === postId);
+  const isPostSaved = (postId: string) =>
+    savedPosts.some((p) => p.id === postId);
+
+  // Comment functions
+  const handleCommentClick = async (postId: string) => {
+    setCommentPostId(postId);
+    setShowCommentModal(true);
+    setCurrentComments([]);
+    setCommentText("");
+    await fetchCommentsForPost(postId);
+  };
+
+  const fetchCommentsForPost = async (postId: string) => {
+    setCommentsLoading(true);
+    setCurrentComments([]);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      const response = await res.json();
+      const data = response.data || [];
+      if (Array.isArray(data)) {
+        setCurrentComments(data as ApiComment[]);
+      } else {
+        console.error("API Comments data is not an array:", data);
+        setCurrentComments([]);
+      }
+    } catch (err) {
+      console.error("API Fetch Error:", err);
+      setCurrentComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!commentText.trim() || commentPostId === null) return;
+
+    const token = localStorage.getItem("token");
+    if (!currentUser || !token) {
+      alert("Please login to comment");
+      return;
+    }
+
+    const actorId =
+      activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
+
+    if (!actorId) {
+      console.error("Could not find active actorId for commenting");
+      return;
+    }
+
+    setCommentPosting(true);
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/posts/${commentPostId}/comments`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: commentText,
+            actorId: actorId,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to post comment");
+      }
+
+      setCommentText("");
+      await fetchCommentsForPost(commentPostId);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to post comment. Please try again.");
+    } finally {
+      setCommentPosting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentIdToDelete: string) => {
+    if (!window.confirm("Are you sure you want to delete this comment?")) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!currentUser || !token) {
+      alert("Please login to delete comments.");
+      return;
+    }
+
+    if (commentPostId === null) {
+      console.error("Cannot delete comment: commentPostId is null.");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/posts/${commentPostId}/comments/${commentIdToDelete}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        if (res.status === 403) {
+          throw new Error(
+            errorData?.message ||
+              "You are not authorized to delete this comment."
+          );
+        }
+        throw new Error(errorData?.message || "Failed to delete comment.");
+      }
+
+      setCurrentComments((prevComments) =>
+        prevComments.filter((comment) => comment.id !== commentIdToDelete)
+      );
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert("An unknown error occurred while deleting the comment.");
+      }
+    }
+  };
+
+  // Render post actions (shared component)
+  const renderPostActions = (post: Post) => (
+    <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
+      <div className="flex gap-6">
+        <button
+          onClick={() =>
+            handlePostInteraction(post.id, "like", isPostLiked(post.id))
+          }
+          className={`flex items-center gap-1.5 hover:text-pink-500 transition ${
+            isPostLiked(post.id) ? "text-pink-500" : ""
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill={isPostLiked(post.id) ? "currentColor" : "none"}
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+            />
+          </svg>
+          Like {post.likes && post.likes > 0 ? `(${post.likes})` : ""}
+        </button>
+
+        <button
+          onClick={() => handleCommentClick(post.id)}
+          className="flex items-center gap-1.5 hover:text-blue-500 transition"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+            />
+          </svg>
+          Comment{" "}
+          {post.comments && post.comments > 0 ? `(${post.comments})` : ""}
+        </button>
+
+        <button
+          onClick={() =>
+            handlePostInteraction(post.id, "repost", isPostReposted(post.id))
+          }
+          className={`flex items-center gap-1.5 hover:text-green-500 transition ${
+            isPostReposted(post.id) ? "text-green-500" : ""
+          }`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill={isPostReposted(post.id) ? "currentColor" : "none"}
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-5 h-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+            />
+          </svg>
+          Repost {post.shares && post.shares > 0 ? `(${post.shares})` : ""}
+        </button>
+      </div>
+
+      <button
+        onClick={() =>
+          handlePostInteraction(post.id, "save", isPostSaved(post.id))
+        }
+        className={`flex items-center gap-1.5 hover:text-yellow-500 transition ${
+          isPostSaved(post.id) ? "text-yellow-500" : ""
+        }`}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill={isPostSaved(post.id) ? "currentColor" : "none"}
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="w-5 h-5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
+          />
+        </svg>
+        Save
+      </button>
+    </div>
+  );
+
   // Listen for activeProfile changes from Sidebar
   useEffect(() => {
     const handler = (e: Event) => {
@@ -1285,94 +1611,8 @@ export default function ProfileMainPage() {
                             </div>
                           )}
 
-                          {/* Actions (visual only) */}
-                          <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
-                            <div className="flex gap-6">
-                              <button
-                                onClick={() => {}}
-                                className={`flex items-center gap-1.5 hover:text-pink-500 transition`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill={"none"}
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                  />
-                                </svg>
-                                Like {post.likes && post.likes > 0 ? `(${post.likes})` : ""}
-                              </button>
-
-                              <button
-                                onClick={() => {}}
-                                className="flex items-center gap-1.5 hover:text-blue-500 transition"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                  />
-                                </svg>
-                                Comment {post.comments && post.comments > 0 ? `(${post.comments})` : ""}
-                              </button>
-
-                              <button
-                                onClick={() => {}}
-                                className={`flex items-center gap-1.5 hover:text-green-500 transition`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill={"none"}
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                  />
-                                </svg>
-                                Repost {post.shares && post.shares > 0 ? `(${post.shares})` : ""}
-                              </button>
-                            </div>
-
-                            <button
-                              onClick={() => {}}
-                              className={`flex items-center gap-1.5 hover:text-yellow-500 transition`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill={"none"}
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                                />
-                              </svg>
-                              Save
-                            </button>
-                          </div>
+                          {/* Actions */}
+                          {renderPostActions(post)}
 
                           {/* Dropdown (visual only) */}
                           <div className="absolute top-6 right-6 dropdown-container">
@@ -1403,7 +1643,9 @@ export default function ProfileMainPage() {
                         />
                       </svg>
                       <p className="text-lg font-medium">No posts yet</p>
-                      <p className="text-sm mt-1">Your posts will appear here</p>
+                      <p className="text-sm mt-1">
+                        Your posts will appear here
+                      </p>
                     </div>
                   )}
                 </>
@@ -1482,12 +1724,84 @@ export default function ProfileMainPage() {
                                     </span>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => handleEditProduct(product.id)}
-                                  className="bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
-                                >
-                                  Edit
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() =>
+                                      handleEditProduct(product.id)
+                                    }
+                                    className="bg-black text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-gray-800 transition-colors"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (
+                                        !window.confirm(
+                                          "Are you sure you want to delete this product?"
+                                        )
+                                      ) {
+                                        return;
+                                      }
+
+                                      try {
+                                        const token =
+                                          localStorage.getItem("token");
+                                        const res = await fetch(
+                                          `${API_BASE_URL}/api/products/${product.id}`,
+                                          {
+                                            method: "DELETE",
+                                            headers: token
+                                              ? {
+                                                  Authorization: `Bearer ${token}`,
+                                                }
+                                              : undefined,
+                                          }
+                                        );
+
+                                        if (res.ok) {
+                                          alert(
+                                            "Product deleted successfully!"
+                                          );
+                                          // Refresh products
+                                          const actorId =
+                                            activeProfile === 0
+                                              ? currentUser?.actorId
+                                              : currentUser?.persona?.actorId;
+                                          if (actorId) {
+                                            const productsRes = await fetch(
+                                              `${API_BASE_URL}/api/products/actor/${actorId}`,
+                                              {
+                                                headers: {
+                                                  Authorization: `Bearer ${token}`,
+                                                },
+                                              }
+                                            );
+                                            if (productsRes.ok) {
+                                              const productsData =
+                                                await productsRes.json();
+                                              setMyProducts(
+                                                productsData.data ||
+                                                  productsData ||
+                                                  []
+                                              );
+                                            }
+                                          }
+                                        } else {
+                                          alert("Failed to delete product");
+                                        }
+                                      } catch (err) {
+                                        console.error(
+                                          "Error deleting product:",
+                                          err
+                                        );
+                                        alert("Error deleting product");
+                                      }
+                                    }}
+                                    className="bg-red-600 text-white rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1569,59 +1883,8 @@ export default function ProfileMainPage() {
                               />
                             </div>
                           )}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
-                          </div>
+                          {/* Actions */}
+                          {renderPostActions(post)}
                         </div>
                       ))}
                     </div>
@@ -1700,59 +1963,8 @@ export default function ProfileMainPage() {
                               />
                             </div>
                           )}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
-                          </div>
+                          {/* Actions */}
+                          {renderPostActions(post)}
                         </div>
                       ))}
                     </div>
@@ -1831,59 +2043,8 @@ export default function ProfileMainPage() {
                               />
                             </div>
                           )}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
-                          </div>
+                          {/* Actions */}
+                          {renderPostActions(post)}
                         </div>
                       ))}
                     </div>
@@ -1949,7 +2110,7 @@ export default function ProfileMainPage() {
                         unoptimized
                         className="w-full h-full object-cover"
                       />
-                                       ) : (
+                    ) : (
                       <Image
                         src={publicProfile.banner}
                         alt="current banner"
@@ -1960,7 +2121,7 @@ export default function ProfileMainPage() {
                     )
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200"></div>
-                                   )}
+                  )}
                 </div>
               </div>
               {/* New banner preview */}
@@ -2447,6 +2608,184 @@ export default function ProfileMainPage() {
                       className="flex-1 px-6 py-2.5 rounded-lg bg-black text-white font-medium hover:bg-gray-800 transition-colors text-sm"
                     >
                       Update Product
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comment Modal */}
+      {showCommentModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{
+            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCommentModal(false);
+              setCommentText("");
+            }
+          }}
+        >
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl relative max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => {
+                setShowCommentModal(false);
+                setCommentText("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl z-10"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-gray-700 mb-6">Comments</h2>
+
+            {/* Comments List - Scrollable */}
+            <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+              {commentsLoading && (
+                <div className="text-center text-gray-400 py-8">
+                  Loading comments...
+                </div>
+              )}
+              {!commentsLoading &&
+                currentComments.map((comment) => {
+                  const authorAvatar =
+                    comment.author.type === "user"
+                      ? normalizeImageUrl(comment.author.profileImg) ??
+                        "/tanjiro.jpg"
+                      : normalizeImageUrl(comment.author.avatarUrl) ??
+                        "/noobcat.png";
+
+                  const canDelete =
+                    currentUser?.isAdmin ||
+                    comment.author.actorId === currentUser?.actorId ||
+                    comment.author.actorId === currentUser?.persona?.actorId;
+
+                  return (
+                    <div
+                      key={comment.id}
+                      className="flex gap-3 p-4 bg-gray-50 rounded-xl relative group"
+                    >
+                      <Image
+                        src={authorAvatar}
+                        alt={comment.author.name}
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm">
+                            {comment.author.name}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            ·{" "}
+                            {new Date(comment.createdAt).toLocaleString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          {comment.content}
+                        </p>
+                      </div>
+
+                      {/* Delete Button - Show conditionally */}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete comment"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-4 h-4"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              {!commentsLoading && currentComments.length === 0 && (
+                <div className="text-center text-gray-400 py-8">
+                  No comments yet. Be the first to comment!
+                </div>
+              )}
+            </div>
+
+            {/* Write Comment Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-start gap-3">
+                {activeProfile === 0 ? (
+                  currentUser?.profileImg ? (
+                    <Image
+                      src={
+                        normalizeImageUrl(currentUser.profileImg) ||
+                        "/tanjiro.jpg"
+                      }
+                      alt="avatar"
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+                      aria-hidden="true"
+                    />
+                  )
+                ) : currentUser?.persona?.avatarUrl ? (
+                  <Image
+                    src={
+                      normalizeImageUrl(currentUser.persona.avatarUrl) ||
+                      "/noobcat.png"
+                    }
+                    alt="avatar"
+                    width={40}
+                    height={40}
+                    className="rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="flex-1">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                    rows={3}
+                  />
+                  <div className="flex justify-end mt-3">
+                    <button
+                      onClick={handleCommentSubmit}
+                      disabled={!commentText.trim() || commentPosting}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-full font-semibold text-sm transition"
+                    >
+                      {commentPosting ? "Posting..." : "Post Comment"}
                     </button>
                   </div>
                 </div>

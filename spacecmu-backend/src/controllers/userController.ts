@@ -447,6 +447,10 @@ export async function getRepostsByActor(
       .leftJoinAndSelect("post.actor", "author_actor")
       .leftJoinAndSelect("author_actor.user", "author_user")
       .leftJoinAndSelect("author_actor.persona", "author_persona")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .innerJoin("post.repostedBy", "reposting_actor")
       .where("reposting_actor.id = :actorId", { actorId })
       .orderBy("post.createdAt", "DESC")
@@ -474,6 +478,9 @@ export async function getRepostsByActor(
         imageUrl: post.imageUrl,
         visibility: post.visibility,
         createdAt: post.createdAt,
+        likes: (post as any).likeCount || 0,
+        comments: (post as any).commentCount || 0,
+        shares: (post as any).repostCount || 0,
         author: {
           id: author?.id,
           displayName,
@@ -518,6 +525,10 @@ export async function getLikedPostsByActor( // เปลี่ยนชื่อ
       .leftJoinAndSelect("post.actor", "author_actor")
       .leftJoinAndSelect("author_actor.user", "author_user")
       .leftJoinAndSelect("author_actor.persona", "author_persona")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .innerJoin("post.likedBy", "liking_actor")
       .where("liking_actor.id = :actorId", { actorId })
       .orderBy("post.createdAt", "DESC")
@@ -545,6 +556,9 @@ export async function getLikedPostsByActor( // เปลี่ยนชื่อ
         imageUrl: post.imageUrl,
         visibility: post.visibility,
         createdAt: post.createdAt,
+        likes: (post as any).likeCount || 0,
+        comments: (post as any).commentCount || 0,
+        shares: (post as any).repostCount || 0,
         author: {
           id: author?.id,
           displayName,
@@ -637,6 +651,10 @@ export async function getSavedPostsByActor(
       .leftJoinAndSelect("post.actor", "author_actor")
       .leftJoinAndSelect("author_actor.user", "author_user")
       .leftJoinAndSelect("author_actor.persona", "author_persona")
+      .loadRelationCountAndMap("post.likeCount", "post.likedBy")
+      .loadRelationCountAndMap("post.repostCount", "post.repostedBy")
+      .loadRelationCountAndMap("post.saveCount", "post.savedBy")
+      .loadRelationCountAndMap("post.commentCount", "post.comments")
       .innerJoin("post.savedBy", "saving_actor")
       .where("saving_actor.id = :actorId", { actorId }) // 3. ค้นหาด้วย actorId เดียว
       .orderBy("post.createdAt", "DESC")
@@ -664,6 +682,9 @@ export async function getSavedPostsByActor(
         imageUrl: post.imageUrl,
         visibility: post.visibility,
         createdAt: post.createdAt,
+        likes: (post as any).likeCount || 0,
+        comments: (post as any).commentCount || 0,
+        shares: (post as any).repostCount || 0,
         author: {
           id: author?.id,
           displayName,
