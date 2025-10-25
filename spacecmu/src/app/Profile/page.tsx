@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import ChatWindow from "@/components/ChatWindow";
 import { normalizeImageUrl } from "@/utils/apiConfig";
+import PostCard from "@/components/PostCard";
 
 type Persona = {
   id?: string;
@@ -48,14 +49,20 @@ type Post = {
   content: string;
   imageUrl?: string;
   visibility: "public" | "friends";
-  likes?: number;
-  comments?: number;
-  shares?: number;
+  likeCount?: number;
+  commentCount?: number;
+  repostCount?: number;
+  saveCount?: number;
   createdAt: string;
-  author?: {
+  updatedAt?: string;
+  author: {
     id: string;
     displayName: string;
     avatar?: string;
+    type?: "user" | "persona";
+    name?: string;
+    profileImg?: string | null;
+    avatarUrl?: string | null;
   };
 };
 
@@ -709,6 +716,288 @@ export default function ProfileMainPage() {
     }
   };
 
+  // --- Post Interaction Handlers ---
+  // States for tracking post interactions
+  const [likedPostsSet, setLikedPostsSet] = useState<Set<string>>(new Set());
+  const [savedPostsSet, setSavedPostsSet] = useState<Set<string>>(new Set());
+  const [repostedPostsSet, setRepostedPostsSet] = useState<Set<string>>(new Set());
+
+  // Comment modal states
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentPostId, setCommentPostId] = useState<string | number | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [currentComments, setCurrentComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
+  // Report modal states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportText, setReportText] = useState("");
+
+  type Comment = {
+    id: string;
+    content: string;
+    authorId: string;
+    authorName?: string;
+    authorAvatar?: string;
+    createdAt: string;
+  };
+
+  const handleInteraction = async (
+    postId: string,
+    action: "like" | "repost" | "save",
+    stateSet: Set<string>,
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    updatePostsInTab: (postId: string, countProperty: string, delta: number) => void
+  ) => {
+    const token = localStorage.getItem("token");
+    if (!currentUser || !token) {
+      alert("Please login to interact.");
+      return;
+    }
+
+    const actorId =
+      activeProfile === 1 ? currentUser.persona?.actorId : currentUser.actorId;
+
+    if (!actorId) {
+      console.error("Could not find active actorId");
+      return;
+    }
+
+    const countProperty =
+      action === "like"
+        ? "likeCount"
+        : action === "repost"
+        ? "repostCount"
+        : "saveCount";
+
+    const isCurrentlyActive = stateSet.has(postId);
+    const method = isCurrentlyActive ? "DELETE" : "POST";
+    const url = `${API_BASE_URL}/api/posts/${postId}/${action}`;
+
+    const oldStateSet = new Set(stateSet);
+    const newSet = new Set(stateSet);
+    if (isCurrentlyActive) {
+      newSet.delete(postId);
+    } else {
+      newSet.add(postId);
+    }
+    setter(newSet);
+
+    // Optimistically update UI
+    const delta = isCurrentlyActive ? -1 : 1;
+    updatePostsInTab(postId, countProperty, delta);
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ actorId }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to ${action} post`);
+      }
+    } catch (err) {
+      console.error(err);
+      // Revert on error
+      setter(oldStateSet);
+      updatePostsInTab(postId, countProperty, -delta);
+    }
+  };
+
+  const updatePostsInAllTabs = (postId: number | string, countProperty: string, delta: number) => {
+    const updateFn = (posts: Post[]) =>
+      posts.map((p) => {
+        if (String(p.id) === String(postId)) {
+          const currentCount = (p as Record<string, unknown>)[countProperty] as number || 0;
+          const newCount = currentCount + delta;
+          return { ...p, [countProperty]: newCount < 0 ? 0 : newCount };
+        }
+        return p;
+      });
+
+    setMyPosts(updateFn);
+    setLikedPosts(updateFn);
+    setRepostedPosts(updateFn);
+    setSavedPosts(updateFn);
+  };
+
+  const toggleLike = (postId: string) => {
+    handleInteraction(postId, "like", likedPostsSet, setLikedPostsSet, updatePostsInAllTabs);
+  };
+
+  const toggleSave = (postId: string) => {
+    handleInteraction(postId, "save", savedPostsSet, setSavedPostsSet, updatePostsInAllTabs);
+  };
+
+  const toggleRepost = (postId: string) => {
+    handleInteraction(postId, "repost", repostedPostsSet, setRepostedPostsSet, updatePostsInAllTabs);
+  };
+
+  const handleReportClick = (postId: string) => {
+    setReportPostId(postId);
+    setShowReportModal(true);
+  };
+
+  const handleReportSubmit = () => {
+    console.log(`Reporting post ${reportPostId} with feedback: ${reportText}`);
+    setShowReportModal(false);
+    setReportText("");
+    setReportPostId(null);
+  };
+
+  const handleCommentClick = async (postId: string | number) => {
+    setCommentPostId(postId);
+    setShowCommentModal(true);
+    setCurrentComments([]);
+    setCommentText("");
+
+    if (typeof postId === "string") {
+      await fetchCommentsForPost(postId);
+    }
+  };
+
+  const fetchCommentsForPost = async (postId: string | number) => {
+    setCommentsLoading(true);
+    setCurrentComments([]);
+    try {
+      if (typeof postId !== "string") {
+        console.warn("fetchCommentsForPost called with non-string postId:", postId);
+        setCommentsLoading(false);
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setCommentsLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentComments(data.data || data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+    }
+    setCommentsLoading(false);
+  };
+
+  const handleCommentSubmit = async () => {
+    const token = localStorage.getItem("token");
+    if (!commentPostId || !token || !currentUser) {
+      return;
+    }
+
+    const actorId =
+      activeProfile === 1 ? currentUser.persona?.actorId : currentUser.actorId;
+
+    if (!actorId) {
+      console.error("Could not determine actorId");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${commentPostId}/comments`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: commentText,
+          actorId: actorId,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to submit comment");
+      }
+
+      setCommentText("");
+      if (typeof commentPostId === "string") {
+        await fetchCommentsForPost(commentPostId);
+      }
+
+      // Update comment count
+      updatePostsInAllTabs(Number(commentPostId), "commentCount", 1);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to submit comment");
+    }
+  };
+
+  const handleDeletePost = async (postIdToDelete: string | number) => {
+    const confirmed = confirm("Are you sure you want to delete this post?");
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postIdToDelete}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete post");
+      }
+
+      // Remove from all tab arrays
+      setMyPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setLikedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setRepostedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setSavedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+
+      alert("Post deleted successfully");
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      alert("Failed to delete post");
+    }
+  };
+
+  const handleDeleteComment = async (commentIdToDelete: string) => {
+    const token = localStorage.getItem("token");
+    if (!token || !commentPostId) return;
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/posts/${commentPostId}/comments/${commentIdToDelete}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete comment");
+      }
+
+      // Remove from local state
+      setCurrentComments((prev) => prev.filter((c) => c.id !== commentIdToDelete));
+
+      // Decrement comment count
+      updatePostsInAllTabs(Number(commentPostId), "commentCount", -1);
+
+      alert("Comment deleted successfully");
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      alert("Failed to delete comment");
+    }
+  };
+
   useEffect(() => {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -1233,157 +1522,21 @@ export default function ProfileMainPage() {
                   {myPosts.length > 0 ? (
                     <div className="flex flex-col gap-6">
                       {myPosts.map((post) => (
-                        <div
+                        <PostCard
                           key={post.id}
-                          className="bg-gray-50 rounded-2xl p-6 shadow relative"
-                        >
-                          {/* Post Header */}
-                          <div className="flex items-center gap-3 mb-2">
-                            <Image
-                              src={
-                                normalizeImageUrl(post.author?.avatar) ||
-                                "/noobcat.png"
-                              }
-                              alt={post.author?.displayName || "User"}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-bold">
-                                {post.author?.displayName || "Anonymous"}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {new Date(post.createdAt).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Content */}
-                          <div className="mb-2 mt-2 text-base font-semibold">
-                            {post.content}
-                          </div>
-
-                          {/* Image */}
-                          {post.imageUrl && (
-                            <div className="flex gap-3 mb-2">
-                              <Image
-                                src={normalizeImageUrl(post.imageUrl)}
-                                alt="post image"
-                                width={480}
-                                height={40}
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
-
-                          {/* Actions (visual only) */}
-                          <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
-                            <div className="flex gap-6">
-                              <button
-                                onClick={() => {}}
-                                className={`flex items-center gap-1.5 hover:text-pink-500 transition`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill={"none"}
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                  />
-                                </svg>
-                                Like {post.likes && post.likes > 0 ? `(${post.likes})` : ""}
-                              </button>
-
-                              <button
-                                onClick={() => {}}
-                                className="flex items-center gap-1.5 hover:text-blue-500 transition"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                  />
-                                </svg>
-                                Comment {post.comments && post.comments > 0 ? `(${post.comments})` : ""}
-                              </button>
-
-                              <button
-                                onClick={() => {}}
-                                className={`flex items-center gap-1.5 hover:text-green-500 transition`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill={"none"}
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                  />
-                                </svg>
-                                Repost {post.shares && post.shares > 0 ? `(${post.shares})` : ""}
-                              </button>
-                            </div>
-
-                            <button
-                              onClick={() => {}}
-                              className={`flex items-center gap-1.5 hover:text-yellow-500 transition`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill={"none"}
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                                />
-                              </svg>
-                              Save
-                            </button>
-                          </div>
-
-                          {/* Dropdown (visual only) */}
-                          <div className="absolute top-6 right-6 dropdown-container">
-                            <button
-                              onClick={() => {}}
-                              className="text-gray-400 hover:text-gray-600 text-2xl"
-                            >
-                              ⋮
-                            </button>
-                          </div>
-                        </div>
+                          post={post}
+                          currentUser={currentUser}
+                          activeProfile={activeProfile}
+                          isLiked={likedPostsSet.has(post.id)}
+                          isSaved={savedPostsSet.has(post.id)}
+                          isReposted={repostedPostsSet.has(post.id)}
+                          toggleLike={toggleLike}
+                          toggleSave={toggleSave}
+                          toggleRepost={toggleRepost}
+                          handleCommentClick={handleCommentClick}
+                          handleDeletePost={handleDeletePost}
+                          handleReportClick={handleReportClick}
+                        />
                       ))}
                     </div>
                   ) : (

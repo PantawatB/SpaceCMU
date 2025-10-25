@@ -5,6 +5,7 @@ import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 import ChatWindow from "@/components/ChatWindow";
+import PostCard from "@/components/PostCard";
 
 export default function FeedsMainPage() {
   const [feedMode, setFeedMode] = useState("Global");
@@ -14,7 +15,6 @@ export default function FeedsMainPage() {
   const [imagePreview, setImagePreview] = useState<string>("");
   const [postMode, setPostMode] = useState<"public" | "friends">("public");
   const [posting, setPosting] = useState(false);
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportText, setReportText] = useState("");
   const [reportPostId, setReportPostId] = useState<number | null>(null);
@@ -26,11 +26,6 @@ export default function FeedsMainPage() {
     null
   );
   const [commentText, setCommentText] = useState("");
-  const mockAuthors = [
-    { name: "Kamado Tanjiro", avatar: "/tanjiro.jpg", bio: "65, Engineering" },
-    { name: "Nezuko", avatar: "/nezuko.jpg", bio: "Demon Slayer Corps" },
-    { name: "Zenitsu", avatar: "/zenitsu.jpg", bio: "Thunder Breathing User" },
-  ];
 
   type ApiComment = {
     id: string;
@@ -200,26 +195,27 @@ export default function FeedsMainPage() {
     const fetchPosts = async () => {
       setPostsLoading(true);
       try {
-        // ดึง actorId ของผู้ใช้ปัจจุบัน
-        const actorId =
-          activeProfile === 1
-            ? currentUser.persona?.actorId
-            : currentUser.actorId;
-
-        if (!actorId) {
-          console.error("Could not determine actorId for post fetching");
-          return;
-        }
-
         let data: Post[] = [];
         let url = "";
 
         if (feedMode === "Friends") {
-          // ใช้ API endpoint สำหรับ Friends Feed
+          // Friends tab - ดึงโพสต์จากเพื่อน
+          const actorId = activeProfile === 1 
+            ? currentUser.persona?.actorId 
+            : currentUser.actorId;
+
+          if (!actorId) {
+            console.error("Could not determine actorId for Friends feed");
+            setPosts([]);
+            setPostsLoading(false);
+            return;
+          }
+
           url = `${API_BASE_URL}/api/posts/feed/friends/${actorId}`;
+          console.log("🔗 Fetching Friends feed from:", url);
         } else {
-          // ใช้ API endpoint สำหรับ Global Feed
-          url = `${API_BASE_URL}/api/posts`;
+          // Global tab - ใช้ API endpoint /api/posts/feed/public
+          url = `${API_BASE_URL}/api/posts/feed/public`;
         }
 
         const res = await fetch(url, {
@@ -237,25 +233,21 @@ export default function FeedsMainPage() {
 
         // ตรวจสอบว่าข้อมูลเป็น array
         if (Array.isArray(data)) {
-          // กรองโพสต์ตาม activeProfile
-          // activeProfile = 0 (Public): แสดงเฉพาะโพสต์จาก User
-          // activeProfile = 1 (Anonymous): แสดงเฉพาะโพสต์จาก Persona
-          // โพสต์เก่าที่ไม่มี author.type จะแสดงในทุกโหมด (backward compatibility)
-          const filteredPosts = data.filter((post) => {
-            // ถ้าไม่มี author.type ให้แสดงเลย (โพสต์เก่า)
-            if (!post.author?.type) {
-              return true;
-            }
-
-            if (activeProfile === 0) {
-              // Public mode: แสดงเฉพาะโพสต์ที่มี author.type === "user"
-              return post.author?.type === "user";
-            } else {
-              // Anonymous mode: แสดงเฉพาะโพสต์ที่มี author.type === "persona"
-              return post.author?.type === "persona";
-            }
-          });
-          setPosts(filteredPosts);
+          // แสดงโพสต์ตามโหมด
+          const mode = feedMode === "Global" ? "Global Feed" : "Friends Feed";
+          console.log(`📝 ${mode}: Posts fetched from API:`, data.length, "posts");
+          
+          // Debug: แสดง author info ของโพสต์แรก
+          if (data.length > 0) {
+            console.log("🔍 First post author info:", {
+              type: data[0].author?.type,
+              name: data[0].author?.name,
+              displayName: data[0].author?.displayName,
+              profileImg: data[0].author?.profileImg,
+              avatarUrl: data[0].author?.avatarUrl,
+            });
+          }
+          setPosts(data);
         } else {
           console.error("Posts data is not an array:", data);
           setPosts([]);
@@ -318,24 +310,6 @@ export default function FeedsMainPage() {
     fetchInteractions("reposts");
     fetchInteractions("saved");
   }, [currentUser, activeProfile]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".dropdown-container")) {
-        setOpenDropdownId(null);
-      }
-    };
-
-    if (openDropdownId !== null) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [openDropdownId]);
 
   const menuItems = [
     {
@@ -535,9 +509,16 @@ export default function FeedsMainPage() {
       const postData = {
         content: postText,
         imageUrl,
-        visibility: postMode,
+        visibility: postMode, // "public" หรือ "friends"
         isAnonymous: activeProfile === 1, // ส่ง isAnonymous = true เมื่ออยู่ในโหมด Anonymous
       };
+
+      console.log("📤 Creating post with data:", {
+        visibility: postData.visibility,
+        isAnonymous: postData.isAnonymous,
+        activeProfile: activeProfile,
+        postMode: postMode,
+      });
 
       const res = await fetch(`${API_BASE_URL}/api/posts`, {
         method: "POST",
@@ -657,7 +638,6 @@ export default function FeedsMainPage() {
   const handleReportClick = (postId: number) => {
     setReportPostId(postId);
     setShowReportModal(true);
-    setOpenDropdownId(null);
   };
 
   const handleReportSubmit = () => {
@@ -673,29 +653,32 @@ export default function FeedsMainPage() {
     setCurrentComments([]);
     setCommentText("");
 
-    if (typeof postId === "string") {
-      await fetchCommentsForPost(postId);
-    }
+    // แปลง postId เป็น string ถ้าเป็น number
+    const postIdStr = typeof postId === "number" ? String(postId) : postId;
+    await fetchCommentsForPost(postIdStr);
   };
 
   const fetchCommentsForPost = async (postId: string | number) => {
     setCommentsLoading(true);
     setCurrentComments([]);
     try {
-      if (typeof postId !== "string") {
-        console.warn(
-          "fetchCommentsForPost called with non-string postId:",
-          postId
-        );
-        setCommentsLoading(false);
-        return;
-      }
+      // แปลง postId เป็น string ถ้าเป็น number
+      const postIdStr = typeof postId === "number" ? String(postId) : postId;
 
-      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`);
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postIdStr}/comments`);
       if (!res.ok) throw new Error("Failed to fetch comments");
       const response = await res.json();
       const data = response.data || [];
       if (Array.isArray(data)) {
+        console.log("💬 Comments fetched:", data.length, "comments");
+        if (data.length > 0) {
+          console.log("🔍 First comment author info:", {
+            type: data[0].author?.type,
+            name: data[0].author?.name,
+            profileImg: data[0].author?.profileImg,
+            avatarUrl: data[0].author?.avatarUrl,
+          });
+        }
         setCurrentComments(data as ApiComment[]);
       } else {
         console.error("API Comments data is not an array:", data);
@@ -768,8 +751,6 @@ export default function FeedsMainPage() {
       alert("Please login to delete posts.");
       return;
     }
-
-    setOpenDropdownId(null);
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/posts/${postIdToDelete}`, {
@@ -944,407 +925,22 @@ export default function FeedsMainPage() {
                           ? currentUser?.persona?.actorId
                           : currentUser?.actorId)))
               )
-              .map((post) => {
-                // API returns author object with either name+profileImg (public) or displayName+avatarUrl (anonymous)
-                const isPublicPost = !!post.author?.name;
-                const authorName = isPublicPost
-                  ? post.author.name
-                  : post.author.displayName;
-                const authorAvatar = isPublicPost
-                  ? post.author.profileImg
-                  : post.author.avatarUrl;
-                const fallbackAvatar = isPublicPost
-                  ? "/tanjiro.jpg"
-                  : "/noobcat.png";
-
-                return (
-                  <div
-                    key={`api-${post.id}`}
-                    className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <Image
-                        src={normalizeImageUrl(authorAvatar) || fallbackAvatar}
-                        alt={authorName ?? "avatar"}
-                        width={40}
-                        height={40}
-                        className="rounded-full object-cover"
-                      />
-                      <div>
-                        <div className="font-bold">
-                          {authorName ?? (isPublicPost ? "User" : "Anonymous")}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(post.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mb-2 mt-2 text-base font-semibold">
-                      {post.content}
-                    </div>
-                    {post.imageUrl && (
-                      <div className="flex gap-3 mb-2">
-                        <Image
-                          src={normalizeImageUrl(post.imageUrl)}
-                          alt="post image"
-                          width={480}
-                          height={40}
-                          className="object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
-
-                    {/* Post actions */}
-                    <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
-                      <div className="flex gap-6">
-                        <button
-                          onClick={() => toggleLike(post.id)}
-                          className={`flex items-center gap-1.5 hover:text-pink-500 transition ${
-                            likedPosts.has(post.id) ? "text-pink-500" : ""
-                          }`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill={
-                              likedPosts.has(post.id) ? "currentColor" : "none"
-                            }
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                            />
-                          </svg>
-                          Like{" "}
-                          {post.likeCount && post.likeCount > 0
-                            ? `(${post.likeCount})`
-                            : ""}
-                        </button>
-                        <button
-                          onClick={() => handleCommentClick(post.id)}
-                          className="flex items-center gap-1.5 hover:text-blue-500 transition"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                            />
-                          </svg>
-                          Comment
-                        </button>
-                        <button
-                          onClick={() => toggleRepost(post.id)}
-                          className={`flex items-center gap-1.5 hover:text-green-500 transition ${
-                            repostedPosts.has(post.id) ? "text-green-500" : ""
-                          }`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill={
-                              repostedPosts.has(post.id)
-                                ? "currentColor"
-                                : "none"
-                            }
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                            />
-                          </svg>
-                          Repost{" "}
-                          {post.repostCount && post.repostCount > 0
-                            ? `(${post.repostCount})`
-                            : ""}
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => toggleSave(post.id)}
-                        className={`flex items-center gap-1.5 hover:text-yellow-500 transition ${
-                          savedPosts.has(post.id) ? "text-yellow-500" : ""
-                        }`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill={
-                            savedPosts.has(post.id) ? "currentColor" : "none"
-                          }
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-5 h-5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                          />
-                        </svg>
-                        Save{" "}
-                        {post.saveCount && post.saveCount > 0
-                          ? `(${post.saveCount})`
-                          : ""}
-                      </button>
-                    </div>
-
-                    {/* Dropdown menu */}
-                    <div className="absolute top-6 right-6 dropdown-container">
-                      <button
-                        onClick={() =>
-                          setOpenDropdownId(
-                            openDropdownId === post.id ? null : post.id
-                          )
-                        }
-                        className="text-gray-400 hover:text-gray-600 text-2xl"
-                      >
-                        ⋮
-                      </button>
-                      {openDropdownId === post.id && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                          {(post.actorId === currentUser?.actorId ||
-                            post.actorId === currentUser?.persona?.actorId) && (
-                            <button
-                              onClick={() => handleDeletePost(post.id)}
-                              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                                />
-                              </svg>
-                              Delete Post
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleReportClick(post.id)}
-                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M3 3l1.664 1.664M21 21l-1.5-1.5m-5.485-1.242L12 17.25 4.5 21V8.742m.164-4.078a2.15 2.15 0 011.743-1.342 48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185V19.5M4.664 4.664L19.5 19.5"
-                              />
-                            </svg>
-                            Report Post
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-          {/* Mock Posts - Show after API posts */}
-          {[...Array(8)].map((_, i) => {
-            const mockAuthor = mockAuthors[i % mockAuthors.length];
-            const mockImage =
-              i % 2 === 0 ? "/tanjiro_with_family.webp" : "/cat-post.jpg";
-            const mockContent =
-              i % 2 === 0
-                ? "I love my family so much!"
-                : "Just chilling and enjoying life.";
-
-            return (
-              <div
-                key={`mock-${i}`}
-                className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <Image
-                    src={mockAuthor.avatar}
-                    alt={mockAuthor.name}
-                    width={40}
-                    height={40}
-                    className="rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="font-bold">{mockAuthor.name}</div>
-                    <div className="text-xs text-gray-400">
-                      {i + 1} hours ago
-                    </div>
-                  </div>
-                </div>
-                <div className="mb-2 mt-2 text-base font-semibold">
-                  {mockContent}
-                </div>
-                <div className="flex gap-3 mb-2">
-                  <Image
-                    src={mockImage}
-                    alt="mock post image"
-                    width={480}
-                    height={40}
-                    className="object-cover rounded-lg"
-                  />
-                </div>
-
-                {/* Post actions */}
-                <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
-                  <div className="flex gap-6">
-                    <button
-                      onClick={() => toggleLike(i)}
-                      className={`flex items-center gap-1.5 hover:text-pink-500 transition ${
-                        likedPosts.has(i) ? "text-pink-500" : ""
-                      }`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill={likedPosts.has(i) ? "currentColor" : "none"}
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                        />
-                      </svg>
-                      Like
-                    </button>
-                    <button
-                      onClick={() => handleCommentClick(i)}
-                      className="flex items-center gap-1.5 hover:text-blue-500 transition"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                        />
-                      </svg>
-                      Comment
-                    </button>
-                    <button
-                      onClick={() => toggleRepost(i)}
-                      className={`flex items-center gap-1.5 hover:text-green-500 transition ${
-                        repostedPosts.has(i) ? "text-green-500" : ""
-                      }`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill={repostedPosts.has(i) ? "currentColor" : "none"}
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                        />
-                      </svg>
-                      Repost
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => toggleSave(i)}
-                    className={`flex items-center gap-1.5 hover:text-yellow-500 transition ${
-                      savedPosts.has(i) ? "text-yellow-500" : ""
-                    }`}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill={savedPosts.has(i) ? "currentColor" : "none"}
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-5 h-5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                      />
-                    </svg>
-                    Save
-                  </button>
-                </div>
-
-                {/* Dropdown menu */}
-                <div className="absolute top-6 right-6 dropdown-container">
-                  <button
-                    onClick={() =>
-                      setOpenDropdownId(openDropdownId === i ? null : i)
-                    }
-                    className="text-gray-400 hover:text-gray-600 text-2xl"
-                  >
-                    ⋮
-                  </button>
-                  {openDropdownId === i && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                      <button
-                        onClick={() => handleReportClick(i)}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-5 h-5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M3 3l1.664 1.664M21 21l-1.5-1.5m-5.485-1.242L12 17.25 4.5 21V8.742m.164-4.078a2.15 2.15 0 011.743-1.342 48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185V19.5M4.664 4.664L19.5 19.5"
-                          />
-                        </svg>
-                        Report Post
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              .map((post) => (
+                <PostCard
+                  key={`api-${post.id}`}
+                  post={post}
+                  currentUser={currentUser}
+                  isLiked={likedPosts.has(post.id)}
+                  isSaved={savedPosts.has(post.id)}
+                  isReposted={repostedPosts.has(post.id)}
+                  onLike={toggleLike}
+                  onSave={toggleSave}
+                  onRepost={toggleRepost}
+                  onComment={handleCommentClick}
+                  onDelete={handleDeletePost}
+                  onReport={handleReportClick}
+                />
+              ))}
         </section>
         {/* Share something bar - fixed bottom, larger size, toggle show/hide with arrow icon */}
         <div
@@ -1395,11 +991,11 @@ export default function FeedsMainPage() {
                       alt="avatar"
                       width={40}
                       height={40}
-                      className="rounded-full object-cover"
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                     />
                   ) : (
                     <div
-                      className="w-10 h-10 rounded-full bg-gray-300"
+                      className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
                       aria-hidden="true"
                     />
                   )
@@ -1412,11 +1008,11 @@ export default function FeedsMainPage() {
                     alt="avatar"
                     width={40}
                     height={40}
-                    className="rounded-full object-cover"
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
                   <div
-                    className="w-10 h-10 rounded-full bg-gray-300"
+                    className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
                     aria-hidden="true"
                   />
                 )}
@@ -1668,12 +1264,14 @@ export default function FeedsMainPage() {
               )}
               {!commentsLoading &&
                 currentComments.map((comment) => {
-                  const authorAvatar =
-                    comment.author.type === "user"
-                      ? normalizeImageUrl(comment.author.profileImg) ??
-                        "/tanjiro.jpg"
-                      : normalizeImageUrl(comment.author.avatarUrl) ??
-                        "/noobcat.png";
+                  const isUserComment = comment.author.type === "user";
+                  const authorAvatar = isUserComment
+                    ? normalizeImageUrl(comment.author.profileImg) ?? "/tanjiro.jpg"
+                    : normalizeImageUrl(comment.author.avatarUrl) ?? "/noobcat.png";
+                  
+                  const authorName = isUserComment
+                    ? comment.author.name
+                    : comment.author.name; // API ส่งมาใน field name ทั้ง user และ persona
 
                   const canDelete =
                     currentUser?.isAdmin ||
@@ -1687,7 +1285,7 @@ export default function FeedsMainPage() {
                     >
                       <Image
                         src={authorAvatar}
-                        alt={comment.author.name}
+                        alt={authorName || "User"}
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-full object-cover flex-shrink-0"
@@ -1695,7 +1293,7 @@ export default function FeedsMainPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-sm">
-                            {comment.author.name}
+                            {authorName || (isUserComment ? "User" : "Anonymous")}
                           </span>
                           <span className="text-xs text-gray-400">
                             ·{" "}
@@ -1754,11 +1352,14 @@ export default function FeedsMainPage() {
                 {activeProfile === 0 ? (
                   currentUser?.profileImg ? (
                     <Image
-                      src={currentUser.profileImg}
+                      src={
+                        normalizeImageUrl(currentUser.profileImg) ||
+                        "/tanjiro.jpg"
+                      }
                       alt="avatar"
                       width={40}
                       height={40}
-                      className="rounded-full object-cover flex-shrink-0"
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                     />
                   ) : (
                     <div
@@ -1768,11 +1369,14 @@ export default function FeedsMainPage() {
                   )
                 ) : currentUser?.persona?.avatarUrl ? (
                   <Image
-                    src={currentUser.persona.avatarUrl}
+                    src={
+                      normalizeImageUrl(currentUser.persona.avatarUrl) ||
+                      "/noobcat.png"
+                    }
                     alt="avatar"
                     width={40}
                     height={40}
-                    className="rounded-full object-cover flex-shrink-0"
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
                   <div
