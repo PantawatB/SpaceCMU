@@ -1211,7 +1211,7 @@ export default function ProfileMainPage() {
                       {myPosts.map((post) => (
                         <div
                           key={post.id}
-                          className="bg-gray-50 rounded-2xl p-6 shadow"
+                          className="bg-gray-50 rounded-2xl p-6 shadow relative"
                         >
                           {/* Post Header */}
                           <div className="flex items-center gap-3 mb-2">
@@ -1242,11 +1242,13 @@ export default function ProfileMainPage() {
                               </div>
                             </div>
                           </div>
-                          {/* Post Content */}
+
+                          {/* Content */}
                           <div className="mb-2 mt-2 text-base font-semibold">
                             {post.content}
                           </div>
-                          {/* Post Image */}
+
+                          {/* Image */}
                           {post.imageUrl && (
                             <div className="flex gap-3 mb-2">
                               <Image
@@ -1258,12 +1260,81 @@ export default function ProfileMainPage() {
                               />
                             </div>
                           )}
-                          {/* Post Stats */}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
+
+                          {/* Actions (visual only) */}
+                          <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
+                            <div className="flex gap-6">
+                              <button
+                                onClick={() => {}}
+                                className={`flex items-center gap-1.5 hover:text-pink-500 transition`}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill={"none"}
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                  className="w-5 h-5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                  />
+                                </svg>
+                                Like {post.likes && post.likes > 0 ? `(${post.likes})` : ""}
+                              </button>
+
+                              <button
+                                onClick={() => {}}
+                                className="flex items-center gap-1.5 hover:text-blue-500 transition"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                  className="w-5 h-5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+                                  />
+                                </svg>
+                                Comment {post.comments && post.comments > 0 ? `(${post.comments})` : ""}
+                              </button>
+
+                              <button
+                                onClick={() => {}}
+                                className={`flex items-center gap-1.5 hover:text-green-500 transition`}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill={"none"}
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                  className="w-5 h-5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                                  />
+                                </svg>
+                                Repost {post.shares && post.shares > 0 ? `(${post.shares})` : ""}
+                              </button>
+                            </div>
+
+                            <button
+                              onClick={() => {}}
+                              className={`flex items-center gap-1.5 hover:text-yellow-500 transition`}
+                            >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
+                                fill={"none"}
                                 viewBox="0 0 24 24"
                                 strokeWidth={1.5}
                                 stroke="currentColor"
@@ -1272,45 +1343,21 @@ export default function ProfileMainPage() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
                                 />
                               </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
+                              Save
+                            </button>
+                          </div>
+
+                          {/* Dropdown (visual only) */}
+                          <div className="absolute top-6 right-6 dropdown-container">
+                            <button
+                              onClick={() => {}}
+                              className="text-gray-400 hover:text-gray-600 text-2xl"
+                            >
+                              ⋮
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -1332,9 +1379,7 @@ export default function ProfileMainPage() {
                         />
                       </svg>
                       <p className="text-lg font-medium">No posts yet</p>
-                      <p className="text-sm mt-1">
-                        Your posts will appear here
-                      </p>
+                      <p className="text-sm mt-1">Your posts will appear here</p>
                     </div>
                   )}
                 </>
@@ -1700,6 +1745,137 @@ export default function ProfileMainPage() {
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
+                          d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                        />
+                      </svg>
+                      <p className="text-lg font-medium">No liked posts yet</p>
+                      <p className="text-sm mt-1">
+                        Posts you like will appear here
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              {activeTab === "saved" && (
+                <>
+                  {savedPosts.length > 0 ? (
+                    <div className="flex flex-col gap-6">
+                      {savedPosts.map((post) => (
+                        <div
+                          key={post.id}
+                          className="bg-gray-50 rounded-2xl p-6 shadow"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <Image
+                              src={
+                                normalizeImageUrl(post.author?.avatar) ||
+                                "/noobcat.png"
+                              }
+                              alt={post.author?.displayName || "User"}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-bold">
+                                {post.author?.displayName || "Anonymous"}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {new Date(post.createdAt).toLocaleString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mb-2 mt-2 text-base font-semibold">
+                            {post.content}
+                          </div>
+                          {post.imageUrl && (
+                            <div className="flex gap-3 mb-2">
+                              <Image
+                                src={normalizeImageUrl(post.imageUrl)}
+                                alt="post image"
+                                width={480}
+                                height={40}
+                                className="object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                />
+                              </svg>
+                              {post.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
+                                />
+                              </svg>
+                              {post.comments || 0}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
+                                />
+                              </svg>
+                              {post.shares || 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-12">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                           d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
                         />
                       </svg>
@@ -1749,7 +1925,7 @@ export default function ProfileMainPage() {
                         unoptimized
                         className="w-full h-full object-cover"
                       />
-                    ) : (
+                                       ) : (
                       <Image
                         src={publicProfile.banner}
                         alt="current banner"
@@ -1760,7 +1936,7 @@ export default function ProfileMainPage() {
                     )
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200"></div>
-                  )}
+                                   )}
                 </div>
               </div>
               {/* New banner preview */}
