@@ -53,8 +53,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-800">
-      <h1 className="text-2xl font-bold mb-4">เข้าสู่ระบบ</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-800 relative"> 
+      <Link href="/" className="absolute top-6 left-6 text-gray-500 hover:text-gray-800 transition group">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+        <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-700 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          Back to Home
+        </span>
+      </Link>
+      <h1 className="text-2xl font-bold mb-4 mt-16">เข้าสู่ระบบ</h1>
       <form className="flex flex-col gap-4 w-80 mb-8" onSubmit={handleSubmit}>
         <input
           name="email"
@@ -89,7 +97,6 @@ export default function LoginPage() {
           Register
         </Link>
       </form>
-
     </div>
   );
 }
