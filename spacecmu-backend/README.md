@@ -67,6 +67,14 @@ npm install multer
 npm install -D @types/multer
 ```
 
+7. Insatall library for OAuth Google
+
+```bash
+npm install passport passport-google-oauth20 express-session
+
+npm install --save-dev @types/passport @types/passport-google-oauth20 @types/express-session
+```
+
 Alternatively, during development you can run `npm run dev` which uses
 `ts-node` to execute the TypeScript sources directly. The server listens on
 `PORT` (defaults to `3000`) and exposes API routes under `/api`.

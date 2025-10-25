@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, RequestHandler } from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth";
 import {
   listReports,
@@ -15,8 +15,8 @@ const router = Router();
  * - ต้อง login ก่อน (authenticateToken)
  * - ต้องเป็น admin เท่านั้น (requireAdmin)
  */
-router.use(authenticateToken);
-router.use(requireAdmin);
+router.use(authenticateToken as RequestHandler);
+router.use(requireAdmin as RequestHandler);
 
 // 📌 GET all reports
 // GET /api/admin/reports

@@ -12,7 +12,7 @@ RUN npm ci
 
 # Copy source code
 COPY . .
-
+RUN ls -R src/types
 # Build TypeScript
 RUN npm run build
 
