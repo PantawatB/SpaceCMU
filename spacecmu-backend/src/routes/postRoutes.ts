@@ -1,5 +1,5 @@
-import { Router } from "express";
-import { authenticateToken, checkBanned } from "../middleware/auth";
+import { Router, RequestHandler } from "express";
+import { authenticateToken } from "../middleware/auth";
 import {
   createPost,
   updatePost,
@@ -19,49 +19,93 @@ import {
   getPostReposters,
   getPostSavers,
   getPostsByActor,
-  reportPost,
 } from "../controllers/postController";
 
 const router = Router();
 
 // 📌 Public endpoints (ไม่ต้อง login)
-router.get("/search", searchPostsByAuthor);
-router.get("/feed/public", getPublicFeed);
-router.get("/", listPosts);
+router.get("/search", searchPostsByAuthor as RequestHandler);
+router.get("/feed/public", getPublicFeed as RequestHandler);
+router.get("/", listPosts as RequestHandler);
 
 // 📌 Protected endpoints (ต้อง login)
 // Feed ของเพื่อน
-router.get("/feed/friends/:actorId", authenticateToken, getFriendFeed);
+router.get(
+  "/feed/friends/:actorId",
+  authenticateToken as RequestHandler,
+  getFriendFeed as RequestHandler
+);
 
 // 📌 Get posts by actor
-router.get("/actor/:actorId", authenticateToken, getPostsByActor);
+router.get(
+  "/actor/:actorId",
+  authenticateToken as RequestHandler,
+  getPostsByActor as RequestHandler
+);
 
 // 📌 Get single post (must be after specific routes)
 router.get("/:id", getPost);
 
-// สร้าง/แก้ไข/ลบโพสต์ (banned users cannot do these)
-router.post("/", authenticateToken, checkBanned, createPost);
-router.put("/:id", authenticateToken, checkBanned, updatePost);
-router.delete("/:id", authenticateToken, checkBanned, deletePost);
+// สร้าง/แก้ไข/ลบโพสต์
+router.post(
+  "/",
+  authenticateToken as RequestHandler,
+  createPost as RequestHandler
+);
+router.put(
+  "/:id",
+  authenticateToken as RequestHandler,
+  updatePost as RequestHandler
+);
+router.delete(
+  "/:id",
+  authenticateToken as RequestHandler,
+  deletePost as RequestHandler
+);
 
-// การโต้ตอบ (like, repost, save) - banned users cannot interact
-router.post("/:id/like", authenticateToken, checkBanned, likePost);
-router.delete("/:id/like", authenticateToken, checkBanned, undoLikePost);
-router.post("/:id/repost", authenticateToken, checkBanned, repostPost);
-router.delete("/:id/repost", authenticateToken, checkBanned, undoRepost);
-router.post("/:id/save", authenticateToken, checkBanned, savePost);
-router.delete("/:id/save", authenticateToken, checkBanned, unsavePost);
+// การโต้ตอบ (like, repost, save)
+router.post(
+  "/:id/like",
+  authenticateToken as RequestHandler,
+  likePost as RequestHandler
+);
+router.delete(
+  "/:id/like",
+  authenticateToken as RequestHandler,
+  undoLikePost as RequestHandler
+);
+router.post(
+  "/:id/repost",
+  authenticateToken as RequestHandler,
+  repostPost as RequestHandler
+);
+router.delete(
+  "/:id/repost",
+  authenticateToken as RequestHandler,
+  undoRepost as RequestHandler
+);
+router.post(
+  "/:id/save",
+  authenticateToken as RequestHandler,
+  savePost as RequestHandler
+);
+router.delete(
+  "/:id/save",
+  authenticateToken as RequestHandler,
+  unsavePost as RequestHandler
+);
 
 // GET /api/posts/:id/likers - ดูรายชื่อคนไลค์
-router.get("/:id/likers", getPostLikers);
+router.get("/:id/likers", getPostLikers as RequestHandler);
 
 // GET /api/posts/:id/reposters - ดูรายชื่อคนรีโพสต์
-router.get("/:id/reposters", getPostReposters);
+router.get("/:id/reposters", getPostReposters as RequestHandler);
 
 // GET /api/posts/:id/savers - ดูรายชื่อคนเซฟ (ต้องเป็นเจ้าของโพสต์)
-router.get("/:id/savers", authenticateToken, getPostSavers);
-
-// POST /api/posts/:postId/report - รายงานโพสต์
-router.post("/:postId/report", authenticateToken, reportPost);
+router.get(
+  "/:id/savers",
+  authenticateToken as RequestHandler,
+  getPostSavers as RequestHandler
+);
 
 export default router;

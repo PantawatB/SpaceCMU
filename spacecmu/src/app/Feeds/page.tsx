@@ -669,36 +669,40 @@ export default function FeedsMainPage() {
 
   const handleReportSubmit = async () => {
     if (!reportText.trim() || !reportPostId) {
-      alert("Please provide a reason for reporting");
+      setShowReportModal(false);
+      setReportText("");
+      setReportPostId(null);
       return;
     }
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${API_BASE_URL}/api/posts/${reportPostId}/report`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ reason: reportText }),
-        }
-      );
+      if (token) {
+        const res = await fetch(
+          `${API_BASE_URL}/api/posts/${reportPostId}/report`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ reason: reportText }),
+          }
+        );
 
-      if (res.ok) {
-        alert("Report submitted successfully");
-        setShowReportModal(false);
-        setReportText("");
-        setReportPostId(null);
-      } else {
-        const error = await res.json();
-        alert(error.message || "Failed to submit report");
+        if (res.ok) {
+          alert("Report submitted successfully");
+        } else {
+          const error = await res.json();
+          alert(error.message || "Failed to submit report");
+        }
       }
     } catch (error) {
       console.error("Error submitting report:", error);
-      alert("Failed to submit report");
+    } finally {
+      setShowReportModal(false);
+      setReportText("");
+      setReportPostId(null);
     }
   };
 

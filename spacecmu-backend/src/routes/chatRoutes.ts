@@ -1,4 +1,10 @@
-import { Router } from "express";
+import {
+  Router,
+  RequestHandler,
+  Request,
+  Response,
+  NextFunction,
+} from "express";
 import { authenticateToken } from "../middleware/auth";
 import {
   getMyChats,
@@ -17,15 +23,15 @@ import {
 const router = Router();
 
 // All chat routes require authentication
-router.use(authenticateToken);
+router.use(authenticateToken as RequestHandler);
 
 // Chat management
-router.get("/", getMyChats); // GET /api/chats - Get all user's chats
-router.get("/unread-count", getUnreadCount); // GET /api/chats/unread-count - Get unread messages count
-router.post("/:chatId/mark-read", markChatAsRead); // POST /api/chats/:chatId/mark-read - Mark chat messages as read
+router.get("/", getMyChats as RequestHandler); // GET /api/chats - Get all user's chats
+router.get("/unread-count", getUnreadCount as RequestHandler); // GET /api/chats/unread-count - Get unread messages count
+router.post("/:chatId/mark-read", markChatAsRead as RequestHandler); // POST /api/chats/:chatId/mark-read - Mark chat messages as read
 router.post(
   "/direct",
-  (req, res, next) => {
+  (req: Request, res: Response, next: NextFunction) => {
     console.log(" DIRECT CHAT ROUTE HIT WITH BODY:", req.body);
     console.log(
       " USER FROM REQ:",
@@ -33,18 +39,18 @@ router.post(
     );
     next();
   },
-  createDirectChat
+  createDirectChat as RequestHandler
 ); // POST /api/chats/direct - Create direct chat
-router.post("/product", createProductChat); // POST /api/chats/product - Contact product seller
+router.post("/product", createProductChat as RequestHandler); // POST /api/chats/product - Contact product seller
 
 // Message management
-router.get("/:chatId/messages", getChatMessages); // GET /api/chats/:chatId/messages - Get chat messages (real-time)
-router.get("/:chatId/messages/new", getNewMessages); // GET /api/chats/:chatId/messages/new - Poll for new messages
-router.post("/:chatId/messages", sendMessage); // POST /api/chats/:chatId/messages - Send message
-router.delete("/messages/:messageId", deleteMessage); // DELETE /api/chats/messages/:messageId - Delete message
-router.delete("/:chatId/messages", clearChatMessages); // DELETE /api/chats/:chatId/messages - Clear all messages
+router.get("/:chatId/messages", getChatMessages as RequestHandler); // GET /api/chats/:chatId/messages - Get chat messages (real-time)
+router.get("/:chatId/messages/new", getNewMessages as RequestHandler); // GET /api/chats/:chatId/messages/new - Poll for new messages
+router.post("/:chatId/messages", sendMessage as RequestHandler); // POST /api/chats/:chatId/messages - Send message
+router.delete("/messages/:messageId", deleteMessage as RequestHandler); // DELETE /api/chats/messages/:messageId - Delete message
+router.delete("/:chatId/messages", clearChatMessages as RequestHandler); // DELETE /api/chats/:chatId/messages - Clear all messages
 
 // Chat info routes
-router.get("/:chatId/participants", getChatParticipants); // GET /api/chats/:chatId/participants - Get chat participants
+router.get("/:chatId/participants", getChatParticipants as RequestHandler); // GET /api/chats/:chatId/participants - Get chat participants
 
 export default router;

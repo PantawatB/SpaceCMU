@@ -9,6 +9,7 @@ type PostAuthor = {
   name?: string;
   profileImg?: string | null;
   avatarUrl?: string | null;
+  avatar?: string | null; // เพิ่ม avatar field จาก API
   displayName?: string;
 };
 
@@ -20,8 +21,12 @@ type Post = {
   author: PostAuthor;
   actorId: string;
   likeCount?: number;
+  likes?: number; // รองรับทั้ง 2 format
   repostCount?: number;
+  shares?: number; // รองรับทั้ง 2 format
   saveCount?: number;
+  commentCount?: number;
+  comments?: number; // รองรับทั้ง 2 format
   createdAt: string;
   updatedAt?: string | undefined;
 };
@@ -84,15 +89,6 @@ export default function PostCard({
   const deleteHandler = handleDeletePost || onDelete;
   const reportHandler = handleReportClick || onReport;
 
-  // Debug: Log post author info
-  console.log("🎴 PostCard author info:", {
-    type: post.author?.type,
-    name: post.author?.name,
-    displayName: post.author?.displayName,
-    profileImg: post.author?.profileImg,
-    avatarUrl: post.author?.avatarUrl,
-  });
-
   // Determine if this is a public or anonymous post based on author.type
   const isPublicPost = post.author?.type === "user";
   const isAnonymousPost = post.author?.type === "persona";
@@ -101,14 +97,19 @@ export default function PostCard({
   // API ส่งชื่อมาใน field name สำหรับทั้ง user และ persona
   const authorName = post.author?.name || post.author?.displayName;
     
-  // เลือกรูปตาม type
+  // เลือกรูปตาม type - รองรับทั้ง avatar, profileImg, avatarUrl
   const authorAvatar = isPublicPost 
-    ? post.author.profileImg 
+    ? (post.author.avatar || post.author.profileImg)
     : isAnonymousPost 
-    ? post.author.avatarUrl 
-    : post.author.profileImg || post.author.avatarUrl;
+    ? (post.author.avatar || post.author.avatarUrl)
+    : (post.author.avatar || post.author.profileImg || post.author.avatarUrl);
     
   const fallbackAvatar = isPublicPost ? "/tanjiro.jpg" : "/noobcat.png";
+
+  // Get counts - รองรับทั้ง 2 format
+  const likeCount = post.likeCount ?? post.likes ?? 0;
+  const commentCount = post.commentCount ?? post.comments ?? 0;
+  const repostCount = post.repostCount ?? post.shares ?? 0;
 
   // Check if current user can delete this post
   const canDelete =
@@ -183,9 +184,7 @@ export default function PostCard({
                 />
               </svg>
               Like{" "}
-              {post.likeCount && post.likeCount > 0
-                ? `(${post.likeCount})`
-                : ""}
+              {likeCount > 0 ? `(${likeCount})` : ""}
             </button>
 
             <button
@@ -206,7 +205,8 @@ export default function PostCard({
                   d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
                 />
               </svg>
-              Comment
+              Comment{" "}
+              {commentCount > 0 ? `(${commentCount})` : ""}
             </button>
 
             <button
@@ -230,9 +230,7 @@ export default function PostCard({
                 />
               </svg>
               Repost{" "}
-              {post.repostCount && post.repostCount > 0
-                ? `(${post.repostCount})`
-                : ""}
+              {repostCount > 0 ? `(${repostCount})` : ""}
             </button>
           </div>
 
@@ -256,12 +254,10 @@ export default function PostCard({
                 d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
               />
             </svg>
-            Save{" "}
-            {post.saveCount && post.saveCount > 0 ? `(${post.saveCount})` : ""}
+            Save
           </button>
         </div>
       )}
-
       {/* Dropdown Menu */}
       {showActions && (deleteHandler || reportHandler) && (
         <div className="absolute top-6 right-6 dropdown-container">

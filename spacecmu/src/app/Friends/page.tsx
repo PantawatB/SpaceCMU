@@ -1127,10 +1127,12 @@ export default function FriendsMainPage() {
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
       <BannedWarning />
-      {/* Sidebar */}
-      <Sidebar menuItems={menuItems} />
-      {/* Main Content */}
-      <main className="flex-1 p-8">
+      {/* Sidebar (sticky to viewport so it doesn't move when right column scrolls) */}
+      <div className="sticky top-0 self-start h-screen">
+        <Sidebar menuItems={menuItems} />
+      </div>
+      {/* Main Content (make this column scroll internally) */}
+      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
         {/* Search bar */}
         <div className="mb-6">
           <div className="relative w-full">
