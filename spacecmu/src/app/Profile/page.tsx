@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import ChatWindow from "@/components/ChatWindow";
 import { normalizeImageUrl } from "@/utils/apiConfig";
+import PostCard from "@/components/PostCard";
 
 type Persona = {
   id?: string;
@@ -25,6 +26,7 @@ type CurrentUser = {
   actorId?: string;
   persona?: Persona;
   friendCount?: number;
+  isAdmin?: boolean;
 } | null;
 
 type Product = {
@@ -48,14 +50,20 @@ type Post = {
   content: string;
   imageUrl?: string;
   visibility: "public" | "friends";
-  likes?: number;
-  comments?: number;
-  shares?: number;
+  likeCount?: number;
+  commentCount?: number;
+  repostCount?: number;
+  saveCount?: number;
   createdAt: string;
-  author?: {
+  updatedAt?: string;
+  author: {
     id: string;
     displayName: string;
     avatar?: string;
+    type?: "user" | "persona";
+    name?: string;
+    profileImg?: string | null;
+    avatarUrl?: string | null;
   };
 };
 
@@ -247,10 +255,9 @@ export default function ProfileMainPage() {
   const [activeTab, setActiveTab] = useState<
     "posts" | "market" | "reposts" | "likes" | "saved"
   >("posts");
-
   // Product edit modal states
   const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
-  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductModalId] = useState<string | null>(null);
   const [productFormData, setProductFormData] = useState({
     name: "",
     description: "",
@@ -609,7 +616,7 @@ export default function ProfileMainPage() {
           price: product.price ? String(product.price) : "",
           image: product.imageUrl || "/noobcat.png",
         });
-        setEditingProductId(productId);
+        setEditingProductModalId(productId);
         setIsEditProductModalOpen(true);
       } else {
         alert("Failed to load product details");
@@ -650,7 +657,7 @@ export default function ProfileMainPage() {
 
       alert("Product updated successfully!");
       setIsEditProductModalOpen(false);
-      setEditingProductId(null);
+      setEditingProductModalId(null);
 
       // Refresh products
       const actorId =
@@ -706,6 +713,323 @@ export default function ProfileMainPage() {
     } catch (err) {
       console.error("Error uploading image:", err);
       alert("Failed to upload image");
+    }
+  };
+
+  // --- Post Interaction Handlers ---
+  // States for tracking post interactions
+  const [likedPostsSet, setLikedPostsSet] = useState<Set<string>>(new Set());
+  const [savedPostsSet, setSavedPostsSet] = useState<Set<string>>(new Set());
+  const [repostedPostsSet, setRepostedPostsSet] = useState<Set<string>>(new Set());
+
+  // Comment modal states
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentPostId, setCommentPostId] = useState<string | number | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [currentComments, setCurrentComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentPosting, setCommentPosting] = useState(false);
+
+  // Report modal states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportText, setReportText] = useState("");
+
+  type Comment = {
+    id: string;
+    content: string;
+    authorId: string;
+    author?: {
+      type?: "user" | "persona";
+      name?: string;
+      profileImg?: string | null;
+      avatarUrl?: string | null;
+      avatar?: string | null; // เพิ่ม avatar field จาก API
+      actorId?: string;
+    };
+    authorName?: string;
+    authorAvatar?: string;
+    createdAt: string;
+  };
+
+  const handleInteraction = async (
+    postId: string,
+    action: "like" | "repost" | "save",
+    stateSet: Set<string>,
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    updatePostsInTab: (postId: string, countProperty: string, delta: number) => void
+  ) => {
+    const token = localStorage.getItem("token");
+    if (!currentUser || !token) {
+      alert("Please login to interact.");
+      return;
+    }
+
+    const actorId =
+      activeProfile === 1 ? currentUser.persona?.actorId : currentUser.actorId;
+
+    if (!actorId) {
+      console.error("Could not find active actorId");
+      return;
+    }
+
+    const countProperty =
+      action === "like"
+        ? "likeCount"
+        : action === "repost"
+        ? "repostCount"
+        : "saveCount";
+
+    const isCurrentlyActive = stateSet.has(postId);
+    const method = isCurrentlyActive ? "DELETE" : "POST";
+    const url = `${API_BASE_URL}/api/posts/${postId}/${action}`;
+
+    const oldStateSet = new Set(stateSet);
+    const newSet = new Set(stateSet);
+    if (isCurrentlyActive) {
+      newSet.delete(postId);
+    } else {
+      newSet.add(postId);
+    }
+    setter(newSet);
+
+    // Optimistically update UI
+    const delta = isCurrentlyActive ? -1 : 1;
+    updatePostsInTab(postId, countProperty, delta);
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ actorId }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to ${action} post`);
+      }
+    } catch (err) {
+      console.error(err);
+      // Revert on error
+      setter(oldStateSet);
+      updatePostsInTab(postId, countProperty, -delta);
+    }
+  };
+
+  const updatePostsInAllTabs = (postId: number | string, countProperty: string, delta: number) => {
+    const updateFn = (posts: Post[]) =>
+      posts.map((p) => {
+        if (String(p.id) === String(postId)) {
+          const currentCount = (p as Record<string, unknown>)[countProperty] as number || 0;
+          const newCount = currentCount + delta;
+          return { ...p, [countProperty]: newCount < 0 ? 0 : newCount };
+        }
+        return p;
+      });
+
+    setMyPosts(updateFn);
+    setLikedPosts(updateFn);
+    setRepostedPosts(updateFn);
+    setSavedPosts(updateFn);
+  };
+
+  const toggleLike = (postId: string) => {
+    handleInteraction(postId, "like", likedPostsSet, setLikedPostsSet, updatePostsInAllTabs);
+  };
+
+  const toggleSave = (postId: string) => {
+    handleInteraction(postId, "save", savedPostsSet, setSavedPostsSet, updatePostsInAllTabs);
+  };
+
+  const toggleRepost = (postId: string) => {
+    handleInteraction(postId, "repost", repostedPostsSet, setRepostedPostsSet, updatePostsInAllTabs);
+  };
+
+  const handleReportClick = (postId: string) => {
+    setReportPostId(postId);
+    setShowReportModal(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (reportPostId === null) {
+      setShowReportModal(false);
+      setReportText("");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    try {
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/posts/${reportPostId}/report`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ feedback: reportText }),
+        });
+      }
+    } catch (err) {
+      console.error("Error submitting report:", err);
+    } finally {
+      setShowReportModal(false);
+      setReportText("");
+      setReportPostId(null);
+    }
+  };
+
+  const handleCommentClick = async (postId: string | number) => {
+    setCommentPostId(postId);
+    setShowCommentModal(true);
+    setCurrentComments([]);
+    setCommentText("");
+
+    if (typeof postId === "string") {
+      await fetchCommentsForPost(postId);
+    }
+  };
+
+  const fetchCommentsForPost = async (postId: string | number) => {
+    setCommentsLoading(true);
+    setCurrentComments([]);
+    try {
+      if (typeof postId !== "string") {
+        console.warn("fetchCommentsForPost called with non-string postId:", postId);
+        setCommentsLoading(false);
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setCommentsLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentComments(data.data || data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+    }
+    setCommentsLoading(false);
+  };
+
+  const handleCommentSubmit = async () => {
+    const token = localStorage.getItem("token");
+    if (!commentPostId || !token || !currentUser) {
+      return;
+    }
+
+    const actorId =
+      activeProfile === 1 ? currentUser.persona?.actorId : currentUser.actorId;
+
+    if (!actorId) {
+      console.error("Could not determine actorId");
+      return;
+    }
+
+    setCommentPosting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${commentPostId}/comments`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: commentText,
+          actorId: actorId,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to submit comment");
+      }
+
+      setCommentText("");
+      if (typeof commentPostId === "string") {
+        await fetchCommentsForPost(commentPostId);
+      }
+
+      // Update comment count
+      updatePostsInAllTabs(Number(commentPostId), "commentCount", 1);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to submit comment");
+    } finally {
+      setCommentPosting(false);
+    }
+  };
+
+  const handleDeletePost = async (postIdToDelete: string | number) => {
+    const confirmed = confirm("Are you sure you want to delete this post?");
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You must be logged in.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postIdToDelete}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete post");
+      }
+
+      // Remove from all tab arrays
+      setMyPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setLikedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setRepostedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+      setSavedPosts((prev) => prev.filter((p) => p.id !== postIdToDelete));
+
+      alert("Post deleted successfully");
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      alert("Failed to delete post");
+    }
+  };
+
+  const handleDeleteComment = async (commentIdToDelete: string) => {
+    const token = localStorage.getItem("token");
+    if (!token || !commentPostId) return;
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/posts/${commentPostId}/comments/${commentIdToDelete}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete comment");
+      }
+
+      // Remove from local state
+      setCurrentComments((prev) => prev.filter((c) => c.id !== commentIdToDelete));
+
+      // Decrement comment count
+      updatePostsInAllTabs(Number(commentPostId), "commentCount", -1);
+
+      alert("Comment deleted successfully");
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      alert("Failed to delete comment");
     }
   };
 
@@ -809,7 +1133,11 @@ export default function ProfileMainPage() {
         );
         if (res.ok) {
           const json = await res.json();
-          setLikedPosts(json.data || json);
+          const posts = json.data || json;
+          setLikedPosts(posts);
+          // Update liked posts set
+          const likedSet = new Set<string>(posts.map((p: Post) => String(p.id)));
+          setLikedPostsSet(likedSet);
         }
       } catch (err) {
         console.error("Error fetching liked posts:", err);
@@ -838,7 +1166,11 @@ export default function ProfileMainPage() {
         );
         if (res.ok) {
           const json = await res.json();
-          setRepostedPosts(json.data || json);
+          const posts = json.data || json;
+          setRepostedPosts(posts);
+          // Update reposted posts set
+          const repostedSet = new Set<string>(posts.map((p: Post) => String(p.id)));
+          setRepostedPostsSet(repostedSet);
         }
       } catch (err) {
         console.error("Error fetching reposts:", err);
@@ -867,7 +1199,11 @@ export default function ProfileMainPage() {
         );
         if (res.ok) {
           const json = await res.json();
-          setSavedPosts(json.data || json);
+          const posts = json.data || json;
+          setSavedPosts(posts);
+          // Update saved posts set
+          const savedSet = new Set<string>(posts.map((p: Post) => String(p.id)));
+          setSavedPostsSet(savedSet);
         }
       } catch (err) {
         console.error("Error fetching saved posts:", err);
@@ -1233,157 +1569,20 @@ export default function ProfileMainPage() {
                   {myPosts.length > 0 ? (
                     <div className="flex flex-col gap-6">
                       {myPosts.map((post) => (
-                        <div
+                        <PostCard
                           key={post.id}
-                          className="bg-gray-50 rounded-2xl p-6 shadow relative"
-                        >
-                          {/* Post Header */}
-                          <div className="flex items-center gap-3 mb-2">
-                            <Image
-                              src={
-                                normalizeImageUrl(post.author?.avatar) ||
-                                "/noobcat.png"
-                              }
-                              alt={post.author?.displayName || "User"}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-bold">
-                                {post.author?.displayName || "Anonymous"}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {new Date(post.createdAt).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Content */}
-                          <div className="mb-2 mt-2 text-base font-semibold">
-                            {post.content}
-                          </div>
-
-                          {/* Image */}
-                          {post.imageUrl && (
-                            <div className="flex gap-3 mb-2">
-                              <Image
-                                src={normalizeImageUrl(post.imageUrl)}
-                                alt="post image"
-                                width={480}
-                                height={40}
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
-
-                          {/* Actions (visual only) */}
-                          <div className="flex items-center justify-between text-gray-500 text-sm mt-6">
-                            <div className="flex gap-6">
-                              <button
-                                onClick={() => {}}
-                                className={`flex items-center gap-1.5 hover:text-pink-500 transition`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill={"none"}
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                  />
-                                </svg>
-                                Like {post.likes && post.likes > 0 ? `(${post.likes})` : ""}
-                              </button>
-
-                              <button
-                                onClick={() => {}}
-                                className="flex items-center gap-1.5 hover:text-blue-500 transition"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                  />
-                                </svg>
-                                Comment {post.comments && post.comments > 0 ? `(${post.comments})` : ""}
-                              </button>
-
-                              <button
-                                onClick={() => {}}
-                                className={`flex items-center gap-1.5 hover:text-green-500 transition`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill={"none"}
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                  />
-                                </svg>
-                                Repost {post.shares && post.shares > 0 ? `(${post.shares})` : ""}
-                              </button>
-                            </div>
-
-                            <button
-                              onClick={() => {}}
-                              className={`flex items-center gap-1.5 hover:text-yellow-500 transition`}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill={"none"}
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-                                />
-                              </svg>
-                              Save
-                            </button>
-                          </div>
-
-                          {/* Dropdown (visual only) */}
-                          <div className="absolute top-6 right-6 dropdown-container">
-                            <button
-                              onClick={() => {}}
-                              className="text-gray-400 hover:text-gray-600 text-2xl"
-                            >
-                              ⋮
-                            </button>
-                          </div>
-                        </div>
+                          post={post}
+                          currentUser={currentUser}
+                          isLiked={likedPostsSet.has(post.id)}
+                          isSaved={savedPostsSet.has(post.id)}
+                          isReposted={repostedPostsSet.has(post.id)}
+                          toggleLike={toggleLike}
+                          toggleSave={toggleSave}
+                          toggleRepost={toggleRepost}
+                          handleCommentClick={handleCommentClick}
+                          handleDeletePost={handleDeletePost}
+                          handleReportClick={handleReportClick}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -1523,106 +1722,20 @@ export default function ProfileMainPage() {
                   {repostedPosts.length > 0 ? (
                     <div className="flex flex-col gap-6">
                       {repostedPosts.map((post) => (
-                        <div
+                        <PostCard
                           key={post.id}
-                          className="bg-gray-50 rounded-2xl p-6 shadow"
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <Image
-                              src={
-                                normalizeImageUrl(post.author?.avatar) ||
-                                "/noobcat.png"
-                              }
-                              alt={post.author?.displayName || "User"}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-bold">
-                                {post.author?.displayName || "Anonymous"}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {new Date(post.createdAt).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mb-2 mt-2 text-base font-semibold">
-                            {post.content}
-                          </div>
-                          {post.imageUrl && (
-                            <div className="flex gap-3 mb-2">
-                              <Image
-                                src={normalizeImageUrl(post.imageUrl)}
-                                alt="post image"
-                                width={480}
-                                height={40}
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
-                          </div>
-                        </div>
+                          post={post}
+                          currentUser={currentUser}
+                          isLiked={likedPostsSet.has(post.id)}
+                          isSaved={savedPostsSet.has(post.id)}
+                          isReposted={repostedPostsSet.has(post.id)}
+                          toggleLike={toggleLike}
+                          toggleSave={toggleSave}
+                          toggleRepost={toggleRepost}
+                          handleCommentClick={handleCommentClick}
+                          handleDeletePost={handleDeletePost}
+                          handleReportClick={handleReportClick}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -1654,106 +1767,20 @@ export default function ProfileMainPage() {
                   {likedPosts.length > 0 ? (
                     <div className="flex flex-col gap-6">
                       {likedPosts.map((post) => (
-                        <div
+                        <PostCard
                           key={post.id}
-                          className="bg-gray-50 rounded-2xl p-6 shadow"
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <Image
-                              src={
-                                normalizeImageUrl(post.author?.avatar) ||
-                                "/noobcat.png"
-                              }
-                              alt={post.author?.displayName || "User"}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-bold">
-                                {post.author?.displayName || "Anonymous"}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {new Date(post.createdAt).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mb-2 mt-2 text-base font-semibold">
-                            {post.content}
-                          </div>
-                          {post.imageUrl && (
-                            <div className="flex gap-3 mb-2">
-                              <Image
-                                src={normalizeImageUrl(post.imageUrl)}
-                                alt="post image"
-                                width={480}
-                                height={40}
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
-                          </div>
-                        </div>
+                          post={post}
+                          currentUser={currentUser}
+                          isLiked={likedPostsSet.has(post.id)}
+                          isSaved={savedPostsSet.has(post.id)}
+                          isReposted={repostedPostsSet.has(post.id)}
+                          toggleLike={toggleLike}
+                          toggleSave={toggleSave}
+                          toggleRepost={toggleRepost}
+                          handleCommentClick={handleCommentClick}
+                          handleDeletePost={handleDeletePost}
+                          handleReportClick={handleReportClick}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -1785,106 +1812,20 @@ export default function ProfileMainPage() {
                   {savedPosts.length > 0 ? (
                     <div className="flex flex-col gap-6">
                       {savedPosts.map((post) => (
-                        <div
+                        <PostCard
                           key={post.id}
-                          className="bg-gray-50 rounded-2xl p-6 shadow"
-                        >
-                          <div className="flex items-center gap-3 mb-2">
-                            <Image
-                              src={
-                                normalizeImageUrl(post.author?.avatar) ||
-                                "/noobcat.png"
-                              }
-                              alt={post.author?.displayName || "User"}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover"
-                            />
-                            <div>
-                              <div className="font-bold">
-                                {post.author?.displayName || "Anonymous"}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {new Date(post.createdAt).toLocaleString(
-                                  "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mb-2 mt-2 text-base font-semibold">
-                            {post.content}
-                          </div>
-                          {post.imageUrl && (
-                            <div className="flex gap-3 mb-2">
-                              <Image
-                                src={normalizeImageUrl(post.imageUrl)}
-                                alt="post image"
-                                width={480}
-                                height={40}
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
-                          )}
-                          <div className="flex items-center gap-6 text-gray-500 text-sm mt-6">
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z"
-                                />
-                              </svg>
-                              {post.comments || 0}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3"
-                                />
-                              </svg>
-                              {post.shares || 0}
-                            </span>
-                          </div>
-                        </div>
+                          post={post}
+                          currentUser={currentUser}
+                          isLiked={likedPostsSet.has(post.id)}
+                          isSaved={savedPostsSet.has(post.id)}
+                          isReposted={repostedPostsSet.has(post.id)}
+                          toggleLike={toggleLike}
+                          toggleSave={toggleSave}
+                          toggleRepost={toggleRepost}
+                          handleCommentClick={handleCommentClick}
+                          handleDeletePost={handleDeletePost}
+                          handleReportClick={handleReportClick}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -1917,6 +1858,240 @@ export default function ProfileMainPage() {
       </main>
       {/* Chat Window */}
       <ChatWindow />
+
+      {/* Comment Modal */}
+      {showCommentModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{
+            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCommentModal(false);
+              setCommentText("");
+            }
+          }}
+        >
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl relative max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => {
+                setShowCommentModal(false);
+                setCommentText("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl z-10"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-gray-700 mb-6">Comments</h2>
+
+            {/* Comments List - Scrollable */}
+            <div className="flex-1 overflow-y-auto mb-6 space-y-4">
+              {commentsLoading && (
+                <div className="text-center text-gray-400 py-8">
+                  Loading comments...
+                </div>
+              )}
+              {!commentsLoading &&
+                currentComments.map((comment) => {
+                  const isUserComment = comment.author?.type === "user";
+                  // รองรับ author.avatar จาก API + fallback
+                  const authorAvatar = isUserComment
+                    ? (comment.author?.avatar || comment.author?.profileImg)
+                    : (comment.author?.avatar || comment.author?.avatarUrl);
+                  
+                  const normalizedAvatar = normalizeImageUrl(authorAvatar) ?? (isUserComment ? "/tanjiro.jpg" : "/noobcat.png");
+                  const authorName = comment.author?.name;
+
+                  const canDelete =
+                    currentUser?.isAdmin ||
+                    comment.author?.actorId === currentUser?.actorId ||
+                    comment.author?.actorId === currentUser?.persona?.actorId;
+
+                  return (
+                    <div
+                      key={comment.id}
+                      className="flex gap-3 p-4 bg-gray-50 rounded-xl relative group"
+                    >
+                      <Image
+                        src={normalizedAvatar}
+                        alt={authorName || "User"}
+                        width={40}
+                        height={40}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm">
+                            {authorName || (isUserComment ? "User" : "Anonymous")}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            ·{" "}
+                            {new Date(comment.createdAt).toLocaleString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          {comment.content}
+                        </p>
+                      </div>
+
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete comment"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-4 h-4"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              {!commentsLoading && currentComments.length === 0 && (
+                <div className="text-center text-gray-400 py-8">
+                  No comments yet. Be the first to comment!
+                </div>
+              )}
+            </div>
+
+            {/* Write Comment Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-start gap-3">
+                {activeProfile === 0 ? (
+                  currentUser?.profileImg ? (
+                    <Image
+                      src={
+                        normalizeImageUrl(currentUser.profileImg) ||
+                        "/tanjiro.jpg"
+                      }
+                      alt="avatar"
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+                      aria-hidden="true"
+                    />
+                  )
+                ) : currentUser?.persona?.avatarUrl ? (
+                  <Image
+                    src={
+                      normalizeImageUrl(currentUser.persona.avatarUrl) ||
+                      "/noobcat.png"
+                    }
+                    alt="avatar"
+                    width={40}
+                    height={40}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+                    aria-hidden="true"
+                  />
+                )}
+                <div className="flex-1">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+                    rows={3}
+                  />
+                  <div className="flex justify-end mt-3">
+                    <button
+                      onClick={handleCommentSubmit}
+                      disabled={!commentText.trim() || commentPosting}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-full font-semibold text-sm transition"
+                    >
+                      {commentPosting ? "Posting..." : "Post Comment"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{
+            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowReportModal(false);
+              setReportText("");
+            }
+          }}
+        >
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative">
+            <button
+              onClick={() => {
+                setShowReportModal(false);
+                setReportText("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-gray-700 mb-6">Report Post</h2>
+            <textarea
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="Please describe why you're reporting this post..."
+              className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-200 resize-none mb-4"
+              rows={5}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportText("");
+                }}
+                className="px-6 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold text-sm transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReportSubmit}
+                disabled={!reportText.trim()}
+                className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-full font-semibold text-sm transition"
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Banner Modal */}
       {editingBanner && (
@@ -2287,7 +2462,7 @@ export default function ProfileMainPage() {
                     <button
                       onClick={() => {
                         setIsEditProductModalOpen(false);
-                        setEditingProductId(null);
+                        setEditingProductModalId(null);
                       }}
                       className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
@@ -2436,7 +2611,7 @@ export default function ProfileMainPage() {
                     <button
                       onClick={() => {
                         setIsEditProductModalOpen(false);
-                        setEditingProductId(null);
+                        setEditingProductModalId(null);
                       }}
                       className="flex-1 px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors text-sm"
                     >
