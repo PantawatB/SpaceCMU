@@ -14,6 +14,7 @@ import personaRoutes from "./routes/personaRoutes";
 import postRoutes from "./routes/postRoutes";
 import friendRoutes from "./routes/friendRoutes";
 import adminRoutes from "./routes/adminRoutes";
+import appealRoutes from "./routes/appealRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
@@ -95,6 +96,7 @@ async function bootstrap() {
     app.use("/api/posts", postRoutes);
     app.use("/api/friends", friendRoutes);
     app.use("/api/admin", adminRoutes);
+    app.use("/api/appeals", appealRoutes);
     app.use("/api/posts", commentRoutes); // Comments are sub-routes of posts
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
