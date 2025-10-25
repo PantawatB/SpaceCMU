@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "../../components/Sidebar";
+import BannedWarning from "../../components/BannedWarning";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import ChatWindow from "@/components/ChatWindow";
@@ -421,6 +422,8 @@ export default function ProfileMainPage() {
 
       closeBannerModal();
       alert("Banner updated successfully!");
+      // Reload to refresh posts in feed with new banner
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Failed to update banner");
@@ -507,6 +510,8 @@ export default function ProfileMainPage() {
 
       closeAvatarModal();
       alert("Profile picture updated successfully!");
+      // Reload to refresh posts in feed with new avatar
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Failed to update profile picture");
@@ -559,6 +564,8 @@ export default function ProfileMainPage() {
 
       setEditingName(false);
       alert("Name updated successfully!");
+      // Reload to refresh posts in feed with new name
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Failed to update name");
@@ -605,6 +612,8 @@ export default function ProfileMainPage() {
 
       setEditingBio(false);
       alert("Bio updated successfully!");
+      // Reload to refresh any cached data
+      window.location.reload();
     } catch (err) {
       console.error(err);
       alert("Failed to update bio");
@@ -1245,6 +1254,7 @@ export default function ProfileMainPage() {
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
+      <BannedWarning />
       {/* Sidebar - keep it fixed/sticky so only main scrolls */}
       <div className="h-screen sticky top-0 self-start">
         <Sidebar menuItems={menuItems} />

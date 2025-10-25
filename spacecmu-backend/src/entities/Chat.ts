@@ -49,7 +49,7 @@ export class Chat {
   /**
    * Creator of the chat (for group chats)
    */
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "createdBy" })
   createdBy?: User;
 

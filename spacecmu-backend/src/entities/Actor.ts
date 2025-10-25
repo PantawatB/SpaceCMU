@@ -22,7 +22,7 @@ export class Actor {
   id!: string;
 
   // ลิงก์ไปยัง User (ถ้า Actor นี้คือ User)
-  @OneToOne(() => User, (user) => user.actor)
+  @OneToOne(() => User, (user) => user.actor, { onDelete: "CASCADE" })
   @JoinColumn()
   user?: User;
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, checkBanned } from "../middleware/auth";
 import {
   createCommentOnPost,
   listCommentsForPost,
@@ -13,16 +13,31 @@ const router = Router();
 // GET /api/posts/:postId/comments
 router.get("/:postId/comments", listCommentsForPost);
 
-// สร้างคอมเมนต์
+// สร้างคอมเมนต์ (banned users cannot comment)
 // POST /api/posts/:postId/comments
-router.post("/:postId/comments", authenticateToken, createCommentOnPost);
+router.post(
+  "/:postId/comments",
+  authenticateToken,
+  checkBanned,
+  createCommentOnPost
+);
 
-// แก้ไขคอมเมนต์
+// แก้ไขคอมเมนต์ (banned users cannot edit)
 // PUT /api/posts/:postId/comments/:commentId
-router.put("/:postId/comments/:commentId", authenticateToken, updateComment);
+router.put(
+  "/:postId/comments/:commentId",
+  authenticateToken,
+  checkBanned,
+  updateComment
+);
 
-// ลบคอมเมนต์
+// ลบคอมเมนต์ (banned users cannot delete)
 // DELETE /api/posts/:postId/comments/:commentId
-router.delete("/:postId/comments/:commentId", authenticateToken, deleteComment);
+router.delete(
+  "/:postId/comments/:commentId",
+  authenticateToken,
+  checkBanned,
+  deleteComment
+);
 
 export default router;

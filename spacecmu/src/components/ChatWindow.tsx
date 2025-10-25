@@ -28,12 +28,13 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentActorId, setCurrentActorId] = useState<string | null>(null); // ✅ Track current actor ID
   const [uploadingImage, setUploadingImage] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get current user ID from backend
+  // Get current user ID and actor ID from backend
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -51,7 +52,26 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
           const userData = await response.json();
           const userId = userData.id || userData.data?.id;
           setCurrentUserId(userId);
+
+          // ✅ Get activeProfile from localStorage
+          const activeProfile = localStorage.getItem("activeProfile");
+          const isPersona = activeProfile === "1";
+
+          // ✅ Determine current actorId based on profile
+          const actorId =
+            isPersona && userData.persona?.actorId
+              ? userData.persona.actorId
+              : userData.actorId;
+
+          setCurrentActorId(actorId);
           console.log("✅ Current user ID:", userId);
+          console.log(
+            "✅ Current actor ID:",
+            actorId,
+            "(Profile:",
+            isPersona ? "Persona" : "User",
+            ")"
+          );
         }
       } catch (error) {
         console.error("Error fetching current user:", error);
@@ -510,7 +530,10 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
             {messages.map((msg) => {
-              const isMine = msg.sender.id === currentUserId;
+              // ✅ Use actorId for message ownership if available, fallback to userId
+              const isMine = msg.sender.actorId
+                ? msg.sender.actorId === currentActorId
+                : msg.sender.id === currentUserId;
 
               // Check if message contains image URL
               const lines = msg.content.split("\n");

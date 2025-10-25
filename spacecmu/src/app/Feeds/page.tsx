@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import BannedWarning from "../../components/BannedWarning";
 import Image from "next/image";
 import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 import ChatWindow from "@/components/ChatWindow";
@@ -548,6 +549,11 @@ export default function FeedsMainPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
+        if (res.status === 403 && errorData?.message?.includes("banned")) {
+          throw new Error(
+            "Your account has been banned. You cannot create posts."
+          );
+        }
         throw new Error(errorData?.message || "Post failed");
       }
 
@@ -661,11 +667,39 @@ export default function FeedsMainPage() {
     setOpenDropdownId(null);
   };
 
-  const handleReportSubmit = () => {
-    console.log(`Reporting post ${reportPostId} with feedback: ${reportText}`);
-    setShowReportModal(false);
-    setReportText("");
-    setReportPostId(null);
+  const handleReportSubmit = async () => {
+    if (!reportText.trim() || !reportPostId) {
+      alert("Please provide a reason for reporting");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/posts/${reportPostId}/report`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: reportText }),
+        }
+      );
+
+      if (res.ok) {
+        alert("Report submitted successfully");
+        setShowReportModal(false);
+        setReportText("");
+        setReportPostId(null);
+      } else {
+        const error = await res.json();
+        alert(error.message || "Failed to submit report");
+      }
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      alert("Failed to submit report");
+    }
   };
 
   const handleCommentClick = async (postId: string | number) => {
@@ -854,6 +888,7 @@ export default function FeedsMainPage() {
 
   return (
     <div className="flex h-screen bg-white text-gray-800">
+      <BannedWarning />
       {/* Sidebar (Left) */}
       <Sidebar menuItems={menuItems} />
       {/* Main Content (Center) */}

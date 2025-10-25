@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Sidebar from "../../components/Sidebar";
+import BannedWarning from "../../components/BannedWarning";
 import ChatWindow from "@/components/ChatWindow";
 import { API_BASE_URL, normalizeImageUrl } from "@/utils/apiConfig";
 
@@ -684,6 +685,7 @@ export default function MarketMainPage() {
 
   return (
     <div className="flex h-screen bg-white text-gray-800 overflow-hidden">
+      <BannedWarning />
       {/* Sidebar */}
       <Sidebar menuItems={menuItems} />
       {/* Main Content */}

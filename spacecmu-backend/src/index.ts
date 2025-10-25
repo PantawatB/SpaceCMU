@@ -15,6 +15,7 @@ import commentRoutes from "./routes/commentRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
 import productRoutes from "./routes/productRoutes";
+import appealRoutes from "./routes/appealRoutes";
 
 // Load environment variables from .env
 dotenv.config();
@@ -78,6 +79,7 @@ async function bootstrap() {
     app.use("/api/chats", chatRoutes);
     app.use("/api/uploads", uploadRoutes);
     app.use("/api/products", productRoutes);
+    app.use("/api/appeals", appealRoutes);
 
     const port = parseInt(process.env.PORT || "3000"); // เปลี่ยนเป็น 3000
     // Use 0.0.0.0 for Docker compatibility - allows external connections

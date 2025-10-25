@@ -48,6 +48,15 @@ export async function authenticateToken(
       return res.status(401).json({ message: "Invalid or expired token" });
     }
 
+    // ✅ Debug logging to verify relations are loaded
+    console.log("🔐 Auth: User loaded:", {
+      userId: user.id,
+      hasActor: !!user.actor,
+      actorId: user.actor?.id,
+      hasPersona: !!user.persona,
+      personaActorId: user.persona?.actor?.id,
+    });
+
     req.user = user;
     next();
   } catch (err) {
@@ -77,6 +86,23 @@ export function requireAdmin(
     return res
       .status(403)
       .json({ message: "Forbidden: admin privileges required" });
+  }
+  next();
+}
+
+/**
+ * Authorization middleware that blocks banned users from performing actions.
+ * Should be used after authenticateToken for protected routes.
+ */
+export function checkBanned(
+  req: Request & { user?: User },
+  res: Response,
+  next: NextFunction
+) {
+  if (req.user && req.user.isBanned) {
+    return res.status(403).json({
+      message: "Your account has been banned. You cannot perform this action.",
+    });
   }
   next();
 }

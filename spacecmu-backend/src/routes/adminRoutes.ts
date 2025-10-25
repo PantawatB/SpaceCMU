@@ -5,7 +5,11 @@ import {
   reviewReport,
   banPersona,
   banUser,
+  unbanUser,
   takedownPost,
+  promoteToAdmin,
+  revokeAdmin,
+  deleteUser,
 } from "../controllers/adminController";
 
 const router = Router();
@@ -34,8 +38,24 @@ router.post("/persona/:personaId/ban", banPersona);
 // POST /api/admin/user/:userId/ban
 router.post("/user/:userId/ban", banUser);
 
+// 📌 Unban a user
+// POST /api/admin/user/:userId/unban
+router.post("/user/:userId/unban", unbanUser);
+
 // 📌 Takedown a post
 // POST /api/admin/post/:postId/takedown
 router.post("/post/:postId/takedown", takedownPost);
+
+// 📌 Promote user to admin
+// POST /api/admin/user/:userId/promote
+router.post("/user/:userId/promote", promoteToAdmin);
+
+// 📌 Revoke admin privileges
+// POST /api/admin/user/:userId/revoke
+router.post("/user/:userId/revoke", revokeAdmin);
+
+// 📌 Delete user
+// DELETE /api/admin/user/:userId
+router.delete("/user/:userId", deleteUser);
 
 export default router;

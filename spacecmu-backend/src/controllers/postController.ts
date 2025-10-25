@@ -862,3 +862,48 @@ export async function getPostsByActor(req: Request, res: Response) {
     return res.status(500).json({ message: "Failed to fetch posts" });
   }
 }
+
+/**
+ * 📌 Report a post
+ */
+export async function reportPost(
+  req: Request & { user?: User },
+  res: Response
+) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { postId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+      return res.status(400).json({ message: "Reason is required" });
+    }
+
+    const postRepo = AppDataSource.getRepository(Post);
+    const post = await postRepo.findOne({ where: { id: postId } });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Import Report entity
+    const { Report } = await import("../entities/Report");
+    const reportRepo = AppDataSource.getRepository(Report);
+
+    const report = reportRepo.create({
+      reportingUser: user,
+      post: post,
+      reason: reason.trim(),
+      status: "pending",
+    });
+
+    await reportRepo.save(report);
+
+    return res.json({ message: "Report submitted successfully", report });
+  } catch (err) {
+    console.error("reportPost error:", err);
+    return res.status(500).json({ message: "Failed to submit report" });
+  }
+}

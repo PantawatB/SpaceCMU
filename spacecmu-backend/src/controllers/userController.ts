@@ -124,6 +124,7 @@ export async function getMe(req: Request & { user?: User }, res: Response) {
       name: user.name,
       bio: user.bio,
       isAdmin: user.isAdmin,
+      isBanned: user.isBanned,
       profileImg: user.profileImg,
       bannerImg: user.bannerImg,
       friendCount, // friendCount ของ User หลัก
@@ -209,9 +210,21 @@ export async function searchUsers(
         .json({ message: "Search 'name' query is required" });
     }
 
-    const myActorIds = [currentUser.actor.id];
-    if (currentUser.persona?.actor) {
-      myActorIds.push(currentUser.persona.actor.id);
+    // ✅ Load current user with actor relations
+    const userRepo = AppDataSource.getRepository(User);
+    const userWithActors = await userRepo.findOne({
+      where: { id: currentUser.id },
+      relations: ["actor", "persona", "persona.actor"],
+    });
+
+    if (!userWithActors || !userWithActors.actor) {
+      console.error("Current user has no actor:", currentUser.id);
+      return res.status(500).json({ message: "User actor not found" });
+    }
+
+    const myActorIds = [userWithActors.actor.id];
+    if (userWithActors.persona?.actor) {
+      myActorIds.push(userWithActors.persona.actor.id);
     }
 
     const actorRepo = AppDataSource.getRepository(Actor);
@@ -710,33 +723,73 @@ export async function listAllUsers(
   try {
     const currentUser = req.user!;
 
-    const myActorIds = [currentUser.actor.id];
-    if (currentUser.persona?.actor) {
-      myActorIds.push(currentUser.persona.actor.id);
+    // If admin, return all users with full info
+    if (currentUser.isAdmin) {
+      const userRepo = AppDataSource.getRepository(User);
+      const allUsers = await userRepo
+        .createQueryBuilder("user")
+        .select([
+          "user.id",
+          "user.name",
+          "user.email",
+          "user.studentId",
+          "user.profileImg",
+          "user.isBanned",
+          "user.isAdmin",
+          "user.createdAt",
+        ])
+        .getMany();
+
+      return res.json(allUsers);
     }
+
+    // ✅ Load current user with actor relations
+    const userRepo = AppDataSource.getRepository(User);
+    const userWithActors = await userRepo.findOne({
+      where: { id: currentUser.id },
+      relations: ["actor", "persona", "persona.actor"],
+    });
+
+    if (!userWithActors || !userWithActors.actor) {
+      console.error("Current user has no actor:", currentUser.id);
+      return res.status(500).json({ message: "User actor not found" });
+    }
+
+    // For non-admin users, return actors (existing behavior)
+    const myActorIds = [userWithActors.actor.id];
+    if (userWithActors.persona?.actor) {
+      myActorIds.push(userWithActors.persona.actor.id);
+    }
+
+    console.log("📋 Excluding my actor IDs:", myActorIds);
 
     const actorRepo = AppDataSource.getRepository(Actor);
     const allActors = await actorRepo
       .createQueryBuilder("actor")
       .leftJoinAndSelect("actor.user", "user")
       .leftJoinAndSelect("actor.persona", "persona")
+      .leftJoinAndSelect("persona.user", "personaUser") // ✅ Load persona.user for userId
       .where("actor.id NOT IN (:...myActorIds)", { myActorIds })
       .getMany();
+
+    console.log("📋 Found actors:", allActors.length);
 
     const results = allActors
       .map((actor) => {
         if (actor.user) {
           return {
-            actorId: actor.id,
+            id: actor.user.id, // ✅ User.id for backend compatibility
+            actorId: actor.id, // ✅ Actor.id for chat creation
             name: actor.user.name,
             type: "user",
             profileImg: actor.user.profileImg,
             bio: actor.user.bio,
           };
         }
-        if (actor.persona) {
+        if (actor.persona && actor.persona.user) {
           return {
-            actorId: actor.id,
+            id: actor.persona.user.id, // ✅ User.id for backend compatibility
+            actorId: actor.id, // ✅ Actor.id for chat creation
             name: actor.persona.displayName,
             type: "persona",
             profileImg: actor.persona.avatarUrl,
@@ -746,6 +799,8 @@ export async function listAllUsers(
         return null;
       })
       .filter(Boolean);
+
+    console.log("📋 Returning results:", results.length);
 
     return res.json(results);
   } catch (err) {

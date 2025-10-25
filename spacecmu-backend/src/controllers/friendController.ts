@@ -175,9 +175,11 @@ export async function listFriendRequests(
         "fromActor",
         "fromActor.user",
         "fromActor.persona",
+        "fromActor.persona.user", // ✅ Load persona.user for userId
         "toActor",
         "toActor.user",
         "toActor.persona",
+        "toActor.persona.user", // ✅ Load persona.user for userId
       ],
       order: { createdAt: "DESC" },
     });
@@ -192,12 +194,14 @@ export async function listFriendRequests(
         id: req.id,
         from: req.fromActor.user
           ? {
+              userId: req.fromActor.user.id, // ✅ Add userId for chat creation
               name: req.fromActor.user.name,
               type: "user",
               actorId: req.fromActor.id,
               profileImg: req.fromActor.user.profileImg,
             }
           : {
+              userId: req.fromActor.persona!.user?.id, // ✅ Add userId for chat creation
               name: req.fromActor.persona!.displayName,
               type: "persona",
               actorId: req.fromActor.id,
@@ -205,12 +209,14 @@ export async function listFriendRequests(
             },
         to: req.toActor.user
           ? {
+              userId: req.toActor.user.id, // ✅ Add userId for chat creation
               name: req.toActor.user.name,
               type: "user",
               actorId: req.toActor.id,
               profileImg: req.toActor.user.profileImg,
             }
           : {
+              userId: req.toActor.persona!.user?.id, // ✅ Add userId for chat creation
               name: req.toActor.persona!.displayName,
               type: "persona",
               actorId: req.toActor.id,
@@ -369,6 +375,7 @@ export async function listFriends(req: Request, res: Response) {
         "friends",
         "friends.user",
         "friends.persona",
+        "friends.persona.user", // ✅ Load persona.user for userId
         "friends.user.actor",
         "friends.persona.actor",
       ],
@@ -383,6 +390,7 @@ export async function listFriends(req: Request, res: Response) {
         if (friend.user) {
           return {
             actorId: friend.id,
+            userId: friend.user.id, // ✅ Add userId for chat creation
             name: friend.user.name,
             type: "user",
             profileImg: friend.user.profileImg,
@@ -393,6 +401,7 @@ export async function listFriends(req: Request, res: Response) {
         if (friend.persona) {
           return {
             actorId: friend.id,
+            userId: friend.persona.user?.id, // ✅ Add userId for chat creation (persona's owner)
             name: friend.persona.displayName,
             type: "persona",
             profileImg: friend.persona.avatarUrl,
