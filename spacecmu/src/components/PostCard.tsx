@@ -258,7 +258,6 @@ export default function PostCard({
           </button>
         </div>
       )}
-
       {/* Dropdown Menu */}
       {showActions && (deleteHandler || reportHandler) && (
         <div className="absolute top-6 right-6 dropdown-container">

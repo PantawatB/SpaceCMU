@@ -628,7 +628,6 @@ export default function FeedsMainPage() {
       setReportText("");
       return;
     }
-
     const token = localStorage.getItem("token");
 
     try {

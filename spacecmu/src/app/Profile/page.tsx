@@ -255,7 +255,6 @@ export default function ProfileMainPage() {
   const [activeTab, setActiveTab] = useState<
     "posts" | "market" | "reposts" | "likes" | "saved"
   >("posts");
-
   // Product edit modal states
   const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
   const [editingProductId, setEditingProductModalId] = useState<string | null>(null);
