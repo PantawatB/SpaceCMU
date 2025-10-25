@@ -253,7 +253,8 @@ export default function MarketMainPage() {
 
       const payload = new FormData();
       payload.append("name", formData.name);
-      payload.append("description", formData.description);
+      // ensure description is always sent as a string (handles numeric descriptions)
+      payload.append("description", String(formData.description || ""));
       payload.append("price", String(formData.price || "0"));
       if (selectedImageFile) payload.append("image", selectedImageFile);
 
@@ -555,7 +556,7 @@ export default function MarketMainPage() {
           price: priceStr,
           title: truncateText(p.name || "Untitled Product", MAX_TITLE_LENGTH),
           jobTitle: truncateText(
-            p.description || "No description provided",
+            String(p.description ?? "No description provided"),
             MAX_DESC_LENGTH
           ),
           image: p.imageUrl || DEFAULT_IMAGE,
@@ -760,7 +761,8 @@ export default function MarketMainPage() {
                       // Set form data for editing
                       setFormData({
                         name: product.name || "",
-                        description: product.description || "",
+                        // always coerce to string so subsequent FormData.append won't receive a number
+                        description: product.description != null ? String(product.description) : "",
                         price: product.price ? String(product.price) : "",
                         image: product.imageUrl || "/noobcat.png",
                       });
