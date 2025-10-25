@@ -716,6 +716,38 @@ export default function ProfileMainPage() {
     }
   };
 
+  // Handle delete product
+  const handleDeleteProduct = async (productId: string) => {
+    const confirmed = confirm("Are you sure you want to delete this product?");
+    if (!confirmed) return;
+
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete product");
+      }
+
+      // Remove from local state
+      setMyProducts((prev) => prev.filter((p) => p.id !== productId));
+
+      alert("Product deleted successfully");
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      alert("Failed to delete product");
+    }
+  };
+
   // --- Post Interaction Handlers ---
   // States for tracking post interactions
   const [likedPostsSet, setLikedPostsSet] = useState<Set<string>>(new Set());
@@ -1614,8 +1646,29 @@ export default function ProfileMainPage() {
                       {myProducts.map((product) => (
                         <article
                           key={product.id}
-                          className="bg-white rounded-xl shadow-md w-full max-w-[300px] mx-auto mb-8 border border-gray-100 flex flex-col h-[380px] overflow-hidden"
+                          className="bg-white rounded-xl shadow-md w-full max-w-[300px] mx-auto mb-8 border border-gray-100 flex flex-col h-[380px] overflow-hidden relative"
                         >
+                          {/* Delete Button - Top Right */}
+                          <button
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="absolute top-2 right-2 z-10 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                            title="Delete product"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
                           {/* Product Image */}
                           <div className="w-full h-48">
                             <Image
