@@ -240,7 +240,13 @@ export default function FeedsMainPage() {
           // กรองโพสต์ตาม activeProfile
           // activeProfile = 0 (Public): แสดงเฉพาะโพสต์จาก User
           // activeProfile = 1 (Anonymous): แสดงเฉพาะโพสต์จาก Persona
+          // โพสต์เก่าที่ไม่มี author.type จะแสดงในทุกโหมด (backward compatibility)
           const filteredPosts = data.filter((post) => {
+            // ถ้าไม่มี author.type ให้แสดงเลย (โพสต์เก่า)
+            if (!post.author?.type) {
+              return true;
+            }
+
             if (activeProfile === 0) {
               // Public mode: แสดงเฉพาะโพสต์ที่มี author.type === "user"
               return post.author?.type === "user";
