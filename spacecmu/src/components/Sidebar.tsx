@@ -268,8 +268,9 @@ export default function Sidebar({ menuItems }: SidebarProps) {
                       {profile.name}
                     </div>
                   </div>
+                  {/* Keep username to same width as name and truncate to avoid layout break */}
                   <div
-                    className="text-xs text-gray-500 max-w-[10rem] truncate text-center"
+                    className="text-xs text-gray-500 max-w-[5rem] truncate text-center whitespace-nowrap"
                     title={profile.username}
                   >
                     {profile.username}
