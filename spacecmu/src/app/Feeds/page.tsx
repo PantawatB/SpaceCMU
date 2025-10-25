@@ -212,7 +212,7 @@ export default function FeedsMainPage() {
           }
 
           url = `${API_BASE_URL}/api/posts/feed/friends/${actorId}`;
-          console.log("🔗 Fetching Friends feed from:", url);
+          
         } else {
           // Global tab - ใช้ API endpoint /api/posts/feed/public
           url = `${API_BASE_URL}/api/posts/feed/public`;
@@ -234,20 +234,8 @@ export default function FeedsMainPage() {
         // ตรวจสอบว่าข้อมูลเป็น array
         if (Array.isArray(data)) {
           // แสดงโพสต์ตามโหมด
-          const mode = feedMode === "Global" ? "Global Feed" : "Friends Feed";
-          console.log(`📝 ${mode}: Posts fetched from API:`, data.length, "posts");
-          
-          // Debug: แสดง author info ของโพสต์แรก
-          if (data.length > 0) {
-            console.log("🔍 First post author info:", {
-              type: data[0].author?.type,
-              name: data[0].author?.name,
-              displayName: data[0].author?.displayName,
-              profileImg: data[0].author?.profileImg,
-              avatarUrl: data[0].author?.avatarUrl,
-            });
-          }
-          setPosts(data);
+          // debug logs removed
+           setPosts(data);
         } else {
           console.error("Posts data is not an array:", data);
           setPosts([]);
@@ -513,13 +501,6 @@ export default function FeedsMainPage() {
         isAnonymous: activeProfile === 1, // ส่ง isAnonymous = true เมื่ออยู่ในโหมด Anonymous
       };
 
-      console.log("📤 Creating post with data:", {
-        visibility: postData.visibility,
-        isAnonymous: postData.isAnonymous,
-        activeProfile: activeProfile,
-        postMode: postMode,
-      });
-
       const res = await fetch(`${API_BASE_URL}/api/posts`, {
         method: "POST",
         headers,
@@ -640,11 +621,34 @@ export default function FeedsMainPage() {
     setShowReportModal(true);
   };
 
-  const handleReportSubmit = () => {
-    console.log(`Reporting post ${reportPostId} with feedback: ${reportText}`);
-    setShowReportModal(false);
-    setReportText("");
-    setReportPostId(null);
+  const handleReportSubmit = async () => {
+    // If no post selected, just close the modal
+    if (reportPostId === null) {
+      setShowReportModal(false);
+      setReportText("");
+      return;
+    }
+    const token = localStorage.getItem("token");
+
+    try {
+      // Try to submit report to backend if user is logged in
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/posts/${reportPostId}/report`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ feedback: reportText }),
+        });
+      }
+    } catch (err) {
+      console.error("Error submitting report:", err);
+    } finally {
+      setShowReportModal(false);
+      setReportText("");
+      setReportPostId(null);
+    }
   };
 
   const handleCommentClick = async (postId: string | number) => {
@@ -670,20 +674,12 @@ export default function FeedsMainPage() {
       const response = await res.json();
       const data = response.data || [];
       if (Array.isArray(data)) {
-        console.log("💬 Comments fetched:", data.length, "comments");
-        if (data.length > 0) {
-          console.log("🔍 First comment author info:", {
-            type: data[0].author?.type,
-            name: data[0].author?.name,
-            profileImg: data[0].author?.profileImg,
-            avatarUrl: data[0].author?.avatarUrl,
-          });
-        }
-        setCurrentComments(data as ApiComment[]);
-      } else {
-        console.error("API Comments data is not an array:", data);
-        setCurrentComments([]);
-      }
+        // Debug logs removed
+         setCurrentComments(data as ApiComment[]);
+       } else {
+         console.error("API Comments data is not an array:", data);
+         setCurrentComments([]);
+       }
     } catch (err) {
       console.error("API Fetch Error:", err);
       setCurrentComments([]);
