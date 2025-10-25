@@ -343,8 +343,6 @@ export default function ProfileMainPage() {
         body: formData,
       });
 
-      console.log("Upload response status:", uploadRes?.status);
-
       if (!uploadRes || !uploadRes.ok) {
         const errorText = await uploadRes?.text();
         console.error("Upload error:", errorText);
@@ -368,13 +366,34 @@ export default function ProfileMainPage() {
 
       if (!res.ok) throw new Error("Failed to update banner");
 
-      // Refresh user data
-      const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (userRes.ok) {
-        const data = await userRes.json();
-        setCurrentUser(data);
+      // Refresh user data based on active profile
+      if (activeProfile === 0) {
+        // Refresh public profile only
+        const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setCurrentUser((prev) => ({
+            ...prev,
+            ...userData,
+            // Keep persona data unchanged
+            persona: prev?.persona,
+          }));
+        }
+      } else {
+        // Refresh anonymous profile only
+        const personaRes = await fetch(`${API_BASE_URL}/api/personas/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (personaRes.ok) {
+          const personaData = await personaRes.json();
+          setCurrentUser((prev) => ({
+            ...prev,
+            // Update only persona data, keep user data unchanged
+            persona: personaData,
+          }));
+        }
       }
 
       closeBannerModal();
@@ -433,13 +452,34 @@ export default function ProfileMainPage() {
 
       if (!res.ok) throw new Error("Failed to update profile picture");
 
-      // Refresh user data
-      const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (userRes.ok) {
-        const data = await userRes.json();
-        setCurrentUser(data);
+      // Refresh user data based on active profile
+      if (activeProfile === 0) {
+        // Refresh public profile only
+        const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setCurrentUser((prev) => ({
+            ...prev,
+            ...userData,
+            // Keep persona data unchanged
+            persona: prev?.persona,
+          }));
+        }
+      } else {
+        // Refresh anonymous profile only
+        const personaRes = await fetch(`${API_BASE_URL}/api/personas/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (personaRes.ok) {
+          const personaData = await personaRes.json();
+          setCurrentUser((prev) => ({
+            ...prev,
+            // Update only persona data, keep user data unchanged
+            persona: personaData,
+          }));
+        }
       }
 
       closeAvatarModal();
@@ -680,10 +720,6 @@ export default function ProfileMainPage() {
         });
         if (!res.ok) throw new Error("Failed to fetch current user");
         const data = await res.json();
-        console.log("👤 Current User Data:", data);
-        console.log("🆔 User ID:", data.id);
-        console.log("🎭 Actor ID:", data.actorId);
-        console.log("👻 Persona:", data.persona);
         setCurrentUser(data);
       } catch (err) {
         console.error(err);
@@ -729,31 +765,19 @@ export default function ProfileMainPage() {
       activeProfile === 0 ? currentUser.actorId : currentUser.persona?.actorId;
 
     if (!actorId) {
-      console.log(
-        "⚠️ No actorId found. activeProfile:",
-        activeProfile,
-        "currentUser:",
-        currentUser
-      );
       return;
     }
-
-    console.log("🔍 Fetching posts for actorId:", actorId);
 
     const fetchMyPosts = async () => {
       try {
         const url = `${API_BASE_URL}/api/posts/actor/${actorId}`;
-        console.log("📡 Request URL:", url);
 
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        console.log("📥 Response status:", res.status);
-
         if (res.ok) {
           const json = await res.json();
-          console.log("✅ Posts received:", json);
           setMyPosts(json.data || json);
         } else {
           console.error("❌ Response not OK:", await res.text());
@@ -885,16 +909,13 @@ export default function ProfileMainPage() {
     name: currentUser?.persona?.displayName ?? "Noobcat",
     // keep avatar null when persona has no avatarUrl so UI can show gray placeholder
     avatar: currentUser?.persona?.avatarUrl ?? null,
+    // Use only persona's banner (not shared with public)
+    banner: currentUser?.persona?.bannerImg ?? null,
     bio: currentUser?.persona?.bio ?? null,
     friendCount: currentUser?.persona?.friendCount ?? 0,
   };
 
   const displayed = activeProfile === 0 ? publicProfile : anonymousProfile;
-
-  console.log("🎯 Active Profile:", activeProfile);
-  console.log("📋 Public Profile:", publicProfile);
-  console.log("👻 Anonymous Profile:", anonymousProfile);
-  console.log("✨ Displayed Profile:", displayed);
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800">
@@ -1160,16 +1181,19 @@ export default function ProfileMainPage() {
               >
                 Your Posts
               </button>
-              <button
-                onClick={() => setActiveTab("market")}
-                className={`px-6 py-3 font-medium transition-colors ${
-                  activeTab === "market"
-                    ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                Your Market Items
-              </button>
+              {/* Hide Market tab in Anonymous mode */}
+              {activeProfile === 0 && (
+                <button
+                  onClick={() => setActiveTab("market")}
+                  className={`px-6 py-3 font-medium transition-colors ${
+                    activeTab === "market"
+                      ? "text-gray-900 bg-gray-100 rounded-t-xl border-b-2 border-black"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Your Market Items
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab("reposts")}
                 className={`px-6 py-3 font-medium transition-colors ${

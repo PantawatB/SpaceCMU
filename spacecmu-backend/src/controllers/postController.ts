@@ -36,13 +36,6 @@ export async function createPost(
           message: "You must have a persona to post anonymously",
         });
       }
-      const friendCount = user.actor?.friends?.length || 0;
-      const MIN_FRIENDS_TO_POST_ANON = 10;
-      if (friendCount < MIN_FRIENDS_TO_POST_ANON) {
-        return res.status(403).json({
-          message: `You need at least ${MIN_FRIENDS_TO_POST_ANON} friends to post anonymously`,
-        });
-      }
       authorActor = user.persona.actor;
     } else {
       if (!user.actor)
@@ -185,10 +178,12 @@ export async function listPosts(req: Request, res: Response) {
     const items = posts.map((post) => {
       const author = post.actor.persona
         ? {
+            type: "persona" as const,
             name: post.actor.persona.displayName,
             avatarUrl: post.actor.persona.avatarUrl,
           }
         : {
+            type: "user" as const,
             name: post.actor.user!.name,
             profileImg: post.actor.user!.profileImg,
           };
@@ -247,10 +242,12 @@ export async function getPublicFeed(req: Request, res: Response) {
     const items = posts.map((post) => {
       const author = post.actor.persona
         ? {
+            type: "persona" as const,
             name: post.actor.persona.displayName,
             avatarUrl: post.actor.persona.avatarUrl,
           }
         : {
+            type: "user" as const,
             name: post.actor.user!.name,
             profileImg: post.actor.user!.profileImg,
           };
@@ -331,10 +328,12 @@ export async function getFriendFeed(
     const items = posts.map((post) => {
       const author = post.actor.persona
         ? {
+            type: "persona" as const,
             name: post.actor.persona.displayName,
             avatarUrl: post.actor.persona.avatarUrl,
           }
         : {
+            type: "user" as const,
             name: post.actor.user!.name,
             profileImg: post.actor.user!.profileImg,
           };

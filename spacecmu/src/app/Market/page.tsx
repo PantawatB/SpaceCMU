@@ -118,12 +118,41 @@ export default function MarketMainPage() {
   );
   const [chatOpen, setChatOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Active profile mode: 0 = public, 1 = anonymous
+  const [activeProfile, setActiveProfile] = useState<number>(0);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
     image: "/noobcat.png", // default preview image
   });
+
+  // Sync activeProfile from localStorage
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("activeProfile");
+      if (v) {
+        const parsed = parseInt(v, 10);
+        if (!Number.isNaN(parsed)) setActiveProfile(parsed);
+      }
+    } catch {
+      // ignore
+    }
+
+    // Listen for activeProfile changes
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === "number") setActiveProfile(detail);
+    };
+    window.addEventListener("activeProfileChanged", handler as EventListener);
+    return () =>
+      window.removeEventListener(
+        "activeProfileChanged",
+        handler as EventListener
+      );
+  }, []);
 
   // image file handling for upload
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -658,37 +687,40 @@ export default function MarketMainPage() {
         {/* Header with Markets title and Add Product button */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Markets</h1>
-          <button
-            onClick={() => {
-              setIsEditMode(false);
-              setEditingProductId(null);
-              setFormData({
-                name: "",
-                description: "",
-                price: "",
-                image: "/noobcat.png",
-              });
-              setSelectedImageFile(null);
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-black text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-5 h-5"
+          {/* Only show Add Product button in public mode */}
+          {activeProfile === 0 && (
+            <button
+              onClick={() => {
+                setIsEditMode(false);
+                setEditingProductId(null);
+                setFormData({
+                  name: "",
+                  description: "",
+                  price: "",
+                  image: "/noobcat.png",
+                });
+                setSelectedImageFile(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-black text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4.5v15m7.5-7.5h-15"
-              />
-            </svg>
-            Add Product
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+              Add Product
+            </button>
+          )}
         </div>
         {/* Market Cards Grid (scrollable area) */}
         <div className="flex-1 overflow-auto pt-2">
