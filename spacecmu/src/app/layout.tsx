@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+"use client";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalChat from "@/components/GlobalChat";
+import { usePathname } from "next/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +14,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "SpaceCMU",
-};
+// Pages where GlobalChat should NOT be displayed
+const NO_CHAT_PAGES = ['/', '/Login', '/Register'];
+
+function LayoutContent({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const showChat = !NO_CHAT_PAGES.includes(pathname);
+
+  return (
+    <>
+      {children}
+      {/* Global chat rendered on pages except Home, Login, and Register */}
+      {showChat && <GlobalChat />}
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -27,9 +40,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        {/* Global chat rendered on every page (bottom-right) */}
-        <GlobalChat />
+        <LayoutContent>{children}</LayoutContent>
       </body>
     </html>
   );

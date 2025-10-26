@@ -28,9 +28,9 @@ export default function HomePage() {
       </div>
       <p className="mb-6 text-gray-500">Social Media For CMU</p>
       <div className="flex gap-4 items-center mb-4"> 
-        <Link
-          href="/Feeds"
-          className="px-6 py-2 rounded-lg bg-purple-500 text-white font-semibold hover:bg-purple-600 transition flex items-center gap-2"
+        <button
+          disabled
+          className="px-6 py-2 rounded-lg bg-gray-300 text-gray-500 font-semibold cursor-not-allowed opacity-60 flex items-center gap-2"
         >
           <Image
             src="/cmu.png"
@@ -40,18 +40,11 @@ export default function HomePage() {
             className="inline-block"
           />
           CONTINUE WITH CMU ACCOUNT
-        </Link>
+        </button>
         <Link
           href="/Login"
-          className="px-6 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition flex items-center gap-2"
+          className="px-6 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition"
         >
-          <Image
-            src="/cmulogo.png"
-            alt="Login Icon"
-            width={28}
-            height={28}
-            className="inline-block"
-          />
           LOGIN
         </Link>
       </div>
