@@ -1,4 +1,6 @@
-"use client";
+"use client"; 
+
+import { useState, useEffect } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalChat from "@/components/GlobalChat";
@@ -35,12 +37,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      setIsLoggedIn(true);
+    } else {
+      setIsLoggedIn(false);
+    }
+
+    const handleLogout = () => setIsLoggedIn(false);
+    window.addEventListener('logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('logout', handleLogout); 
+    };
+
+  }, []); 
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <LayoutContent>{children}</LayoutContent>
+        <LayoutContent>{children}
+        {isLoggedIn && <GlobalChat />}</LayoutContent>
       </body>
     </html>
   );

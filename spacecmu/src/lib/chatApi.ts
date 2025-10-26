@@ -43,22 +43,20 @@ function authHeader(): Record<string, string> {
 /**
  * Fetch all chats for current user
  */
-export async function getMyChats(): Promise<Chat[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/chats`, {
-      headers: authHeader(),
-    });
+export async function getMyChats(actorId: string): Promise<Chat[]> {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("No token");
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  const response = await fetch(
+    `${API_BASE_URL}/api/chats/actor/${actorId}`, // <-- เรียก Endpoint ใหม่
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
-
-    const data = await response.json();
-    return data || [];
-  } catch (error) {
-    console.error("Failed to fetch chats:", error);
-    return [];
-  }
+  );
+  if (!response.ok) throw new Error("Failed to fetch chats");
+  return response.json();
 }
 
 /**

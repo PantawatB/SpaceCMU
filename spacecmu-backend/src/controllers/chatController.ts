@@ -16,12 +16,26 @@ export async function getMyChats(
 ) {
   try {
     const user = req.user!;
+    const { actorId } = req.params;
+
+    if (!actorId) {
+      return res.status(400).json({ message: "Actor ID is required" });
+    }
+
+    const isOwner =
+      user.actor?.id === actorId || user.persona?.actor?.id === actorId;
+
+    if (!isOwner) {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to view these chats" });
+    }
 
     const chatParticipantRepo = AppDataSource.getRepository(ChatParticipant);
 
     // Get all chats where user is a participant
     const participations = await chatParticipantRepo.find({
-      where: { user: { id: user.id } },
+      where: { actor: { id: actorId } },
       relations: [
         "chat",
         "chat.lastMessage",
