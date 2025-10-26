@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Disable image optimization to load images directly from backend
+    unoptimized: true,
     remotePatterns: [
       // allow example.com used in test payloads
       { protocol: "http", hostname: "example.com", port: "", pathname: "/**" },
@@ -15,6 +17,13 @@ const nextConfig: NextConfig = {
       {
         protocol: "http",
         hostname: "127.0.0.1",
+        port: "3000",
+        pathname: "/**",
+      },
+      // allow backend service name (Docker)
+      {
+        protocol: "http",
+        hostname: "backend",
         port: "3000",
         pathname: "/**",
       },

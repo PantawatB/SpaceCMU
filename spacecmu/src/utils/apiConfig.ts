@@ -1,9 +1,9 @@
 // Dynamic API base URL that works on any machine
+// Always use dynamic URL for client-side, API_URL for server-side
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (typeof window !== "undefined"
+  typeof window !== "undefined"
     ? `${window.location.protocol}//${window.location.hostname}:3000`
-    : "http://localhost:3000");
+    : process.env.API_URL || "http://localhost:3000";
 
 /**
  * Convert old localhost URLs to current API base URL
