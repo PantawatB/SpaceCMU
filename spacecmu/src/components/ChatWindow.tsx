@@ -655,7 +655,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                             );
                           } else if (trimmedLine) {
                             return (
-                              <p key={idx} className="text-sm">
+                              <p key={idx} className="text-sm w-full break-all">
                                 {trimmedLine}
                               </p>
                             );
@@ -664,7 +664,7 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-sm w-full break-all">{msg.content}</p>
                     )}
                     <span
                       className={`text-xs mt-1 block ${
