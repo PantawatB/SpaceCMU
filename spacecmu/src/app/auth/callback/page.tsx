@@ -1,9 +1,9 @@
 "use client"; 
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams(); 
 
@@ -25,11 +25,23 @@ export default function AuthCallbackPage() {
       console.error("No token received in callback URL.");
       router.push('/Login?error=callback-token-missing');
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
       <p>Processing authentication, please wait...</p>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

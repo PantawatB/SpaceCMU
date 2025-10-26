@@ -22,6 +22,19 @@ services:
     volumes:
       - uploads_data:/app/public/uploads
 
+  frontend:
+    build: ../spacecmu
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      # Don't set NEXT_PUBLIC_API_BASE_URL - let browser use dynamic hostname:3000
+      # Server-side (SSR) API calls use backend service name
+      - API_URL=http://backend:3000
+    depends_on:
+      - backend
+    restart: on-failure
+
   db:
     image: postgres:15
     environment:
