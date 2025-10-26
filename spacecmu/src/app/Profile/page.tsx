@@ -372,34 +372,15 @@ export default function ProfileMainPage() {
 
       if (!res.ok) throw new Error("Failed to update banner");
 
-      // Refresh user data based on active profile
-      if (activeProfile === 0) {
-        // Refresh public profile only
-        const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setCurrentUser((prev) => ({
-            ...prev,
-            ...userData,
-            // Keep persona data unchanged
-            persona: prev?.persona,
-          }));
-        }
+      const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (userRes.ok) {
+        const freshUserData = await userRes.json();
+        setCurrentUser(freshUserData);
       } else {
-        // Refresh anonymous profile only
-        const personaRes = await fetch(`${API_BASE_URL}/api/personas/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (personaRes.ok) {
-          const personaData = await personaRes.json();
-          setCurrentUser((prev) => ({
-            ...prev,
-            // Update only persona data, keep user data unchanged
-            persona: personaData,
-          }));
-        }
+        console.error("Failed to refetch user data after update.");
       }
 
       closeBannerModal();
@@ -457,34 +438,15 @@ export default function ProfileMainPage() {
 
       if (!res.ok) throw new Error("Failed to update profile picture");
 
-      // Refresh user data based on active profile
-      if (activeProfile === 0) {
-        // Refresh public profile only
-        const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setCurrentUser((prev) => ({
-            ...prev,
-            ...userData,
-            // Keep persona data unchanged
-            persona: prev?.persona,
-          }));
-        }
+      const userRes = await fetch(`${API_BASE_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (userRes.ok) {
+        const freshUserData = await userRes.json();
+        setCurrentUser(freshUserData);
       } else {
-        // Refresh anonymous profile only
-        const personaRes = await fetch(`${API_BASE_URL}/api/personas/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (personaRes.ok) {
-          const personaData = await personaRes.json();
-          setCurrentUser((prev) => ({
-            ...prev,
-            // Update only persona data, keep user data unchanged
-            persona: personaData,
-          }));
-        }
+        console.error("Failed to refetch user data after update.");
       }
 
       closeAvatarModal();
@@ -1352,13 +1314,12 @@ export default function ProfileMainPage() {
               onMouseLeave={() => setHoverBanner(false)}
               onClick={() => setEditingBanner(true)}
             >
-              {publicProfile.banner ? (
-                // show provided banner image
-                publicProfile.banner.startsWith("http") ? (
+              {displayed.banner ? ( 
+                displayed.banner.startsWith("http") ? ( 
                   <div className="h-40 w-full relative">
                     <Image
                       loader={({ src }) => src}
-                      src={normalizeImageUrl(publicProfile.banner)}
+                      src={normalizeImageUrl(displayed.banner)} 
                       alt="banner"
                       fill
                       className="object-cover"
@@ -1368,7 +1329,7 @@ export default function ProfileMainPage() {
                 ) : (
                   <div className="h-40 w-full relative">
                     <Image
-                      src={normalizeImageUrl(publicProfile.banner)}
+                      src={normalizeImageUrl(displayed.banner)} 
                       alt="banner"
                       fill
                       className="object-cover"
@@ -2186,20 +2147,20 @@ export default function ProfileMainPage() {
               <div className="flex-1">
                 <p className="text-sm text-gray-500 mb-2">Current</p>
                 <div className="w-full h-32 rounded-lg overflow-hidden border border-gray-200">
-                  {publicProfile.banner ? (
-                    publicProfile.banner.startsWith("http") ? (
+                  {displayed.banner ? ( 
+                    displayed.banner.startsWith("http") ? ( 
                       <Image
                         loader={({ src }) => src}
-                        src={publicProfile.banner}
+                        src={displayed.banner} 
                         alt="current banner"
                         width={300}
                         height={128}
                         unoptimized
                         className="w-full h-full object-cover"
                       />
-                                       ) : (
+                    ) : (
                       <Image
-                        src={publicProfile.banner}
+                        src={displayed.banner} 
                         alt="current banner"
                         width={300}
                         height={128}
@@ -2208,7 +2169,7 @@ export default function ProfileMainPage() {
                     )
                   ) : (
                     <div className="w-full h-full bg-gradient-to-r from-pink-200 via-yellow-200 to-green-200"></div>
-                                   )}
+                  )}
                 </div>
               </div>
               {/* New banner preview */}
