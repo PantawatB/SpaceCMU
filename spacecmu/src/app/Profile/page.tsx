@@ -1930,12 +1930,12 @@ export default function ProfileMainPage() {
               {!commentsLoading &&
                 currentComments.map((comment) => {
                   const isUserComment = comment.author?.type === "user";
-                  // รองรับ author.avatar จาก API + fallback
-                  const authorAvatar = isUserComment
+                  // รองรับ author.avatar จาก API
+                  const authorAvatarRaw = isUserComment
                     ? (comment.author?.avatar || comment.author?.profileImg)
                     : (comment.author?.avatar || comment.author?.avatarUrl);
                   
-                  const normalizedAvatar = normalizeImageUrl(authorAvatar) ?? (isUserComment ? "/tanjiro.jpg" : "/noobcat.png");
+                  const authorAvatar = authorAvatarRaw ? normalizeImageUrl(authorAvatarRaw) : null;
                   const authorName = comment.author?.name;
 
                   const canDelete =
@@ -1948,13 +1948,20 @@ export default function ProfileMainPage() {
                       key={comment.id}
                       className="flex gap-3 p-4 bg-gray-50 rounded-xl relative group"
                     >
-                      <Image
-                        src={normalizedAvatar}
-                        alt={authorName || "User"}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                      />
+                      {authorAvatar ? (
+                        <Image
+                          src={authorAvatar}
+                          alt={authorName || "User"}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-sm">
@@ -2016,10 +2023,7 @@ export default function ProfileMainPage() {
                 {activeProfile === 0 ? (
                   currentUser?.profileImg ? (
                     <Image
-                      src={
-                        normalizeImageUrl(currentUser.profileImg) ||
-                        "/tanjiro.jpg"
-                      }
+                      src={normalizeImageUrl(currentUser.profileImg)!}
                       alt="avatar"
                       width={40}
                       height={40}
@@ -2033,10 +2037,7 @@ export default function ProfileMainPage() {
                   )
                 ) : currentUser?.persona?.avatarUrl ? (
                   <Image
-                    src={
-                      normalizeImageUrl(currentUser.persona.avatarUrl) ||
-                      "/noobcat.png"
-                    }
+                    src={normalizeImageUrl(currentUser.persona.avatarUrl)!}
                     alt="avatar"
                     width={40}
                     height={40}
