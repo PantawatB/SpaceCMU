@@ -47,5 +47,6 @@ git clone https://github.com/PantawatB/SpaceCMU
 #### 3️⃣ spacecmu-backend (backend) Port:3000
 ```bash
 docker compose up -d
+#รันที่ /spacecmu-backend
 ```
 
