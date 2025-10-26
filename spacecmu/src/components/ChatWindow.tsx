@@ -35,7 +35,6 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get current user ID and actor ID from backend
-  useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
         const token =
@@ -63,23 +62,47 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
               ? userData.persona.actorId
               : userData.actorId;
 
-          setCurrentActorId(actorId);
-          console.log("✅ Current user ID:", userId);
-          console.log(
-            "✅ Current actor ID:",
-            actorId,
-            "(Profile:",
-            isPersona ? "Persona" : "User",
-            ")"
-          );
+          setCurrentActorId((prevActorId) => {
+            if (prevActorId !== actorId) {
+              console.log(
+                "Actor ID เปลี่ยน! กำลังรีเซ็ตสถานะแชท..."
+              );
+              setIsChatOpen(false);
+              setSelectedChat(null);
+              setMessages([]);
+
+              console.log(
+                "✅ Actor ID Updated:",
+                actorId,
+                "(Profile:",
+                isPersona ? "Persona" : "User",
+                ")"
+              );
+              return actorId;
+            }
+            return prevActorId;
+          });
+
         }
       } catch (error) {
         console.error("Error fetching current user:", error);
       }
     };
 
-    fetchCurrentUser();
-  }, []);
+    useEffect(() => {
+      fetchCurrentUser();
+
+      const handleProfileChange = () => {
+        console.log("Profile changed event detected! Refetching actor ID and resetting chat...");
+        fetchCurrentUser();
+      };
+
+      window.addEventListener("activeProfileChanged", handleProfileChange);
+
+      return () => {
+        window.removeEventListener("activeProfileChanged", handleProfileChange);
+      };
+    }, []);
 
   // Handle chatId prop changes
   useEffect(() => {
@@ -119,10 +142,13 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
 
   // Fetch chats when component mounts or chat window opens
   useEffect(() => {
-    if (isChatOpen && chats.length === 0) {
+    if (isChatOpen && currentActorId) {
+      console.log(`Actor ID changed to ${currentActorId}, fetching chats...`);
       loadChats();
+    } else {
+      setChats([]); 
     }
-  }, [isChatOpen, chats.length]);
+  }, [isChatOpen, currentActorId]);
 
   // Load messages and start polling when chat is selected
   useEffect(() => {
@@ -161,12 +187,19 @@ export default function ChatWindow({ chatId, onClose }: ChatWindowProps = {}) {
   }, []);
 
   const loadChats = async () => {
+    if (!currentActorId) {
+      console.log("No actor ID yet, clearing chats.");
+      setChats([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const fetchedChats = await getMyChats();
+      const fetchedChats = await getMyChats(currentActorId);
       setChats(fetchedChats);
     } catch (error) {
       console.error("Error loading chats:", error);
+      setChats([]);
     }
     setLoading(false);
   };

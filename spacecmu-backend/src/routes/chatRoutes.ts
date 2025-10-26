@@ -26,7 +26,7 @@ const router = Router();
 router.use(authenticateToken as RequestHandler);
 
 // Chat management (read-only operations - allowed for banned users to view)
-router.get("/", getMyChats as RequestHandler); // GET /api/chats - Get all user's chats
+router.get("/actor/:actorId", getMyChats as RequestHandler); // GET /api/chats/actor/:actorId - Get all user's chats
 router.get("/unread-count", getUnreadCount as RequestHandler); // GET /api/chats/unread-count - Get unread messages count
 router.get("/:chatId/messages", getChatMessages as RequestHandler); // GET /api/chats/:chatId/messages - Get chat messages (real-time)
 router.get("/:chatId/messages/new", getNewMessages as RequestHandler); // GET /api/chats/:chatId/messages/new - Poll for new messages
