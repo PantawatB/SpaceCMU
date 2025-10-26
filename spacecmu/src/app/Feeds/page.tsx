@@ -996,9 +996,6 @@ export default function FeedsMainPage() {
                 const authorAvatar = authorAvatarRaw
                   ? normalizeImageUrl(authorAvatarRaw)
                   : null;
-                const fallbackAvatar = isPublicPost
-                  ? "/tanjiro.jpg"
-                  : "/noobcat.png";
 
                 return (
                   <div
@@ -1006,13 +1003,20 @@ export default function FeedsMainPage() {
                     className={"bg-gray-50 rounded-2xl p-6 shadow relative"}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <Image
-                        src={authorAvatar || fallbackAvatar}
-                        alt={authorName ?? "avatar"}
-                        width={40}
-                        height={40}
-                        className="rounded-full object-cover"
-                      />
+                      {authorAvatar ? (
+                        <Image
+                          src={authorAvatar}
+                          alt={authorName ?? "avatar"}
+                          width={40}
+                          height={40}
+                          className="rounded-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full bg-gray-300"
+                          aria-hidden="true"
+                        />
+                      )}
                       <div>
                         <div className="font-bold">
                           {authorName ?? (isPublicPost ? "User" : "Anonymous")}
@@ -1734,12 +1738,13 @@ export default function FeedsMainPage() {
               )}
               {!commentsLoading &&
                 currentComments.map((comment) => {
-                  const authorAvatar =
-                    comment.author.type === "user"
-                      ? normalizeImageUrl(comment.author.profileImg) ??
-                        "/tanjiro.jpg"
-                      : normalizeImageUrl(comment.author.avatarUrl) ??
-                        "/noobcat.png";
+                  const isUserComment = comment.author.type === "user";
+                  const authorAvatarRaw = isUserComment
+                    ? comment.author.profileImg
+                    : comment.author.avatarUrl;
+                  const authorAvatar = authorAvatarRaw
+                    ? normalizeImageUrl(authorAvatarRaw)
+                    : null;
 
                   const canDelete =
                     currentUser?.isAdmin ||
@@ -1751,13 +1756,20 @@ export default function FeedsMainPage() {
                       key={comment.id}
                       className="flex gap-3 p-4 bg-gray-50 rounded-xl relative group"
                     >
-                      <Image
-                        src={authorAvatar}
-                        alt={comment.author.name}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                      />
+                      {authorAvatar ? (
+                        <Image
+                          src={authorAvatar}
+                          alt={comment.author.name}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-sm">

@@ -98,13 +98,13 @@ export default function PostCard({
   const authorName = post.author?.name || post.author?.displayName;
     
   // เลือกรูปตาม type - รองรับทั้ง avatar, profileImg, avatarUrl
-  const authorAvatar = isPublicPost 
+  const authorAvatarRaw = isPublicPost 
     ? (post.author.avatar || post.author.profileImg)
     : isAnonymousPost 
     ? (post.author.avatar || post.author.avatarUrl)
     : (post.author.avatar || post.author.profileImg || post.author.avatarUrl);
     
-  const fallbackAvatar = isPublicPost ? "/tanjiro.jpg" : "/noobcat.png";
+  const authorAvatar = authorAvatarRaw ? normalizeImageUrl(authorAvatarRaw) : null;
 
   // Get counts - รองรับทั้ง 2 format
   const likeCount = post.likeCount ?? post.likes ?? 0;
@@ -121,13 +121,20 @@ export default function PostCard({
     <div className="bg-gray-50 rounded-2xl p-6 shadow relative">
       {/* Post Header */}
       <div className="flex items-center gap-3 mb-2">
-        <Image
-          src={normalizeImageUrl(authorAvatar) || fallbackAvatar}
-          alt={authorName ?? "avatar"}
-          width={40}
-          height={40}
-          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-        />
+        {authorAvatar ? (
+          <Image
+            src={authorAvatar}
+            alt={authorName ?? "avatar"}
+            width={40}
+            height={40}
+            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0"
+            aria-hidden="true"
+          />
+        )}
         <div>
           <div className="font-bold">
             {authorName ?? (isPublicPost ? "User" : "Anonymous")}
