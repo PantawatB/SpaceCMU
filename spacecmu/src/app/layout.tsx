@@ -1,10 +1,10 @@
-"use client"; 
+"use client"; // ต้องมี เพราะใช้ Hooks
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // Import Hooks
+import { usePathname } from "next/navigation"; // Import usePathname
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import GlobalChat from "@/components/GlobalChat";
-import { usePathname } from "next/navigation";
+import GlobalChat from "@/components/GlobalChat"; // Import Component
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,18 +16,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Pages where GlobalChat should NOT be displayed
 const NO_CHAT_PAGES = ['/', '/Login', '/Register'];
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const showChat = !NO_CHAT_PAGES.includes(pathname);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem("token");
+      setIsLoggedIn(!!token); 
+    };
+
+    checkAuthStatus(); 
+
+    const handleLogout = () => {
+      setIsLoggedIn(false); 
+    };
+
+    window.addEventListener('logout', handleLogout); 
+    return () => { 
+      window.removeEventListener('logout', handleLogout);
+    };
+  }, []); 
+
+  const shouldShowChat = !NO_CHAT_PAGES.includes(pathname) && isLoggedIn;
 
   return (
     <>
       {children}
-      {/* Global chat rendered on pages except Home, Login, and Register */}
-      {showChat && <GlobalChat />}
+      {shouldShowChat && <GlobalChat />}
     </>
   );
 }
@@ -37,32 +55,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      setIsLoggedIn(true);
-    } else {
-      setIsLoggedIn(false);
-    }
-
-    const handleLogout = () => setIsLoggedIn(false);
-    window.addEventListener('logout', handleLogout);
-
-    return () => {
-      window.removeEventListener('logout', handleLogout); 
-    };
-
-  }, []); 
-
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <LayoutContent>{children}
-        {isLoggedIn && <GlobalChat />}</LayoutContent>
+        <LayoutContent>{children}</LayoutContent>
       </body>
     </html>
   );
