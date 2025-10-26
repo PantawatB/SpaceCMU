@@ -11,6 +11,7 @@ interface SearchUser {
   id: string; // ✅ User.id (must have for chat creation)
   name?: string;
   profileImg?: string | null;
+  bannerImg?: string | null;
   bio?: string | null;
   actorId?: string; // optional for friend operations
   type?: string; // user or persona type
@@ -22,6 +23,7 @@ interface FriendRequestActor {
   type: string;
   actorId: string;
   profileImg?: string | null;
+  bannerImg?: string | null;
 }
 
 interface FriendRequestResponse {
@@ -307,12 +309,6 @@ export default function FriendsMainPage() {
   const [searchResults, setSearchResults] = useState<FriendCardProps[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Chat state
-  const [chatOpen, setChatOpen] = useState(false);
-  const [selectedFriendForChat, setSelectedFriendForChat] = useState<
-    string | null
-  >(null);
-
   // Listen for active profile changes
   useEffect(() => {
     // Get initial value from localStorage
@@ -427,10 +423,6 @@ export default function FriendsMainPage() {
         detail: { chatId },
       });
       window.dispatchEvent(openChatEvent);
-
-      // Clear states
-      setSelectedFriendForChat(chatId);
-      setChatOpen(true);
     } catch (error) {
       console.error("Error starting chat:", error);
       alert("Failed to start chat. Please try again.");
@@ -484,6 +476,7 @@ export default function FriendsMainPage() {
             bio: u.bio ?? "No bio available",
             followed: false,
             avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
+            bannerUrl: u.bannerImg ? normalizeImageUrl(u.bannerImg) : null,
             isFriend: currentFriendIds.has(u.actorId ?? u.id),
             readonlyFriendLabel: currentFriendIds.has(u.actorId ?? u.id),
             onFollow: () => sendFriendRequest(u.actorId),
@@ -587,6 +580,9 @@ export default function FriendsMainPage() {
           followed: request.status === "pending",
           avatarUrl: request.from?.profileImg
             ? normalizeImageUrl(request.from.profileImg)
+            : null,
+          bannerUrl: request.from?.bannerImg
+            ? normalizeImageUrl(request.from.bannerImg)
             : null,
           onFollow: () => handleAcceptRequest(request.id),
           onRemove: () => handleRejectRequest(request.id),
@@ -917,6 +913,7 @@ export default function FriendsMainPage() {
         id: string;
         name?: string;
         profileImg?: string | null;
+        bannerImg?: string | null;
         bio?: string | null;
         actorId?: string;
       }[] = await res.json();
@@ -927,6 +924,7 @@ export default function FriendsMainPage() {
         bio: u.bio ?? "No bio available",
         followed: false,
         avatarUrl: u.profileImg ? normalizeImageUrl(u.profileImg) : null,
+        bannerUrl: u.bannerImg ? normalizeImageUrl(u.bannerImg) : null,
         isFriend: false,
         readonlyFriendLabel: false,
         onFollow: () => sendFriendRequest(u.actorId ?? u.id),

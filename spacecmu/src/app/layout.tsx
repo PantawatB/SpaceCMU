@@ -1,10 +1,10 @@
 "use client"; 
 
 import { useState, useEffect } from "react";
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import GlobalChat from "@/components/GlobalChat";
+import { usePathname } from "next/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +15,22 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// Pages where GlobalChat should NOT be displayed
+const NO_CHAT_PAGES = ['/', '/Login', '/Register'];
+
+function LayoutContent({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const showChat = !NO_CHAT_PAGES.includes(pathname);
+
+  return (
+    <>
+      {children}
+      {/* Global chat rendered on pages except Home, Login, and Register */}
+      {showChat && <GlobalChat />}
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -45,8 +61,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        {isLoggedIn && <GlobalChat />}
+        <LayoutContent>{children}
+        {isLoggedIn && <GlobalChat />}</LayoutContent>
       </body>
     </html>
   );
