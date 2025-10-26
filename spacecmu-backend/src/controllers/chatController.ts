@@ -40,7 +40,6 @@ export async function getMyChats(
         "chat",
         "chat.lastMessage",
         "chat.lastMessage.sender",
-        "chat.createdBy",
         "chat.participants",
         "chat.participants.user",
         "chat.participants.actor", // ✅ Include actor to show correct profile
@@ -65,16 +64,15 @@ export async function getMyChats(
         };
 
         if (participant.actor) {
+          participantInfo.actorId = participant.actor.id;
           if (participant.actor.user) {
             // Actor is a User
             participantInfo.name = participant.actor.user.name;
             participantInfo.profileImg = participant.actor.user.profileImg;
-            participantInfo.actorId = participant.actor.id;
           } else if (participant.actor.persona) {
             // Actor is a Persona (Anonymous User)
             participantInfo.name = participant.actor.persona.displayName;
-            participantInfo.profileImg = participant.actor.persona.profileImg;
-            participantInfo.actorId = participant.actor.id;
+            participantInfo.profileImg = participant.actor.persona.avatarUrl;
           }
         }
 
@@ -98,7 +96,13 @@ export async function getMyChats(
     return res.json(chats);
   } catch (error) {
     console.error("Error getting chats:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    if (error instanceof Error) {
+      console.error("Stack trace:", error.stack);
+    }
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
