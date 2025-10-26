@@ -20,7 +20,7 @@
 
 | ชื่อ | รหัสนักศึกษา | อีเมล |
 |------|----------------|--------|
-| นิติพงษ์ ไห้วงศ์ | 650612087 | nitipong4434@gmail.com |
+| นิธิศ์พงษ์ โห้วงศ์ | 650612087 | nitipong4434@gmail.com |
 | พันธวัสส์ บุญเฉลย | 650612093 | pantawat.korn@gmail.com |
 | พงศ์ภรณ์ สีทอง | 650612091 | ballboss61832@gmail.com |
 
@@ -43,11 +43,10 @@
 ```bash
 git clone https://github.com/PantawatB/SpaceCMU
 ```
-#### 2️⃣ spacecmu (frontend)
+#### 2️⃣ spacecmu (frontend) Port:3001
+#### 3️⃣ spacecmu-backend (backend) Port:3000
 ```bash
 docker compose up -d
+#รันที่ /spacecmu-backend
 ```
-#### 3️⃣ spacecmu-backend (backend)
-```bash
-docker compose up -d
-```
+

@@ -1,0 +1,17 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      # For server-side rendering, use the backend service name
+      - NEXT_PUBLIC_API_BASE_URL=http://backend:3000
+    restart: on-failure
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: spacecmu-backend_default
+    external: true
