@@ -1,0 +1,23 @@
+[
+  {
+    "email": "admin@cmu.ac.th",
+    "username": "Admin User",
+    "role": "admin",
+    "bio": "System Administrator",
+    "note": "Default admin account - password: Admin123!"
+  },
+  {
+    "email": "student1@cmu.ac.th",
+    "username": "Student A",
+    "role": "user",
+    "bio": "CMU Student majoring in Computer Science",
+    "note": "Sample student account - password: Student123!"
+  },
+  {
+    "email": "student2@cmu.ac.th",
+    "username": "Student B",
+    "role": "user",
+    "bio": "CMU Student majoring in Engineering",
+    "note": "Sample student account - password: Student123!"
+  }
+]
